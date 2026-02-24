@@ -135,8 +135,8 @@ class SignUpActivity : AppCompatActivity() {
                                     ).show()
 
                                     // Navigate to next screen (e.g., Login or Home)
-                                    // startActivity(Intent(this, LoginActivity::class.java))
-                                    // finish()
+                                    startActivity(Intent(this, SignInActivity::class.java))
+                                    finish()
                                 }
                                 .addOnFailureListener { e ->
                                     Toast.makeText(
