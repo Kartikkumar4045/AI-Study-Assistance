@@ -1,0 +1,373 @@
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#E8ECF0"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:padding="24dp">
+
+        <!-- Graduation Cap Icon -->
+        <ImageView
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:layout_marginTop="32dp"
+            android:src="@drawable/graduationcap201"
+            android:contentDescription="Graduation Cap"
+            app:tint="#4A7FD4" />
+
+        <!-- Welcome Back Title -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Welcome Back 👋"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:textColor="#1A1A2E" />
+
+        <!-- Subtitle -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Sign in to continue"
+            android:textSize="15sp"
+            android:textColor="#7A7A8E" />
+
+        <!-- ===== Main Card (includes form + or continue with + social buttons) ===== -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="8dp"
+            app:cardBackgroundColor="#FFFFFF">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="20dp">
+
+                <!-- Email or Phone Label -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Email or Phone"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:textColor="#1A1A2E" />
+
+                <!-- Email Input Field -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:layout_marginTop="8dp"
+                    android:background="@drawable/bg_input_field"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp">
+
+                    <ImageView
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:src="@drawable/email24"
+                        app:tint="#9E9EB0"
+                        android:contentDescription="Email Icon" />
+
+                    <EditText
+                        android:id="@+id/etEmail"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@null"
+                        android:hint="Enter your email or phone"
+                        android:textColorHint="#B0B0C0"
+                        android:textSize="14sp"
+                        android:textColor="#1A1A2E"
+                        android:paddingStart="10dp"
+                        android:inputType="textEmailAddress"
+                        android:maxLines="1" />
+                </LinearLayout>
+
+                <!-- Password Label Row -->
+                <RelativeLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Password"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:textColor="#1A1A2E"
+                        android:layout_alignParentStart="true"
+                        android:layout_centerVertical="true" />
+
+                    <TextView
+                        android:id="@+id/tvForgotPassword"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Forgot Password?"
+                        android:textSize="13sp"
+                        android:textColor="#4A7FD4"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true" />
+                </RelativeLayout>
+
+                <!-- Password Input Field -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:layout_marginTop="8dp"
+                    android:background="@drawable/bg_input_field"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp">
+
+                    <ImageView
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:src="@drawable/authorization30"
+                        app:tint="#9E9EB0"
+                        android:contentDescription="Lock Icon" />
+
+                    <EditText
+                        android:id="@+id/etPassword"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:background="@null"
+                        android:hint="Enter your password"
+                        android:textColorHint="#B0B0C0"
+                        android:textSize="14sp"
+                        android:textColor="#1A1A2E"
+                        android:paddingStart="10dp"
+                        android:inputType="textPassword"
+                        android:maxLines="1" />
+
+                    <ImageView
+                        android:id="@+id/ivTogglePassword"
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:src="@drawable/visisbilityoff45"
+                        app:tint="#9E9EB0"
+                        android:contentDescription="Toggle Password" />
+                </LinearLayout>
+
+                <!-- Sign In Button -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnSignIn"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:layout_marginTop="20dp"
+                    android:text="Sign In"
+                    android:textSize="16sp"
+                    android:textColor="#FFFFFF"
+                    android:textAllCaps="false"
+                    android:textStyle="bold"
+                    app:cornerRadius="12dp"
+                    app:backgroundTint="#4A7FD4" />
+
+                <!-- Divider with "or continue with" -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <View
+                        android:layout_width="0dp"
+                        android:layout_height="1dp"
+                        android:layout_weight="1"
+                        android:background="#E8E8F0" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
+                        android:text="or continue with"
+                        android:textSize="13sp"
+                        android:textColor="#9E9EB0" />
+
+                    <View
+                        android:layout_width="0dp"
+                        android:layout_height="1dp"
+                        android:layout_weight="1"
+                        android:background="#E8E8F0" />
+                </LinearLayout>
+
+                <!-- Social Buttons Row -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:orientation="horizontal"
+                    android:gravity="center">
+
+                    <!-- Google Button -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnGoogle"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="50dp"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="8dp"
+                        android:text="Google"
+                        android:textAllCaps="false"
+                        android:textColor="#1A1A2E"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        app:icon="@drawable/google36"
+                        app:iconGravity="textStart"
+                        app:iconPadding="8dp"
+                        app:iconSize="20dp"
+                        app:iconTint="@null"
+                        app:cornerRadius="12dp"
+                        app:strokeColor="#E0E0E8"
+                        app:strokeWidth="1dp"
+                        app:backgroundTint="#FFFFFF" />
+
+                    <!-- Github Button -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnGithub"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="50dp"
+                        android:layout_weight="1"
+                        android:layout_marginStart="8dp"
+                        android:text="Github"
+                        android:textAllCaps="false"
+                        android:textColor="#1A1A2E"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        app:icon="@drawable/github60"
+                        app:iconGravity="textStart"
+                        app:iconPadding="8dp"
+                        app:iconSize="20dp"
+                        app:iconTint="@null"
+                        app:cornerRadius="12dp"
+                        app:strokeColor="#E0E0E8"
+                        app:strokeWidth="1dp"
+                        app:backgroundTint="#FFFFFF" />
+                </LinearLayout>
+
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <!-- Spacer -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <!-- Bottom Card -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="32dp"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="6dp"
+            app:cardBackgroundColor="#FFFFFF">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:padding="20dp">
+
+                <!-- Sign Up Text -->
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Don't have an account? "
+                        android:textSize="14sp"
+                        android:textColor="#7A7A8E" />
+
+                    <TextView
+                        android:id="@+id/tvSignUp"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Sign Up"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:textColor="#4A7FD4" />
+                </LinearLayout>
+
+                <!-- Bottom Social Icons -->
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:orientation="horizontal"
+                    android:gravity="center">
+
+                    <!-- Google Circle -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnGoogleCircle"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton.Icon"
+                        android:layout_width="56dp"
+                        android:layout_height="56dp"
+                        android:layout_marginEnd="16dp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:padding="0dp"
+                        app:icon="@drawable/google96"
+                        app:iconGravity="textStart"
+                        app:iconSize="24dp"
+                        app:iconTint="@null"
+                        app:iconPadding="0dp"
+                        app:cornerRadius="28dp"
+                        app:strokeColor="#E0E0E8"
+                        app:strokeWidth="1dp"
+                        app:backgroundTint="#F5F5F8" />
+
+                    <!-- Github Circle -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnGithubCircle"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton.Icon"
+                        android:layout_width="56dp"
+                        android:layout_height="56dp"
+                        android:layout_marginStart="16dp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:padding="0dp"
+                        app:icon="@drawable/github120"
+                        app:iconGravity="textStart"
+                        app:iconSize="24dp"
+                        app:iconTint="@null"
+                        app:iconPadding="0dp"
+                        app:cornerRadius="28dp"
+                        app:strokeColor="#E0E0E8"
+                        app:strokeWidth="1dp"
+                        app:backgroundTint="#F5F5F8" />
+                </LinearLayout>
+
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <View
+            android:layout_width="1dp"
+            android:layout_height="16dp" />
+
+    </LinearLayout>
+</ScrollView>
