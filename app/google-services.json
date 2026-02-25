@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "504269455991",
+    "firebase_url": "https://ai-study-assistance-7619c-default-rtdb.firebaseio.com",
     "project_id": "ai-study-assistance-7619c",
     "storage_bucket": "ai-study-assistance-7619c.firebasestorage.app"
   },
@@ -12,7 +13,20 @@
           "package_name": "com.example.aistudyassistance"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "504269455991-ekqa6uq3md9s3krcl3r4v61pgvjuoqm0.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.aistudyassistance",
+            "certificate_hash": "455391b0c9ff595cc5664b95172048baff3a657d"
+          }
+        },
+        {
+          "client_id": "504269455991-vdbf0uk0lrpth2q52537rcb83fo8t6t2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAD300W0gakjuR-AU5PAph2hh5hkaCUmq4"
@@ -20,7 +34,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "504269455991-vdbf0uk0lrpth2q52537rcb83fo8t6t2.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

@@ -1,5 +1,6 @@
 package com.example.aistudyassistance.Activity
 
+import android.content.Intent
 import android.os.Bundle
 import android.text.method.HideReturnsTransformationMethod
 import android.text.method.PasswordTransformationMethod
@@ -10,14 +11,23 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import com.example.aistudyassistance.Authentication.AuthManager
 import com.example.aistudyassistance.R
 import com.google.android.material.button.MaterialButton
 import com.google.firebase.auth.FirebaseAuth
+import com.example.aistudyassistance.Authentication.AuthResult
+import com.example.aistudyassistance.MainActivity
+import com.google.firebase.auth.OAuthProvider
 
 class SignInActivity : AppCompatActivity() {
 
     // Firebase Auth instance
     private lateinit var auth: FirebaseAuth
+    private lateinit var authManager: AuthManager
+    private lateinit var btnGoogle: MaterialButton
+    private lateinit var btnGoogleCircle: MaterialButton
+    private lateinit var btnGithub: MaterialButton
+    private lateinit var btnGithubCircle: MaterialButton
 
     // UI elements
     private lateinit var etEmail: EditText
@@ -37,6 +47,7 @@ class SignInActivity : AppCompatActivity() {
 
         // Initialize Firebase Auth
         auth = FirebaseAuth.getInstance()
+        authManager = AuthManager(this)
 
         // Initialize views
         initViews()
@@ -52,13 +63,17 @@ class SignInActivity : AppCompatActivity() {
         ivTogglePassword = findViewById(R.id.ivTogglePassword)
         tvForgotPassword = findViewById(R.id.tvForgotPassword)
         tvSignUp = findViewById(R.id.tvSignUp)
+        btnGoogle = findViewById(R.id.btnGoogle)
+        btnGoogleCircle = findViewById(R.id.btnGoogleCircle)
+        btnGithub = findViewById(R.id.btnGithub)
+        btnGithubCircle = findViewById(R.id.btnGithubCircle)
     }
 
     private fun setupClickListeners() {
 
-        // ──────────────────────────────────────────────
+
         // Sign In Button Click
-        // ──────────────────────────────────────────────
+
         btnSignIn.setOnClickListener {
             val emailOrPhone = etEmail.text.toString().trim()
             val password = etPassword.text.toString().trim()
@@ -68,18 +83,25 @@ class SignInActivity : AppCompatActivity() {
             btnSignIn.isEnabled = false
             btnSignIn.text = "Signing In..."
 
-            if (Patterns.EMAIL_ADDRESS.matcher(emailOrPhone).matches()) {
-                signInWithEmail(emailOrPhone, password)
-            } else if (Patterns.PHONE.matcher(emailOrPhone).matches()) {
-                signInWithEmail(emailOrPhone, password)
-            } else {
-                signInWithEmail(emailOrPhone, password)
-            }
+            signInWithEmail(emailOrPhone, password)
         }
 
-        // ──────────────────────────────────────────────
+
+        // Google Sign In (Modern Credential Manager)
+
+        btnGoogle.setOnClickListener {
+            handleGoogleLogin()
+        }
+        btnGoogleCircle.setOnClickListener {
+            handleGoogleLogin()
+        }
+
+        //Github Sign In
+        btnGithub.setOnClickListener { handleGithubLogin() }
+        btnGithubCircle.setOnClickListener { handleGithubLogin() }
+
+
         // Toggle Password Visibility  ✅ UPDATED
-        // ──────────────────────────────────────────────
         ivTogglePassword.setOnClickListener {
             isPasswordVisible = !isPasswordVisible
 
@@ -100,9 +122,9 @@ class SignInActivity : AppCompatActivity() {
             etPassword.setSelection(etPassword.text.length)
         }
 
-        // ──────────────────────────────────────────────
+
         // Forgot Password Click
-        // ──────────────────────────────────────────────
+
         tvForgotPassword.setOnClickListener {
             val email = etEmail.text.toString().trim()
 
@@ -136,24 +158,21 @@ class SignInActivity : AppCompatActivity() {
                 }
         }
 
-        // ──────────────────────────────────────────────
-        // Sign Up Click
-        // ──────────────────────────────────────────────
+        //Sign Up TEXT VIEW click
         tvSignUp.setOnClickListener {
-            Toast.makeText(this, "Navigate to Sign Up", Toast.LENGTH_SHORT).show()
+            startActivity(Intent(this, SignUpActivity::class.java))
+            finish()
         }
     }
+
 
     private fun signInWithEmail(email: String, password: String) {
         auth.signInWithEmailAndPassword(email, password)
             .addOnCompleteListener(this) { task ->
                 if (task.isSuccessful) {
                     val user = auth.currentUser
-                    Toast.makeText(
-                        this,
-                        "Login Successfully! Welcome ${user?.email}",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    startActivity(Intent(this, MainActivity::class.java))
+                    finish()
                 } else {
                     val errorMessage = task.exception?.localizedMessage
                         ?: "Authentication failed"
@@ -190,8 +209,83 @@ class SignInActivity : AppCompatActivity() {
         return Patterns.PHONE.matcher(input).matches() && input.length >= 10
     }
 
+    private fun handleGoogleLogin() {
+
+        btnGoogle.isEnabled = false
+        btnGoogleCircle.isEnabled = false
+        btnSignIn.text = "Please wait..."
+
+        authManager.signInWithGoogle { result ->
+
+            when (result) {
+
+                is AuthResult.Success -> {
+
+                    val user = FirebaseAuth.getInstance().currentUser
+
+                    Toast.makeText(
+                        this,
+                        "Welcome ${user?.email}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+
+                    // Go to Home screen (create HomeActivity later)
+                    startActivity(Intent(this, MainActivity::class.java))
+                    finish()
+                }
+
+                is AuthResult.Error -> {
+                    Toast.makeText(
+                        this,
+                        "Google Sign-In Failed: ${result.message}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+
+                AuthResult.Cancelled -> {
+                    Toast.makeText(
+                        this,
+                        "Login Cancelled",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+
+            resetButton()
+        }
+    }
+
+    private fun handleGithubLogin() {
+
+        val provider = OAuthProvider.newBuilder("github.com")
+
+        auth.startActivityForSignInWithProvider(this, provider.build())
+            .addOnSuccessListener { authResult ->
+
+                val user = authResult.user
+
+                Toast.makeText(
+                    this,
+                    "Welcome ${user?.email ?: user?.displayName}",
+                    Toast.LENGTH_SHORT
+                ).show()
+
+                startActivity(Intent(this, MainActivity::class.java))
+                finish()
+            }
+            .addOnFailureListener { e ->
+                Toast.makeText(
+                    this,
+                    "GitHub Login Failed: ${e.message}",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+    }
+
     private fun resetButton() {
         btnSignIn.isEnabled = true
+        btnGoogle.isEnabled = true
+        btnGoogleCircle.isEnabled = true
         btnSignIn.text = "Sign In"
     }
 }

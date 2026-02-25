@@ -14,11 +14,18 @@ import com.example.aistudyassistance.R
 import com.google.android.material.button.MaterialButton
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
+import android.widget.TextView
+import androidx.cardview.widget.CardView
+import com.example.aistudyassistance.Authentication.AuthManager
+import com.example.aistudyassistance.Authentication.AuthResult
+import com.example.aistudyassistance.MainActivity
+import com.google.firebase.auth.OAuthProvider
 
 class SignUpActivity : AppCompatActivity() {
 
     private lateinit var auth: FirebaseAuth
     private lateinit var database: FirebaseDatabase
+    private lateinit var authManager: AuthManager
 
     private var isPasswordVisible1 = false
     private var isPasswordVisible2 = false
@@ -30,15 +37,24 @@ class SignUpActivity : AppCompatActivity() {
 
         auth = FirebaseAuth.getInstance()
         database = FirebaseDatabase.getInstance()
+        authManager = AuthManager(this)
 
         val etEmail = findViewById<EditText>(R.id.etEmail)
         val etPhone = findViewById<EditText>(R.id.etPhone)
         val etPassword = findViewById<EditText>(R.id.etCreatePassword)
         val etConfirmPassword = findViewById<EditText>(R.id.etConfirmPassword)
         val btnSignUp = findViewById<MaterialButton>(R.id.btnSignUp)
+        val tvSignIn = findViewById<TextView>(R.id.tvSignIn)
 
         val toggle1 = findViewById<ImageView>(R.id.ivTogglePassword1)
         val toggle2 = findViewById<ImageView>(R.id.ivTogglePassword2)
+        val cvGoogle = findViewById<CardView>(R.id.cvGoogle)
+        val cvGithub = findViewById<CardView>(R.id.cvGithub)
+
+        tvSignIn.setOnClickListener {
+            startActivity(Intent(this, SignInActivity::class.java))
+            finish() // Optional: removes SignUp from back stack
+        }
 
         // 👁 Toggle Password 1 - FIXED (using TransformationMethod instead of inputType)
         toggle1.setOnClickListener {
@@ -166,6 +182,73 @@ class SignUpActivity : AppCompatActivity() {
                         btnSignUp.isEnabled = true
                         btnSignUp.alpha = 1f
                     }
+                }
+        }
+
+        // Sign In Using google
+        cvGoogle.setOnClickListener {
+
+            authManager.signInWithGoogle { result ->
+
+                when (result) {
+
+                    is AuthResult.Success -> {
+
+                        val user = FirebaseAuth.getInstance().currentUser
+                        val userId = user?.uid
+
+                        if (userId != null) {
+
+                            val userMap = HashMap<String, Any>()
+                            userMap["email"] = user.email ?: ""
+                            userMap["phone"] = ""  // Google doesn't give phone
+                            userMap["provider"] = "google"
+
+                            FirebaseDatabase.getInstance().reference
+                                .child("Users")
+                                .child(userId)
+                                .setValue(userMap)
+                        }
+
+                        startActivity(Intent(this, MainActivity::class.java))
+                        finish()
+                    }
+
+                    is AuthResult.Error -> {
+                        Toast.makeText(this, result.message, Toast.LENGTH_LONG).show()
+                    }
+
+                    AuthResult.Cancelled -> {
+                        Toast.makeText(this, "Login Cancelled", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+
+        // Sign In Using github
+        cvGithub.setOnClickListener {
+            val provider = OAuthProvider.newBuilder("github.com")
+
+            auth.startActivityForSignInWithProvider(this, provider.build())
+                .addOnSuccessListener { authResult ->
+
+                    val user = authResult.user
+
+                    Toast.makeText(
+                        this,
+                        "Welcome ${user?.email ?: user?.displayName}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+
+                    startActivity(Intent(this, MainActivity::class.java))
+                    finish()
+                }
+                .addOnFailureListener { e ->
+                    Toast.makeText(
+                        this,
+                        "GitHub Login Failed: ${e.message}",
+                        Toast.LENGTH_LONG
+                    ).show()
                 }
         }
     }

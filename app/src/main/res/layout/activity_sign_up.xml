@@ -177,8 +177,7 @@
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
                     android:paddingStart="12dp"
-                    android:paddingEnd="12dp"
-                    android:inputType="textPassword">
+                    android:paddingEnd="12dp">
 
                     <ImageView
                         android:layout_width="22dp"
@@ -219,8 +218,7 @@
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
                     android:paddingStart="12dp"
-                    android:paddingEnd="12dp"
-                    android:inputType="textPassword">
+                    android:paddingEnd="12dp">
 
                     <ImageView
                         android:layout_width="22dp"
