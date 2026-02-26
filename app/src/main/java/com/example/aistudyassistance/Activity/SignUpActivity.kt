@@ -1,6 +1,9 @@
 package com.example.aistudyassistance.Activity
 
+import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Bundle
 import android.text.method.HideReturnsTransformationMethod
 import android.text.method.PasswordTransformationMethod
@@ -19,13 +22,22 @@ import androidx.cardview.widget.CardView
 import com.example.aistudyassistance.Authentication.AuthManager
 import com.example.aistudyassistance.Authentication.AuthResult
 import com.example.aistudyassistance.MainActivity
-import com.google.firebase.auth.OAuthProvider
+import com.example.aistudyassistance.utils.EmailUtils
 
 class SignUpActivity : AppCompatActivity() {
 
     private lateinit var auth: FirebaseAuth
     private lateinit var database: FirebaseDatabase
     private lateinit var authManager: AuthManager
+
+    // Views
+    private lateinit var etEmail: EditText
+    private lateinit var etPhone: EditText
+    private lateinit var etPassword: EditText
+    private lateinit var etConfirmPassword: EditText
+    private lateinit var btnSignUp: MaterialButton
+    private lateinit var cvGoogle: CardView
+    private lateinit var cvGithub: CardView
 
     private var isPasswordVisible1 = false
     private var isPasswordVisible2 = false
@@ -39,27 +51,31 @@ class SignUpActivity : AppCompatActivity() {
         database = FirebaseDatabase.getInstance()
         authManager = AuthManager(this)
 
-        val etEmail = findViewById<EditText>(R.id.etEmail)
-        val etPhone = findViewById<EditText>(R.id.etPhone)
-        val etPassword = findViewById<EditText>(R.id.etCreatePassword)
-        val etConfirmPassword = findViewById<EditText>(R.id.etConfirmPassword)
-        val btnSignUp = findViewById<MaterialButton>(R.id.btnSignUp)
-        val tvSignIn = findViewById<TextView>(R.id.tvSignIn)
+        initViews()
+        setupClickListeners()
+    }
 
+    private fun initViews() {
+        etEmail = findViewById(R.id.etEmail)
+        etPhone = findViewById(R.id.etPhone)
+        etPassword = findViewById(R.id.etCreatePassword)
+        etConfirmPassword = findViewById(R.id.etConfirmPassword)
+        btnSignUp = findViewById(R.id.btnSignUp)
+        cvGoogle = findViewById(R.id.cvGoogle)
+        cvGithub = findViewById(R.id.cvGithub)
+
+        val tvSignIn = findViewById<TextView>(R.id.tvSignIn)
         val toggle1 = findViewById<ImageView>(R.id.ivTogglePassword1)
         val toggle2 = findViewById<ImageView>(R.id.ivTogglePassword2)
-        val cvGoogle = findViewById<CardView>(R.id.cvGoogle)
-        val cvGithub = findViewById<CardView>(R.id.cvGithub)
 
         tvSignIn.setOnClickListener {
             startActivity(Intent(this, SignInActivity::class.java))
-            finish() // Optional: removes SignUp from back stack
+            finish()
         }
 
-        // 👁 Toggle Password 1 - FIXED (using TransformationMethod instead of inputType)
+        // Password toggles
         toggle1.setOnClickListener {
             isPasswordVisible1 = !isPasswordVisible1
-
             if (isPasswordVisible1) {
                 etPassword.transformationMethod = HideReturnsTransformationMethod.getInstance()
                 toggle1.setImageResource(R.drawable.visibilityon45)
@@ -67,15 +83,11 @@ class SignUpActivity : AppCompatActivity() {
                 etPassword.transformationMethod = PasswordTransformationMethod.getInstance()
                 toggle1.setImageResource(R.drawable.visisbilityoff45)
             }
-
-            // Keep cursor at end
             etPassword.setSelection(etPassword.text.length)
         }
 
-        // 👁 Toggle Password 2 - FIXED (using TransformationMethod instead of inputType)
         toggle2.setOnClickListener {
             isPasswordVisible2 = !isPasswordVisible2
-
             if (isPasswordVisible2) {
                 etConfirmPassword.transformationMethod = HideReturnsTransformationMethod.getInstance()
                 toggle2.setImageResource(R.drawable.visibilityon45)
@@ -83,173 +95,169 @@ class SignUpActivity : AppCompatActivity() {
                 etConfirmPassword.transformationMethod = PasswordTransformationMethod.getInstance()
                 toggle2.setImageResource(R.drawable.visisbilityoff45)
             }
-
-            // Keep cursor at end
             etConfirmPassword.setSelection(etConfirmPassword.text.length)
         }
+    }
 
-        // 🔥 Sign Up Logic - ENHANCED
+    private fun setupClickListeners() {
         btnSignUp.setOnClickListener {
-
-            val email = etEmail.text.toString().trim()
-            val phone = etPhone.text.toString().trim()
-            val password = etPassword.text.toString().trim()
-            val confirmPassword = etConfirmPassword.text.toString().trim()
-
-            // Validation
-            if (email.isEmpty() || phone.isEmpty() || password.isEmpty() || confirmPassword.isEmpty()) {
-                Toast.makeText(this, "All fields are required", Toast.LENGTH_SHORT).show()
+            if (!isNetworkAvailable()) {
+                Toast.makeText(this, "No internet connection", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-
-            if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-                etEmail.error = "Enter valid email"
-                return@setOnClickListener
-            }
-
-            if (phone.length != 10 || !phone.all { it.isDigit() }) {
-                etPhone.error = "Enter valid 10 digit phone number"
-                return@setOnClickListener
-            }
-
-            if (password.length < 6) {
-                etPassword.error = "Password must be at least 6 characters"
-                return@setOnClickListener
-            }
-
-            if (password != confirmPassword) {
-                etConfirmPassword.error = "Passwords do not match"
-                return@setOnClickListener
-            }
-
-            // Disable button to prevent multiple clicks
-            btnSignUp.isEnabled = false
-            btnSignUp.alpha = 0.5f
-
-            // Firebase Sign Up
-            auth.createUserWithEmailAndPassword(email, password)
-                .addOnCompleteListener { task ->
-
-                    if (task.isSuccessful) {
-
-                        val userId = auth.currentUser?.uid
-
-                        if (userId != null) {
-                            val userMap = HashMap<String, Any>()
-                            userMap["email"] = email
-                            userMap["phone"] = phone
-
-                            database.reference
-                                .child("Users")
-                                .child(userId)
-                                .setValue(userMap)
-                                .addOnSuccessListener {
-                                    Toast.makeText(
-                                        this,
-                                        "Account Created Successfully",
-                                        Toast.LENGTH_LONG
-                                    ).show()
-
-                                    // Navigate to next screen (e.g., Login or Home)
-                                    startActivity(Intent(this, SignInActivity::class.java))
-                                    finish()
-                                }
-                                .addOnFailureListener { e ->
-                                    Toast.makeText(
-                                        this,
-                                        "Database Error: ${e.message}",
-                                        Toast.LENGTH_LONG
-                                    ).show()
-                                    btnSignUp.isEnabled = true
-                                    btnSignUp.alpha = 1f
-                                }
-                        } else {
-                            Toast.makeText(
-                                this,
-                                "User ID is null",
-                                Toast.LENGTH_LONG
-                            ).show()
-                            btnSignUp.isEnabled = true
-                            btnSignUp.alpha = 1f
-                        }
-
-                    } else {
-                        Toast.makeText(
-                            this,
-                            "Sign Up Failed: ${task.exception?.message}",
-                            Toast.LENGTH_LONG
-                        ).show()
-                        btnSignUp.isEnabled = true
-                        btnSignUp.alpha = 1f
-                    }
-                }
+            performEmailSignUp()
         }
 
-        // Sign In Using google
         cvGoogle.setOnClickListener {
-
+            disableSocialButtons()
             authManager.signInWithGoogle { result ->
+                handleSocialSignUpResult(result)
+            }
+        }
 
-                when (result) {
+        cvGithub.setOnClickListener {
+            disableSocialButtons()
+            authManager.signInWithGithub(this) { result ->
+                handleSocialSignUpResult(result)
+            }
+        }
+    }
 
-                    is AuthResult.Success -> {
+    private fun performEmailSignUp() {
+        val email = etEmail.text.toString().trim().lowercase()
+        val phone = etPhone.text.toString().trim()
+        val password = etPassword.text.toString().trim()
+        val confirmPassword = etConfirmPassword.text.toString().trim()
 
-                        val user = FirebaseAuth.getInstance().currentUser
-                        val userId = user?.uid
+        // Validation
+        if (!validateInputs(email, phone, password, confirmPassword)) {
+            return
+        }
 
-                        if (userId != null) {
+        // Disable button
+        btnSignUp.isEnabled = false
+        btnSignUp.alpha = 0.5f
 
-                            val userMap = HashMap<String, Any>()
-                            userMap["email"] = user.email ?: ""
-                            userMap["phone"] = ""  // Google doesn't give phone
-                            userMap["provider"] = "google"
+        auth.createUserWithEmailAndPassword(email, password)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    val userId = auth.currentUser?.uid
+                    if (userId != null) {
+                        saveUserToDatabase(userId, email, phone)
+                    } else {
+                        Toast.makeText(this, "Error creating user", Toast.LENGTH_LONG).show()
+                        enableSignUpButton()
+                    }
+                } else {
+                    val error = task.exception?.message ?: "Sign up failed"
+                    Toast.makeText(this, "Sign Up Failed: $error", Toast.LENGTH_LONG).show()
+                    enableSignUpButton()
+                }
+            }
+    }
 
-                            FirebaseDatabase.getInstance().reference
-                                .child("Users")
-                                .child(userId)
-                                .setValue(userMap)
-                        }
+    private fun saveUserToDatabase(userId: String, email: String, phone: String) {
+        val userMap = HashMap<String, Any>().apply {
+            put("email", email)
+            put("phone", phone)
+            put("provider", "password")
+        }
 
-                        startActivity(Intent(this, MainActivity::class.java))
+        database.reference.child("Users").child(userId)
+            .setValue(userMap)
+            .addOnSuccessListener {
+                val encodedEmail = EmailUtils.encodeEmail(email)
+                database.reference.child("Emails").child(encodedEmail)
+                    .setValue(userId)
+                    .addOnSuccessListener {
+                        Toast.makeText(this, "Account Created Successfully", Toast.LENGTH_LONG).show()
+                        startActivity(Intent(this, SignInActivity::class.java))
                         finish()
                     }
-
-                    is AuthResult.Error -> {
-                        Toast.makeText(this, result.message, Toast.LENGTH_LONG).show()
+                    .addOnFailureListener { e ->
+                        Toast.makeText(this, "Database Error: ${e.message}", Toast.LENGTH_LONG).show()
+                        enableSignUpButton()
                     }
+            }
+            .addOnFailureListener { e ->
+                Toast.makeText(this, "Database Error: ${e.message}", Toast.LENGTH_LONG).show()
+                enableSignUpButton()
+            }
+    }
 
-                    AuthResult.Cancelled -> {
-                        Toast.makeText(this, "Login Cancelled", Toast.LENGTH_SHORT).show()
-                    }
-                }
+    private fun validateInputs(email: String, phone: String, password: String, confirmPassword: String): Boolean {
+        if (email.isEmpty() || phone.isEmpty() || password.isEmpty() || confirmPassword.isEmpty()) {
+            Toast.makeText(this, "All fields are required", Toast.LENGTH_SHORT).show()
+            return false
+        }
+
+        if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            etEmail.error = "Enter valid email"
+            return false
+        }
+
+        if (phone.length != 10 || !phone.all { it.isDigit() }) {
+            etPhone.error = "Enter valid 10 digit phone number"
+            return false
+        }
+
+        if (password.length < 6) {
+            etPassword.error = "Password must be at least 6 characters"
+            return false
+        }
+
+        if (password != confirmPassword) {
+            etConfirmPassword.error = "Passwords do not match"
+            return false
+        }
+
+        return true
+    }
+
+    private fun handleSocialSignUpResult(result: AuthResult) {
+        when (result) {
+            is AuthResult.Success -> {
+                Toast.makeText(this, "Welcome!", Toast.LENGTH_SHORT).show()
+                startActivity(Intent(this, MainActivity::class.java))
+                finish()
+            }
+            is AuthResult.Error -> {
+                Toast.makeText(this, "Sign Up Failed: ${result.message}", Toast.LENGTH_LONG).show()
+                enableSocialButtons()
+            }
+            AuthResult.Cancelled -> {
+                Toast.makeText(this, "Sign Up Cancelled", Toast.LENGTH_SHORT).show()
+                enableSocialButtons()
             }
         }
+    }
 
-        // Sign In Using github
-        cvGithub.setOnClickListener {
-            val provider = OAuthProvider.newBuilder("github.com")
+    private fun disableSocialButtons() {
+        cvGoogle.isEnabled = false
+        cvGithub.isEnabled = false
+        cvGoogle.alpha = 0.5f
+        cvGithub.alpha = 0.5f
+    }
 
-            auth.startActivityForSignInWithProvider(this, provider.build())
-                .addOnSuccessListener { authResult ->
+    private fun enableSocialButtons() {
+        cvGoogle.isEnabled = true
+        cvGithub.isEnabled = true
+        cvGoogle.alpha = 1f
+        cvGithub.alpha = 1f
+    }
 
-                    val user = authResult.user
+    private fun enableSignUpButton() {
+        btnSignUp.isEnabled = true
+        btnSignUp.alpha = 1f
+    }
 
-                    Toast.makeText(
-                        this,
-                        "Welcome ${user?.email ?: user?.displayName}",
-                        Toast.LENGTH_SHORT
-                    ).show()
-
-                    startActivity(Intent(this, MainActivity::class.java))
-                    finish()
-                }
-                .addOnFailureListener { e ->
-                    Toast.makeText(
-                        this,
-                        "GitHub Login Failed: ${e.message}",
-                        Toast.LENGTH_LONG
-                    ).show()
-                }
-        }
+    private fun isNetworkAvailable(): Boolean {
+        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val activeNetwork = connectivityManager.activeNetwork
+        val networkCapabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
+        return networkCapabilities != null &&
+                (networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+                        networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) ||
+                        networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET))
     }
 }

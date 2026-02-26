@@ -18,6 +18,8 @@ import com.google.firebase.auth.FirebaseAuth
 import com.example.aistudyassistance.Authentication.AuthResult
 import com.example.aistudyassistance.MainActivity
 import com.google.firebase.auth.OAuthProvider
+import com.google.android.material.bottomsheet.BottomSheetDialog
+import com.google.firebase.database.FirebaseDatabase
 
 class SignInActivity : AppCompatActivity() {
 
@@ -126,36 +128,7 @@ class SignInActivity : AppCompatActivity() {
         // Forgot Password Click
 
         tvForgotPassword.setOnClickListener {
-            val email = etEmail.text.toString().trim()
-
-            if (email.isEmpty()) {
-                etEmail.error = "Enter your email first to reset password"
-                etEmail.requestFocus()
-                return@setOnClickListener
-            }
-
-            if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-                etEmail.error = "Enter a valid email to reset password"
-                etEmail.requestFocus()
-                return@setOnClickListener
-            }
-
-            auth.sendPasswordResetEmail(email)
-                .addOnCompleteListener { task ->
-                    if (task.isSuccessful) {
-                        Toast.makeText(
-                            this,
-                            "Password reset email sent. Check your inbox.",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    } else {
-                        Toast.makeText(
-                            this,
-                            "Failed: ${task.exception?.localizedMessage}",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
-                }
+            showForgotPasswordBottomSheet()
         }
 
         //Sign Up TEXT VIEW click
@@ -166,21 +139,48 @@ class SignInActivity : AppCompatActivity() {
     }
 
 
-    private fun signInWithEmail(email: String, password: String) {
+    private fun signInWithEmail(emailOrPhone: String, password: String) {
+        if (isValidPhone(emailOrPhone)) {
+            btnSignIn.text = "Searching account..."
+            val usersRef = FirebaseDatabase.getInstance().reference.child("Users")
+            usersRef.orderByChild("phone").equalTo(emailOrPhone)
+                .get()
+                .addOnSuccessListener { snapshot ->
+                    if (snapshot.exists()) {
+                        btnSignIn.text = "Signing In..."
+                        val userData = snapshot.children.first()
+                        val email = userData.child("email").value.toString()
+                        performEmailSignIn(email, password)
+                    } else {
+                        Toast.makeText(this, "No account found with this phone", Toast.LENGTH_LONG).show()
+                        resetButton()
+                    }
+                }
+                .addOnFailureListener { exception ->
+                    Toast.makeText(this, "Error: ${exception.message}", Toast.LENGTH_LONG).show()
+                    resetButton()
+                }
+                .addOnCompleteListener {
+                    // Ensure button is re-enabled even if something goes wrong
+                    if (!btnSignIn.isEnabled) {
+                        resetButton()
+                    }
+                }
+
+        } else {
+            performEmailSignIn(emailOrPhone, password)
+        }
+    }
+
+    private fun performEmailSignIn(email: String, password: String) {
         auth.signInWithEmailAndPassword(email, password)
             .addOnCompleteListener(this) { task ->
                 if (task.isSuccessful) {
-                    val user = auth.currentUser
                     startActivity(Intent(this, MainActivity::class.java))
                     finish()
                 } else {
-                    val errorMessage = task.exception?.localizedMessage
-                        ?: "Authentication failed"
-                    Toast.makeText(
-                        this,
-                        "Login Failed: $errorMessage",
-                        Toast.LENGTH_LONG
-                    ).show()
+                    val errorMessage = task.exception?.localizedMessage ?: "Authentication failed"
+                    Toast.makeText(this, "Login Failed: $errorMessage", Toast.LENGTH_LONG).show()
                 }
                 resetButton()
             }
@@ -192,6 +192,15 @@ class SignInActivity : AppCompatActivity() {
             etEmail.requestFocus()
             return false
         }
+
+        // Add proper validation
+        if (!Patterns.EMAIL_ADDRESS.matcher(emailOrPhone).matches() &&
+            !isValidPhone(emailOrPhone)) {
+            etEmail.error = "Enter valid email or 10-digit phone number"
+            etEmail.requestFocus()
+            return false
+        }
+
         if (password.isEmpty()) {
             etPassword.error = "Password is required"
             etPassword.requestFocus()
@@ -206,86 +215,198 @@ class SignInActivity : AppCompatActivity() {
     }
 
     private fun isValidPhone(input: String): Boolean {
-        return Patterns.PHONE.matcher(input).matches() && input.length >= 10
+        return Patterns.PHONE.matcher(input).matches() && input.length == 10
+    }
+
+
+    private fun showForgotPasswordBottomSheet() {
+
+        val bottomSheetDialog = BottomSheetDialog(this)
+        val view = layoutInflater.inflate(
+            R.layout.bottom_sheet_forgot_password,
+            null
+        )
+
+        bottomSheetDialog.setContentView(view)
+
+        val etForgotEmail = view.findViewById<EditText>(R.id.etForgotEmail)
+        val btnSendReset = view.findViewById<MaterialButton>(R.id.btnSendReset)
+        val tvCancel = view.findViewById<TextView>(R.id.tvCancel)
+
+        // Prefill email if typed
+        val currentEmail = etEmail.text.toString().trim()
+        if (currentEmail.isNotEmpty()) {
+            etForgotEmail.setText(currentEmail)
+            etForgotEmail.setSelection(currentEmail.length)
+        }
+
+        tvCancel.setOnClickListener {
+            bottomSheetDialog.dismiss()
+        }
+
+        btnSendReset.setOnClickListener {
+
+            val email = etForgotEmail.text.toString().trim().lowercase()
+
+            if (email.isEmpty()) {
+                etForgotEmail.error = "Email is required"
+                return@setOnClickListener
+            }
+
+            if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+                etForgotEmail.error = "Enter valid email"
+                return@setOnClickListener
+            }
+
+            btnSendReset.isEnabled = false
+            btnSendReset.text = "Checking..."
+
+            val usersRef = FirebaseDatabase.getInstance()
+                .reference
+                .child("Users")
+
+            // 🔥 Query directly by email (efficient way)
+            usersRef
+                .orderByChild("email")
+                .equalTo(email)
+                .get()
+                .addOnSuccessListener { snapshot ->
+
+                    if (!snapshot.exists()) {
+
+                        Toast.makeText(
+                            this,
+                            "No account found with this email.",
+                            Toast.LENGTH_LONG
+                        ).show()
+
+                        resetButtonState(btnSendReset)
+                        return@addOnSuccessListener
+                    }
+
+                    val userSnapshot = snapshot.children.first()
+                    val providerType =
+                        userSnapshot.child("provider").value?.toString() ?: "password"
+
+                    when (providerType) {
+
+                        "password" -> {
+
+                            FirebaseAuth.getInstance()
+                                .sendPasswordResetEmail(email)
+                                .addOnCompleteListener {
+
+                                    Toast.makeText(
+                                        this,
+                                        "Password reset link sent to your email.",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+
+                                    bottomSheetDialog.dismiss()
+                                }
+                        }
+
+                        "google" -> {
+                            Toast.makeText(
+                                this,
+                                "This account was created using Google Sign-In. Please login with Google.",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+
+                        "github" -> {
+                            Toast.makeText(
+                                this,
+                                "This account was created using GitHub Sign-In. Please login with GitHub.",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+
+                        else -> {
+                            Toast.makeText(
+                                this,
+                                "Please login using your original sign-in method.",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    }
+
+                    resetButtonState(btnSendReset)
+                }
+                .addOnFailureListener {
+
+                    Toast.makeText(
+                        this,
+                        "Something went wrong. Please try again.",
+                        Toast.LENGTH_LONG
+                    ).show()
+
+                    resetButtonState(btnSendReset)
+                }
+        }
+
+        bottomSheetDialog.behavior.isDraggable = true
+        bottomSheetDialog.setCancelable(true)
+        bottomSheetDialog.show()
+    }
+
+    private fun encodeEmail(email: String): String {
+        return email.lowercase()
+            .replace(".", "_")
+            .replace("@", "_")
     }
 
     private fun handleGoogleLogin() {
-
-        btnGoogle.isEnabled = false
-        btnGoogleCircle.isEnabled = false
-        btnSignIn.text = "Please wait..."
-
+        disableSocialButtons()
         authManager.signInWithGoogle { result ->
-
-            when (result) {
-
-                is AuthResult.Success -> {
-
-                    val user = FirebaseAuth.getInstance().currentUser
-
-                    Toast.makeText(
-                        this,
-                        "Welcome ${user?.email}",
-                        Toast.LENGTH_SHORT
-                    ).show()
-
-                    // Go to Home screen (create HomeActivity later)
-                    startActivity(Intent(this, MainActivity::class.java))
-                    finish()
-                }
-
-                is AuthResult.Error -> {
-                    Toast.makeText(
-                        this,
-                        "Google Sign-In Failed: ${result.message}",
-                        Toast.LENGTH_LONG
-                    ).show()
-                }
-
-                AuthResult.Cancelled -> {
-                    Toast.makeText(
-                        this,
-                        "Login Cancelled",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-            }
-
-            resetButton()
+            handleSocialLoginResult(result)
         }
     }
 
     private fun handleGithubLogin() {
+        disableSocialButtons()
+        authManager.signInWithGithub(this) { result ->
+            handleSocialLoginResult(result)
+        }
+    }
 
-        val provider = OAuthProvider.newBuilder("github.com")
 
-        auth.startActivityForSignInWithProvider(this, provider.build())
-            .addOnSuccessListener { authResult ->
-
-                val user = authResult.user
-
-                Toast.makeText(
-                    this,
-                    "Welcome ${user?.email ?: user?.displayName}",
-                    Toast.LENGTH_SHORT
-                ).show()
-
+    private fun handleSocialLoginResult(result: AuthResult) {
+        when (result) {
+            is AuthResult.Success -> {
+                Toast.makeText(this, "Welcome!", Toast.LENGTH_SHORT).show()
                 startActivity(Intent(this, MainActivity::class.java))
                 finish()
             }
-            .addOnFailureListener { e ->
-                Toast.makeText(
-                    this,
-                    "GitHub Login Failed: ${e.message}",
-                    Toast.LENGTH_LONG
-                ).show()
+            is AuthResult.Error -> {
+                Toast.makeText(this, "Login Failed: ${result.message}", Toast.LENGTH_LONG).show()
             }
+            AuthResult.Cancelled -> {
+                Toast.makeText(this, "Login Cancelled", Toast.LENGTH_SHORT).show()
+            }
+        }
+        resetButton()
+    }
+
+    private fun disableSocialButtons() {
+        btnGoogle.isEnabled = false
+        btnGoogleCircle.isEnabled = false
+        btnGithub.isEnabled = false
+        btnGithubCircle.isEnabled = false
+        btnSignIn.text = "Please wait..."
     }
 
     private fun resetButton() {
         btnSignIn.isEnabled = true
+        btnSignIn.text = "Sign In"
         btnGoogle.isEnabled = true
         btnGoogleCircle.isEnabled = true
-        btnSignIn.text = "Sign In"
+        btnGithub.isEnabled = true
+        btnGithubCircle.isEnabled = true
+    }
+
+    private fun resetButtonState(button: MaterialButton) {
+        button.isEnabled = true
+        button.text = "Send Reset Link"
     }
 }
