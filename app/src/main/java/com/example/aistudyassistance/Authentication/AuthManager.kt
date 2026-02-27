@@ -2,22 +2,43 @@ package com.example.aistudyassistance.Authentication
 
 import android.app.Activity
 import android.content.Context
+import android.util.Log
 import androidx.credentials.*
 import androidx.credentials.exceptions.GetCredentialException
 import com.google.android.libraries.identity.googleid.*
 import com.google.firebase.auth.*
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 
 class AuthManager(private val context: Context) {
 
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
     private val credentialManager = CredentialManager.create(context)
     private val database = FirebaseDatabase.getInstance()
+    private val tag = "AuthManager"
 
-    // Google Sign-In - Uses Context (works with Credential Manager)
+    companion object {
+        // Cache for user existence checks
+        private val emailUserCache = mutableMapOf<String, CachedUserData>()
+        private const val CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
+
+        data class CachedUserData(
+            val uid: String,
+            val provider: String,
+            val timestamp: Long
+        ) {
+            fun isValid(): Boolean = System.currentTimeMillis() - timestamp < CACHE_DURATION
+        }
+    }
+
+    // Google Sign-In
     fun signInWithGoogle(callback: (AuthResult) -> Unit) {
         val googleIdOption = GetGoogleIdOption.Builder()
             .setFilterByAuthorizedAccounts(false)
@@ -45,126 +66,489 @@ class AuthManager(private val context: Context) {
                     val googleIdTokenCredential =
                         GoogleIdTokenCredential.createFrom(credential.data)
 
-                    firebaseAuthWithProvider(
-                        googleIdTokenCredential.idToken,
-                        "google",
-                        callback
+                    handleProviderSignIn(
+                        idToken = googleIdTokenCredential.idToken,
+                        provider = "google.com",
+                        email = googleIdTokenCredential.id,
+                        callback = callback
                     )
                 } else {
                     callback(AuthResult.Error("Invalid credential type"))
                 }
             } catch (e: GetCredentialException) {
-                callback(AuthResult.Error(e.message))
+                if (e.message?.contains("cancelled", ignoreCase = true) == true) {
+                    callback(AuthResult.Cancelled)
+                } else {
+                    callback(AuthResult.Error(e.message))
+                }
             }
         }
     }
 
-    // GitHub Sign-In - Requires Activity
+    // GitHub Sign-In
     fun signInWithGithub(activity: Activity, callback: (AuthResult) -> Unit) {
         val provider = OAuthProvider.newBuilder("github.com")
-            .addCustomParameter("allow_signup", "false") // Optional: prevent signup if not allowed
+            .addCustomParameter("allow_signup", "false")
             .build()
 
         auth.startActivityForSignInWithProvider(activity, provider)
             .addOnSuccessListener { authResult ->
-                // After successful Firebase auth, save to database
-                saveUserToDatabase(authResult.user, "github") { success ->
-                    if (success) {
-                        callback(AuthResult.Success(authResult.additionalUserInfo?.isNewUser ?: false))
-                    } else {
-                        callback(AuthResult.Error("Failed to save user data"))
-                    }
-                }
-            }
-            .addOnFailureListener { e ->
-                callback(AuthResult.Error(e.message ?: "GitHub sign-in failed"))
-            }
-    }
+                val user = authResult.user
+                user?.let {
+                    val email = it.email ?: ""
+                    // Check if user exists in database and handle accordingly
+                    CoroutineScope(Dispatchers.IO).launch {
+                        try {
+                            val existingUserData = checkEmailExists(email)
 
-    // Common method for Firebase authentication with providers
-    private fun firebaseAuthWithProvider(
-        idToken: String,
-        provider: String,
-        callback: (AuthResult) -> Unit
-    ) {
-        val firebaseCredential = GoogleAuthProvider.getCredential(idToken, null)
-
-        auth.signInWithCredential(firebaseCredential)
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    saveUserToDatabase(auth.currentUser, provider) { success ->
-                        if (success) {
-                            callback(AuthResult.Success(task.result?.additionalUserInfo?.isNewUser ?: false))
-                        } else {
-                            callback(AuthResult.Error("Failed to save user data"))
+                            withContext(Dispatchers.Main) {
+                                if (existingUserData != null && existingUserData.uid != it.uid) {
+                                    // Email exists with different UID - this shouldn't happen with GitHub
+                                    // Handle by linking or showing error
+                                    callback(AuthResult.Error(
+                                        "This email is already registered with ${existingUserData.provider}. " +
+                                                "Please sign in with ${existingUserData.provider} first."
+                                    ))
+                                } else {
+                                    // Either new user or same user, save/update in database
+                                    saveUserToDatabase(
+                                        uid = it.uid,
+                                        email = email,
+                                        phone = "",
+                                        provider = "github.com",
+                                        isNewUser = authResult.additionalUserInfo?.isNewUser ?: false,
+                                        callback = callback
+                                    )
+                                }
+                            }
+                        } catch (e: Exception) {
+                            withContext(Dispatchers.Main) {
+                                callback(AuthResult.Error(e.message))
+                            }
                         }
                     }
+                } ?: callback(AuthResult.Error("Failed to get user info"))
+            }
+            .addOnFailureListener { e ->
+                if (e.message?.contains("cancelled", ignoreCase = true) == true) {
+                    callback(AuthResult.Cancelled)
                 } else {
-                    callback(AuthResult.Error(task.exception?.message ?: "Authentication failed"))
+                    callback(AuthResult.Error(e.message ?: "GitHub sign-in failed"))
                 }
             }
     }
 
-    // Unified database saving method
-    private fun saveUserToDatabase(user: FirebaseUser?, provider: String, callback: (Boolean) -> Unit) {
-        val userId = user?.uid ?: run {
-            callback(false)
+    // Email/Password Sign Up
+    fun signUpWithEmail(email: String, password: String, phone: String, callback: (AuthResult) -> Unit) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                // Check if email exists in our database first
+                val existingUserData = checkEmailExists(email)
+
+                withContext(Dispatchers.Main) {
+                    if (existingUserData != null) {
+                        // Email already exists with another provider
+                        callback(AuthResult.Error(
+                            "An account already exists with this email using ${existingUserData.provider}. " +
+                                    "Please sign in with ${existingUserData.provider} and then link your password."
+                        ))
+                    } else {
+                        // Create new account with password
+                        createEmailAccount(email, password, phone, callback)
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    callback(AuthResult.Error(e.message))
+                }
+            }
+        }
+    }
+
+    // Email/Password Sign In
+    fun signInWithEmail(email: String, password: String, callback: (AuthResult) -> Unit) {
+        auth.signInWithEmailAndPassword(email, password)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    val user = auth.currentUser
+                    user?.let {
+                        updateUserPhoneIfNeeded(it.uid, email, callback)
+                    } ?: callback(AuthResult.Error("User not found"))
+                } else {
+                    val exception = task.exception
+                    when {
+                        exception is FirebaseAuthInvalidUserException -> {
+                            callback(AuthResult.Error("No account found with this email"))
+                        }
+                        exception is FirebaseAuthInvalidCredentialsException -> {
+                            callback(AuthResult.Error("Invalid password"))
+                        }
+                        else -> {
+                            callback(AuthResult.Error(exception?.message ?: "Sign in failed"))
+                        }
+                    }
+                }
+            }
+    }
+
+    // Handle provider sign-in (Google)
+    private fun handleProviderSignIn(
+        idToken: String,
+        provider: String,
+        email: String,
+        callback: (AuthResult) -> Unit
+    ) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                // Check if email exists in database
+                val existingUserData = checkEmailExists(email)
+
+                withContext(Dispatchers.Main) {
+                    if (existingUserData != null) {
+                        // Email exists, try to sign in with credential and link
+                        linkProviderToExistingAccount(
+                            idToken = idToken,
+                            provider = provider,
+                            existingUid = existingUserData.uid,
+                            existingProvider = existingUserData.provider,
+                            callback = callback
+                        )
+                    } else {
+                        // New email, create account with this provider
+                        createProviderAccount(
+                            idToken = idToken,
+                            provider = provider,
+                            email = email,
+                            callback = callback
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    callback(AuthResult.Error(e.message))
+                }
+            }
+        }
+    }
+
+    // Link provider to existing account
+    private fun linkProviderToExistingAccount(
+        idToken: String,
+        provider: String,
+        existingUid: String,
+        existingProvider: String,
+        callback: (AuthResult) -> Unit
+    ) {
+        val credential = when (provider) {
+            "google.com" -> GoogleAuthProvider.getCredential(idToken, null)
+            else -> null
+        }
+
+        if (credential == null) {
+            callback(AuthResult.Error("Invalid provider"))
             return
         }
 
-        // Check if user already exists in database
-        database.reference.child("Users").child(userId).get()
+        // Try to sign in with the new credential
+        auth.signInWithCredential(credential)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    // Successfully signed in with new provider
+                    val user = auth.currentUser
+                    if (user?.uid == existingUid) {
+                        // Same account, already linked
+                        updateUserData(user.uid, provider, callback)
+                    } else {
+                        // Different account, need to link
+                        linkAccounts(user, existingUid, provider, callback)
+                    }
+                } else {
+                    val exception = task.exception
+                    when {
+                        exception is FirebaseAuthUserCollisionException -> {
+                            // Email already used with another provider
+                            handleAccountCollision(exception, provider, callback)
+                        }
+                        else -> {
+                            callback(AuthResult.Error(exception?.message ?: "Authentication failed"))
+                        }
+                    }
+                }
+            }
+    }
+
+    // Handle account collision (email exists with different provider)
+    private fun handleAccountCollision(
+        exception: FirebaseAuthUserCollisionException,
+        newProvider: String,
+        callback: (AuthResult) -> Unit
+    ) {
+        val email = exception.email ?: ""
+
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val existingUserData = checkEmailExists(email)
+
+                withContext(Dispatchers.Main) {
+                    if (existingUserData != null) {
+                        callback(AuthResult.Error(
+                            "This email is already registered with ${existingUserData.provider}. " +
+                                    "Please sign in with ${existingUserData.provider} first, then you can link your $newProvider account."
+                        ))
+                    } else {
+                        callback(AuthResult.Error("Email already in use with another provider"))
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    callback(AuthResult.Error(e.message))
+                }
+            }
+        }
+    }
+
+    // Link two accounts
+    private fun linkAccounts(
+        newUser: FirebaseUser?,
+        existingUid: String,
+        provider: String,
+        callback: (AuthResult) -> Unit
+    ) {
+        if (newUser == null) {
+            callback(AuthResult.Error("Failed to link accounts"))
+            return
+        }
+
+        // Sign in with existing account first
+        // This is complex - in a real app, you'd prompt user to sign in with original provider
+        // For now, we'll delete the new account and ask user to sign in with original provider
+        newUser.delete()
+            .addOnCompleteListener {
+                callback(AuthResult.Error(
+                    "Please sign in with your original provider first, then link this provider."
+                ))
+            }
+    }
+
+    // Create account with provider (Google)
+    private fun createProviderAccount(
+        idToken: String,
+        provider: String,
+        email: String,
+        callback: (AuthResult) -> Unit
+    ) {
+        val credential = when (provider) {
+            "google.com" -> GoogleAuthProvider.getCredential(idToken, null)
+            else -> null
+        }
+
+        credential?.let {
+            auth.signInWithCredential(it)
+                .addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        val user = auth.currentUser
+                        user?.let {
+                            saveUserToDatabase(
+                                uid = it.uid,
+                                email = email,
+                                phone = "",
+                                provider = provider,
+                                isNewUser = true,
+                                callback = callback
+                            )
+                        } ?: callback(AuthResult.Error("Failed to create account"))
+                    } else {
+                        callback(AuthResult.Error(task.exception?.message ?: "Authentication failed"))
+                    }
+                }
+        }
+    }
+
+    // Create email/password account
+    private fun createEmailAccount(
+        email: String,
+        password: String,
+        phone: String,
+        callback: (AuthResult) -> Unit
+    ) {
+        auth.createUserWithEmailAndPassword(email, password)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    val user = auth.currentUser
+                    user?.let {
+                        saveUserToDatabase(
+                            uid = it.uid,
+                            email = email,
+                            phone = phone,
+                            provider = "password",
+                            isNewUser = true,
+                            callback = callback
+                        )
+                    } ?: callback(AuthResult.Error("Failed to create account"))
+                } else {
+                    val exception = task.exception
+                    when {
+                        exception is FirebaseAuthUserCollisionException -> {
+                            callback(AuthResult.Error("Email already registered. Please sign in instead."))
+                        }
+                        else -> {
+                            callback(AuthResult.Error(exception?.message ?: "Sign up failed"))
+                        }
+                    }
+                }
+            }
+    }
+
+    // Save user to database with caching
+    private fun saveUserToDatabase(
+        uid: String,
+        email: String,
+        phone: String,
+        provider: String,
+        isNewUser: Boolean,
+        callback: (AuthResult) -> Unit
+    ) {
+        val userMap = HashMap<String, Any>().apply {
+            put("email", email.lowercase())
+            put("phone", phone)
+            put("provider", provider)
+            put("createdAt", System.currentTimeMillis())
+            put("lastLogin", System.currentTimeMillis())
+        }
+
+        database.reference.child("Users").child(uid)
+            .setValue(userMap)
+            .addOnSuccessListener {
+                // Save email mapping
+                val encodedEmail = encodeEmail(email)
+                database.reference.child("Emails").child(encodedEmail)
+                    .setValue(uid)
+                    .addOnSuccessListener {
+                        // Update cache
+                        emailUserCache[email.lowercase()] = CachedUserData(
+                            uid = uid,
+                            provider = provider,
+                            timestamp = System.currentTimeMillis()
+                        )
+                        callback(AuthResult.Success(isNewUser))
+                    }
+                    .addOnFailureListener { e ->
+                        Log.e(tag, "Failed to save email mapping", e)
+                        callback(AuthResult.Success(isNewUser))
+                    }
+            }
+            .addOnFailureListener { e ->
+                Log.e(tag, "Failed to save user", e)
+                callback(AuthResult.Error("Failed to save user data: ${e.message}"))
+            }
+    }
+
+    // Update existing user data
+    private fun updateUserData(
+        uid: String,
+        provider: String,
+        callback: (AuthResult) -> Unit
+    ) {
+        val updates = mapOf<String, Any>(
+            "lastLogin" to System.currentTimeMillis(),
+            "provider" to provider // Update last used provider
+        )
+
+        database.reference.child("Users").child(uid)
+            .updateChildren(updates)
+            .addOnSuccessListener {
+                callback(AuthResult.Success(false))
+            }
+            .addOnFailureListener { e ->
+                Log.e(tag, "Failed to update user", e)
+                callback(AuthResult.Success(false))
+            }
+    }
+
+    // Update user phone if needed
+    private fun updateUserPhoneIfNeeded(
+        uid: String,
+        email: String,
+        callback: (AuthResult) -> Unit
+    ) {
+        database.reference.child("Users").child(uid).get()
             .addOnSuccessListener { snapshot ->
                 if (snapshot.exists()) {
-                    // User already exists, no need to save again
-                    callback(true)
-                } else {
-                    // New user, save to database
-                    val userMap = HashMap<String, Any>().apply {
-                        put("email", user.email?.lowercase() ?: "")
-                        put("phone", "")
-                        put("provider", provider)
-                        put("createdAt", System.currentTimeMillis())
-                    }
+                    // Update last login
+                    snapshot.ref.child("lastLogin").setValue(System.currentTimeMillis())
 
-                    database.reference.child("Users").child(userId)
-                        .setValue(userMap)
-                        .addOnSuccessListener {
-                            // Save email mapping for quick lookup
-                            val encodedEmail = encodeEmail(user.email ?: "")
-                            database.reference.child("Emails").child(encodedEmail)
-                                .setValue(userId)
-                                .addOnSuccessListener { callback(true) }
-                                .addOnFailureListener {
-                                    // Email mapping failed but user was created
-                                    callback(true)
-                                }
+                    // Check if email mapping exists
+                    val encodedEmail = encodeEmail(email)
+                    database.reference.child("Emails").child(encodedEmail)
+                        .get()
+                        .addOnSuccessListener { emailSnapshot ->
+                            if (!emailSnapshot.exists()) {
+                                // Create email mapping if missing
+                                database.reference.child("Emails").child(encodedEmail)
+                                    .setValue(uid)
+                            }
                         }
-                        .addOnFailureListener {
-                            callback(false)
-                        }
+
+                    callback(AuthResult.Success(false))
+                } else {
+                    // User exists in Auth but not in DB - fix inconsistency
+                    val provider = auth.currentUser?.providerData?.firstOrNull()?.providerId ?: "unknown"
+                    saveUserToDatabase(uid, email, "", provider, false, callback)
                 }
             }
             .addOnFailureListener {
-                // Failed to check existence, try to save anyway
-                val userMap = HashMap<String, Any>().apply {
-                    put("email", user.email?.lowercase() ?: "")
-                    put("phone", "")
-                    put("provider", provider)
-                    put("createdAt", System.currentTimeMillis())
-                }
-
-                database.reference.child("Users").child(userId)
-                    .setValue(userMap)
-                    .addOnSuccessListener {
-                        val encodedEmail = encodeEmail(user.email ?: "")
-                        database.reference.child("Emails").child(encodedEmail)
-                            .setValue(userId)
-                            .addOnSuccessListener { callback(true) }
-                            .addOnFailureListener { callback(true) }
-                    }
-                    .addOnFailureListener { callback(false) }
+                callback(AuthResult.Success(false))
             }
+    }
+
+    // Check if email exists in database with caching
+    private suspend fun checkEmailExists(email: String): CachedUserData? {
+        val lowerEmail = email.lowercase()
+
+        // Check cache first
+        emailUserCache[lowerEmail]?.let { cachedData ->
+            if (cachedData.isValid()) {
+                return cachedData
+            }
+        }
+
+        return try {
+            val encodedEmail = encodeEmail(email)
+            val snapshot = database.reference
+                .child("Emails")
+                .child(encodedEmail)
+                .get()
+                .await()
+
+            if (snapshot.exists()) {
+                val uid = snapshot.getValue(String::class.java) ?: return null
+
+                // Get user data to know provider
+                val userSnapshot = database.reference
+                    .child("Users")
+                    .child(uid)
+                    .get()
+                    .await()
+
+                if (userSnapshot.exists()) {
+                    val provider = userSnapshot.child("provider").value as? String ?: "unknown"
+                    val cachedData = CachedUserData(
+                        uid = uid,
+                        provider = provider,
+                        timestamp = System.currentTimeMillis()
+                    )
+                    emailUserCache[lowerEmail] = cachedData
+                    cachedData
+                } else {
+                    null
+                }
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "Error checking email", e)
+            null
+        }
     }
 
     private fun encodeEmail(email: String): String {
@@ -183,5 +567,10 @@ class AuthManager(private val context: Context) {
 
     fun isUserLoggedIn(): Boolean {
         return auth.currentUser != null
+    }
+
+    // Clear cache (call on logout)
+    fun clearCache() {
+        emailUserCache.clear()
     }
 }

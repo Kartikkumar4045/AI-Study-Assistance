@@ -17,29 +17,23 @@ import com.google.android.material.button.MaterialButton
 import com.google.firebase.auth.FirebaseAuth
 import com.example.aistudyassistance.Authentication.AuthResult
 import com.example.aistudyassistance.MainActivity
-import com.google.firebase.auth.OAuthProvider
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.firebase.database.FirebaseDatabase
 
 class SignInActivity : AppCompatActivity() {
 
-    // Firebase Auth instance
     private lateinit var auth: FirebaseAuth
     private lateinit var authManager: AuthManager
     private lateinit var btnGoogle: MaterialButton
     private lateinit var btnGoogleCircle: MaterialButton
     private lateinit var btnGithub: MaterialButton
     private lateinit var btnGithubCircle: MaterialButton
-
-    // UI elements
     private lateinit var etEmail: EditText
     private lateinit var etPassword: EditText
     private lateinit var btnSignIn: MaterialButton
     private lateinit var ivTogglePassword: ImageView
     private lateinit var tvForgotPassword: TextView
     private lateinit var tvSignUp: TextView
-
-    // Password visibility flag
     private var isPasswordVisible = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -47,14 +41,10 @@ class SignInActivity : AppCompatActivity() {
         enableEdgeToEdge()
         setContentView(R.layout.activity_sign_in)
 
-        // Initialize Firebase Auth
         auth = FirebaseAuth.getInstance()
         authManager = AuthManager(this)
 
-        // Initialize views
         initViews()
-
-        // Set up click listeners
         setupClickListeners()
     }
 
@@ -72,10 +62,6 @@ class SignInActivity : AppCompatActivity() {
     }
 
     private fun setupClickListeners() {
-
-
-        // Sign In Button Click
-
         btnSignIn.setOnClickListener {
             val emailOrPhone = etEmail.text.toString().trim()
             val password = etPassword.text.toString().trim()
@@ -85,105 +71,83 @@ class SignInActivity : AppCompatActivity() {
             btnSignIn.isEnabled = false
             btnSignIn.text = "Signing In..."
 
-            signInWithEmail(emailOrPhone, password)
+            if (isValidPhone(emailOrPhone)) {
+                // If it's a phone number, find email first
+                findEmailByPhone(emailOrPhone, password)
+            } else {
+                // Direct email sign in
+                authManager.signInWithEmail(emailOrPhone, password) { result ->
+                    handleSignInResult(result)
+                }
+            }
         }
 
+        btnGoogle.setOnClickListener { handleGoogleLogin() }
+        btnGoogleCircle.setOnClickListener { handleGoogleLogin() }
 
-        // Google Sign In (Modern Credential Manager)
-
-        btnGoogle.setOnClickListener {
-            handleGoogleLogin()
-        }
-        btnGoogleCircle.setOnClickListener {
-            handleGoogleLogin()
-        }
-
-        //Github Sign In
         btnGithub.setOnClickListener { handleGithubLogin() }
         btnGithubCircle.setOnClickListener { handleGithubLogin() }
 
-
-        // Toggle Password Visibility  ✅ UPDATED
         ivTogglePassword.setOnClickListener {
             isPasswordVisible = !isPasswordVisible
-
             if (isPasswordVisible) {
-                // Password is NOW VISIBLE → show "eye open" icon
-                etPassword.transformationMethod =
-                    HideReturnsTransformationMethod.getInstance()
+                etPassword.transformationMethod = HideReturnsTransformationMethod.getInstance()
                 ivTogglePassword.setImageResource(R.drawable.visibilityon45)
-
             } else {
-                // Password is NOW HIDDEN → show "eye closed" icon
-                etPassword.transformationMethod =
-                    PasswordTransformationMethod.getInstance()
+                etPassword.transformationMethod = PasswordTransformationMethod.getInstance()
                 ivTogglePassword.setImageResource(R.drawable.visisbilityoff45)
             }
-
-            // Keep cursor at the end
             etPassword.setSelection(etPassword.text.length)
         }
-
-
-        // Forgot Password Click
 
         tvForgotPassword.setOnClickListener {
             showForgotPasswordBottomSheet()
         }
 
-        //Sign Up TEXT VIEW click
         tvSignUp.setOnClickListener {
             startActivity(Intent(this, SignUpActivity::class.java))
             finish()
         }
     }
 
-
-    private fun signInWithEmail(emailOrPhone: String, password: String) {
-        if (isValidPhone(emailOrPhone)) {
-            btnSignIn.text = "Searching account..."
-            val usersRef = FirebaseDatabase.getInstance().reference.child("Users")
-            usersRef.orderByChild("phone").equalTo(emailOrPhone)
-                .get()
-                .addOnSuccessListener { snapshot ->
-                    if (snapshot.exists()) {
-                        btnSignIn.text = "Signing In..."
-                        val userData = snapshot.children.first()
-                        val email = userData.child("email").value.toString()
-                        performEmailSignIn(email, password)
-                    } else {
-                        Toast.makeText(this, "No account found with this phone", Toast.LENGTH_LONG).show()
-                        resetButton()
+    private fun findEmailByPhone(phone: String, password: String) {
+        val usersRef = FirebaseDatabase.getInstance().reference.child("Users")
+        usersRef.orderByChild("phone").equalTo(phone)
+            .get()
+            .addOnSuccessListener { snapshot ->
+                if (snapshot.exists()) {
+                    val userData = snapshot.children.first()
+                    val email = userData.child("email").value.toString()
+                    authManager.signInWithEmail(email, password) { result ->
+                        handleSignInResult(result)
                     }
-                }
-                .addOnFailureListener { exception ->
-                    Toast.makeText(this, "Error: ${exception.message}", Toast.LENGTH_LONG).show()
+                } else {
+                    Toast.makeText(this, "No account found with this phone number", Toast.LENGTH_LONG).show()
                     resetButton()
                 }
-                .addOnCompleteListener {
-                    // Ensure button is re-enabled even if something goes wrong
-                    if (!btnSignIn.isEnabled) {
-                        resetButton()
-                    }
-                }
-
-        } else {
-            performEmailSignIn(emailOrPhone, password)
-        }
-    }
-
-    private fun performEmailSignIn(email: String, password: String) {
-        auth.signInWithEmailAndPassword(email, password)
-            .addOnCompleteListener(this) { task ->
-                if (task.isSuccessful) {
-                    startActivity(Intent(this, MainActivity::class.java))
-                    finish()
-                } else {
-                    val errorMessage = task.exception?.localizedMessage ?: "Authentication failed"
-                    Toast.makeText(this, "Login Failed: $errorMessage", Toast.LENGTH_LONG).show()
-                }
+            }
+            .addOnFailureListener { exception ->
+                Toast.makeText(this, "Error: ${exception.message}", Toast.LENGTH_LONG).show()
                 resetButton()
             }
+    }
+
+    private fun handleSignInResult(result: AuthResult) {
+        when (result) {
+            is AuthResult.Success -> {
+                Toast.makeText(this, "Welcome back!", Toast.LENGTH_SHORT).show()
+                startActivity(Intent(this, MainActivity::class.java))
+                finish()
+            }
+            is AuthResult.Error -> {
+                Toast.makeText(this, result.message ?: "Sign in failed", Toast.LENGTH_LONG).show()
+                resetButton()
+            }
+            AuthResult.Cancelled -> {
+                Toast.makeText(this, "Sign in cancelled", Toast.LENGTH_SHORT).show()
+                resetButton()
+            }
+        }
     }
 
     private fun validateInputs(emailOrPhone: String, password: String): Boolean {
@@ -193,9 +157,7 @@ class SignInActivity : AppCompatActivity() {
             return false
         }
 
-        // Add proper validation
-        if (!Patterns.EMAIL_ADDRESS.matcher(emailOrPhone).matches() &&
-            !isValidPhone(emailOrPhone)) {
+        if (!Patterns.EMAIL_ADDRESS.matcher(emailOrPhone).matches() && !isValidPhone(emailOrPhone)) {
             etEmail.error = "Enter valid email or 10-digit phone number"
             etEmail.requestFocus()
             return false
@@ -206,36 +168,26 @@ class SignInActivity : AppCompatActivity() {
             etPassword.requestFocus()
             return false
         }
-        if (password.length < 6) {
-            etPassword.error = "Password must be at least 6 characters"
-            etPassword.requestFocus()
-            return false
-        }
+
         return true
     }
 
     private fun isValidPhone(input: String): Boolean {
-        return Patterns.PHONE.matcher(input).matches() && input.length == 10
+        // India phone number validation: exactly 10 digits
+        return input.length == 10 && input.all { it.isDigit() }
     }
 
-
     private fun showForgotPasswordBottomSheet() {
-
         val bottomSheetDialog = BottomSheetDialog(this)
-        val view = layoutInflater.inflate(
-            R.layout.bottom_sheet_forgot_password,
-            null
-        )
-
+        val view = layoutInflater.inflate(R.layout.bottom_sheet_forgot_password, null)
         bottomSheetDialog.setContentView(view)
 
         val etForgotEmail = view.findViewById<EditText>(R.id.etForgotEmail)
         val btnSendReset = view.findViewById<MaterialButton>(R.id.btnSendReset)
         val tvCancel = view.findViewById<TextView>(R.id.tvCancel)
 
-        // Prefill email if typed
         val currentEmail = etEmail.text.toString().trim()
-        if (currentEmail.isNotEmpty()) {
+        if (currentEmail.isNotEmpty() && Patterns.EMAIL_ADDRESS.matcher(currentEmail).matches()) {
             etForgotEmail.setText(currentEmail)
             etForgotEmail.setSelection(currentEmail.length)
         }
@@ -245,7 +197,6 @@ class SignInActivity : AppCompatActivity() {
         }
 
         btnSendReset.setOnClickListener {
-
             val email = etForgotEmail.text.toString().trim().lowercase()
 
             if (email.isEmpty()) {
@@ -261,134 +212,71 @@ class SignInActivity : AppCompatActivity() {
             btnSendReset.isEnabled = false
             btnSendReset.text = "Checking..."
 
-            val usersRef = FirebaseDatabase.getInstance()
-                .reference
-                .child("Users")
+            // First check if email exists in Firebase Auth
+            FirebaseAuth.getInstance().fetchSignInMethodsForEmail(email)
+                .addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        val signInMethods = task.result?.signInMethods ?: emptyList()
 
-            // 🔥 Query directly by email (efficient way)
-            usersRef
-                .orderByChild("email")
-                .equalTo(email)
-                .get()
-                .addOnSuccessListener { snapshot ->
+                        if (signInMethods.isNotEmpty()) {
+                            // Email exists in Firebase Auth, send reset link
+                            btnSendReset.text = "Sending..."
 
-                    if (!snapshot.exists()) {
-
-                        Toast.makeText(
-                            this,
-                            "No account found with this email.",
-                            Toast.LENGTH_LONG
-                        ).show()
-
-                        resetButtonState(btnSendReset)
-                        return@addOnSuccessListener
-                    }
-
-                    val userSnapshot = snapshot.children.first()
-                    val providerType =
-                        userSnapshot.child("provider").value?.toString() ?: "password"
-
-                    when (providerType) {
-
-                        "password" -> {
-
-                            FirebaseAuth.getInstance()
-                                .sendPasswordResetEmail(email)
-                                .addOnCompleteListener {
-
-                                    Toast.makeText(
-                                        this,
-                                        "Password reset link sent to your email.",
-                                        Toast.LENGTH_LONG
-                                    ).show()
-
-                                    bottomSheetDialog.dismiss()
+                            FirebaseAuth.getInstance().sendPasswordResetEmail(email)
+                                .addOnCompleteListener { resetTask ->
+                                    if (resetTask.isSuccessful) {
+                                        Toast.makeText(
+                                            this,
+                                            "Password reset link sent to your email",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                        bottomSheetDialog.dismiss()
+                                    } else {
+                                        val error = resetTask.exception?.message ?: "Failed to send reset email"
+                                        Toast.makeText(this, error, Toast.LENGTH_LONG).show()
+                                        btnSendReset.isEnabled = true
+                                        btnSendReset.text = "Send Reset Link"
+                                    }
                                 }
-                        }
-
-                        "google" -> {
+                        } else {
+                            // Email doesn't exist in Firebase Auth
                             Toast.makeText(
                                 this,
-                                "This account was created using Google Sign-In. Please login with Google.",
+                                "No account found with this email address",
                                 Toast.LENGTH_LONG
                             ).show()
+                            btnSendReset.isEnabled = true
+                            btnSendReset.text = "Send Reset Link"
                         }
-
-                        "github" -> {
-                            Toast.makeText(
-                                this,
-                                "This account was created using GitHub Sign-In. Please login with GitHub.",
-                                Toast.LENGTH_LONG
-                            ).show()
-                        }
-
-                        else -> {
-                            Toast.makeText(
-                                this,
-                                "Please login using your original sign-in method.",
-                                Toast.LENGTH_LONG
-                            ).show()
-                        }
+                    } else {
+                        // Error checking email
+                        val error = task.exception?.message ?: "Failed to check email"
+                        Toast.makeText(this, error, Toast.LENGTH_LONG).show()
+                        btnSendReset.isEnabled = true
+                        btnSendReset.text = "Send Reset Link"
                     }
-
-                    resetButtonState(btnSendReset)
-                }
-                .addOnFailureListener {
-
-                    Toast.makeText(
-                        this,
-                        "Something went wrong. Please try again.",
-                        Toast.LENGTH_LONG
-                    ).show()
-
-                    resetButtonState(btnSendReset)
                 }
         }
 
-        bottomSheetDialog.behavior.isDraggable = true
-        bottomSheetDialog.setCancelable(true)
         bottomSheetDialog.show()
     }
 
-    private fun encodeEmail(email: String): String {
-        return email.lowercase()
-            .replace(".", "_")
-            .replace("@", "_")
-    }
-
     private fun handleGoogleLogin() {
-        disableSocialButtons()
+        disableButtons()
         authManager.signInWithGoogle { result ->
-            handleSocialLoginResult(result)
+            handleSignInResult(result)
         }
     }
 
     private fun handleGithubLogin() {
-        disableSocialButtons()
+        disableButtons()
         authManager.signInWithGithub(this) { result ->
-            handleSocialLoginResult(result)
+            handleSignInResult(result)
         }
     }
 
-
-    private fun handleSocialLoginResult(result: AuthResult) {
-        when (result) {
-            is AuthResult.Success -> {
-                Toast.makeText(this, "Welcome!", Toast.LENGTH_SHORT).show()
-                startActivity(Intent(this, MainActivity::class.java))
-                finish()
-            }
-            is AuthResult.Error -> {
-                Toast.makeText(this, "Login Failed: ${result.message}", Toast.LENGTH_LONG).show()
-            }
-            AuthResult.Cancelled -> {
-                Toast.makeText(this, "Login Cancelled", Toast.LENGTH_SHORT).show()
-            }
-        }
-        resetButton()
-    }
-
-    private fun disableSocialButtons() {
+    private fun disableButtons() {
+        btnSignIn.isEnabled = false
         btnGoogle.isEnabled = false
         btnGoogleCircle.isEnabled = false
         btnGithub.isEnabled = false
@@ -403,10 +291,5 @@ class SignInActivity : AppCompatActivity() {
         btnGoogleCircle.isEnabled = true
         btnGithub.isEnabled = true
         btnGithubCircle.isEnabled = true
-    }
-
-    private fun resetButtonState(button: MaterialButton) {
-        button.isEnabled = true
-        button.text = "Send Reset Link"
     }
 }

@@ -16,18 +16,15 @@ import androidx.appcompat.app.AppCompatActivity
 import com.example.aistudyassistance.R
 import com.google.android.material.button.MaterialButton
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.FirebaseDatabase
 import android.widget.TextView
 import androidx.cardview.widget.CardView
 import com.example.aistudyassistance.Authentication.AuthManager
 import com.example.aistudyassistance.Authentication.AuthResult
 import com.example.aistudyassistance.MainActivity
-import com.example.aistudyassistance.utils.EmailUtils
 
 class SignUpActivity : AppCompatActivity() {
 
     private lateinit var auth: FirebaseAuth
-    private lateinit var database: FirebaseDatabase
     private lateinit var authManager: AuthManager
 
     // Views
@@ -48,7 +45,6 @@ class SignUpActivity : AppCompatActivity() {
         setContentView(R.layout.activity_sign_up)
 
         auth = FirebaseAuth.getInstance()
-        database = FirebaseDatabase.getInstance()
         authManager = AuthManager(this)
 
         initViews()
@@ -73,7 +69,6 @@ class SignUpActivity : AppCompatActivity() {
             finish()
         }
 
-        // Password toggles
         toggle1.setOnClickListener {
             isPasswordVisible1 = !isPasswordVisible1
             if (isPasswordVisible1) {
@@ -105,84 +100,60 @@ class SignUpActivity : AppCompatActivity() {
                 Toast.makeText(this, "No internet connection", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-            performEmailSignUp()
+
+            val email = etEmail.text.toString().trim().lowercase()
+            val phone = etPhone.text.toString().trim()
+            val password = etPassword.text.toString().trim()
+            val confirmPassword = etConfirmPassword.text.toString().trim()
+
+            if (!validateInputs(email, phone, password, confirmPassword)) {
+                return@setOnClickListener
+            }
+
+            btnSignUp.isEnabled = false
+            btnSignUp.text = "Creating Account..."
+
+            authManager.signUpWithEmail(email, password, phone) { result ->
+                handleSignUpResult(result)
+            }
         }
 
         cvGoogle.setOnClickListener {
             disableSocialButtons()
             authManager.signInWithGoogle { result ->
-                handleSocialSignUpResult(result)
+                handleSignUpResult(result)
             }
         }
 
         cvGithub.setOnClickListener {
             disableSocialButtons()
             authManager.signInWithGithub(this) { result ->
-                handleSocialSignUpResult(result)
+                handleSignUpResult(result)
             }
         }
     }
 
-    private fun performEmailSignUp() {
-        val email = etEmail.text.toString().trim().lowercase()
-        val phone = etPhone.text.toString().trim()
-        val password = etPassword.text.toString().trim()
-        val confirmPassword = etConfirmPassword.text.toString().trim()
-
-        // Validation
-        if (!validateInputs(email, phone, password, confirmPassword)) {
-            return
-        }
-
-        // Disable button
-        btnSignUp.isEnabled = false
-        btnSignUp.alpha = 0.5f
-
-        auth.createUserWithEmailAndPassword(email, password)
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    val userId = auth.currentUser?.uid
-                    if (userId != null) {
-                        saveUserToDatabase(userId, email, phone)
-                    } else {
-                        Toast.makeText(this, "Error creating user", Toast.LENGTH_LONG).show()
-                        enableSignUpButton()
-                    }
+    private fun handleSignUpResult(result: AuthResult) {
+        when (result) {
+            is AuthResult.Success -> {
+                val message = if (result.isNewUser) {
+                    "Account created successfully!"
                 } else {
-                    val error = task.exception?.message ?: "Sign up failed"
-                    Toast.makeText(this, "Sign Up Failed: $error", Toast.LENGTH_LONG).show()
-                    enableSignUpButton()
+                    "Welcome back!"
                 }
+                Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+                startActivity(Intent(this, MainActivity::class.java))
+                finish()
             }
-    }
-
-    private fun saveUserToDatabase(userId: String, email: String, phone: String) {
-        val userMap = HashMap<String, Any>().apply {
-            put("email", email)
-            put("phone", phone)
-            put("provider", "password")
+            is AuthResult.Error -> {
+                Toast.makeText(this, result.message ?: "Sign up failed", Toast.LENGTH_LONG).show()
+                enableAllButtons()
+            }
+            AuthResult.Cancelled -> {
+                Toast.makeText(this, "Sign up cancelled", Toast.LENGTH_SHORT).show()
+                enableAllButtons()
+            }
         }
-
-        database.reference.child("Users").child(userId)
-            .setValue(userMap)
-            .addOnSuccessListener {
-                val encodedEmail = EmailUtils.encodeEmail(email)
-                database.reference.child("Emails").child(encodedEmail)
-                    .setValue(userId)
-                    .addOnSuccessListener {
-                        Toast.makeText(this, "Account Created Successfully", Toast.LENGTH_LONG).show()
-                        startActivity(Intent(this, SignInActivity::class.java))
-                        finish()
-                    }
-                    .addOnFailureListener { e ->
-                        Toast.makeText(this, "Database Error: ${e.message}", Toast.LENGTH_LONG).show()
-                        enableSignUpButton()
-                    }
-            }
-            .addOnFailureListener { e ->
-                Toast.makeText(this, "Database Error: ${e.message}", Toast.LENGTH_LONG).show()
-                enableSignUpButton()
-            }
     }
 
     private fun validateInputs(email: String, phone: String, password: String, confirmPassword: String): Boolean {
@@ -193,62 +164,47 @@ class SignUpActivity : AppCompatActivity() {
 
         if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
             etEmail.error = "Enter valid email"
+            etEmail.requestFocus()
             return false
         }
 
+        // India phone number validation: exactly 10 digits
         if (phone.length != 10 || !phone.all { it.isDigit() }) {
-            etPhone.error = "Enter valid 10 digit phone number"
+            etPhone.error = "Enter valid 10-digit Indian phone number"
+            etPhone.requestFocus()
             return false
         }
 
         if (password.length < 6) {
             etPassword.error = "Password must be at least 6 characters"
+            etPassword.requestFocus()
             return false
         }
 
         if (password != confirmPassword) {
             etConfirmPassword.error = "Passwords do not match"
+            etConfirmPassword.requestFocus()
             return false
         }
 
         return true
     }
 
-    private fun handleSocialSignUpResult(result: AuthResult) {
-        when (result) {
-            is AuthResult.Success -> {
-                Toast.makeText(this, "Welcome!", Toast.LENGTH_SHORT).show()
-                startActivity(Intent(this, MainActivity::class.java))
-                finish()
-            }
-            is AuthResult.Error -> {
-                Toast.makeText(this, "Sign Up Failed: ${result.message}", Toast.LENGTH_LONG).show()
-                enableSocialButtons()
-            }
-            AuthResult.Cancelled -> {
-                Toast.makeText(this, "Sign Up Cancelled", Toast.LENGTH_SHORT).show()
-                enableSocialButtons()
-            }
-        }
-    }
-
     private fun disableSocialButtons() {
+        btnSignUp.isEnabled = false
         cvGoogle.isEnabled = false
         cvGithub.isEnabled = false
         cvGoogle.alpha = 0.5f
         cvGithub.alpha = 0.5f
     }
 
-    private fun enableSocialButtons() {
+    private fun enableAllButtons() {
+        btnSignUp.isEnabled = true
+        btnSignUp.text = "Sign Up"
         cvGoogle.isEnabled = true
         cvGithub.isEnabled = true
         cvGoogle.alpha = 1f
         cvGithub.alpha = 1f
-    }
-
-    private fun enableSignUpButton() {
-        btnSignUp.isEnabled = true
-        btnSignUp.alpha = 1f
     }
 
     private fun isNetworkAvailable(): Boolean {
