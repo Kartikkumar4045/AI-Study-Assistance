@@ -1,6 +1,5 @@
 package com.example.aistudyassistance.Activity
 
-import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -21,10 +20,9 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.aistudyassistance.R
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
+import com.google.firebase.storage.FirebaseStorage
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -37,7 +35,8 @@ class UploadActivity : AppCompatActivity() {
     private lateinit var notesAdapter: NotesAdapter
     private val notesList = mutableListOf<StudyNote>()
     private val auth = FirebaseAuth.getInstance()
-    private val database = FirebaseDatabase.getInstance().reference
+    private val firestore = FirebaseFirestore.getInstance()
+    private val storage = FirebaseStorage.getInstance().reference
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -91,67 +90,99 @@ class UploadActivity : AppCompatActivity() {
         
         showProgress("Uploading $fileName...")
 
-        // Since we don't have Storage dependency yet, we'll simulate the upload to Database
-        // In a real app, you would upload to Firebase Storage first, get the URL, then save to DB.
+        val fileRef = storage.child("user_uploads/$userId/$fileName")
         
-        val noteId = database.child("Notes").child(userId).push().key ?: return
+        fileRef.putFile(uri)
+            .addOnSuccessListener {
+                fileRef.downloadUrl.addOnSuccessListener { downloadUrl ->
+                    saveNoteMetadata(fileName, downloadUrl.toString())
+                }
+            }
+            .addOnFailureListener { e ->
+                hideProgress()
+                Toast.makeText(this, "Upload failed: ${e.message}. Check Firebase Storage Rules!", Toast.LENGTH_LONG).show()
+            }
+            .addOnProgressListener { taskSnapshot ->
+                val progress = if (taskSnapshot.totalByteCount > 0) {
+                    (100.0 * taskSnapshot.bytesTransferred / taskSnapshot.totalByteCount).toInt()
+                } else 0
+                tvProgressStatus.text = "Uploading $fileName ($progress%)"
+            }
+    }
+
+    private fun saveNoteMetadata(fileName: String, downloadUrl: String) {
+        val userId = auth.currentUser?.uid ?: return
+        val noteId = UUID.randomUUID().toString()
+        
         val note = StudyNote(
             id = noteId,
             name = fileName,
-            type = if (fileName.endsWith(".pdf")) "pdf" else "image",
-            url = uri.toString(), // Real URL would come from Storage
+            type = if (fileName.lowercase().endsWith(".pdf")) "pdf" else "image",
+            url = downloadUrl,
             timestamp = System.currentTimeMillis(),
             userId = userId
         )
 
-        // Simulated Delay for UX
-        rvNotes.postDelayed({
-            database.child("Notes").child(userId).child(noteId).setValue(note)
-                .addOnSuccessListener {
-                    hideProgress()
-                    Toast.makeText(this, "Upload successful!", Toast.LENGTH_SHORT).show()
-                }
-                .addOnFailureListener { e ->
-                    hideProgress()
-                    Toast.makeText(this, "Upload failed: ${e.message}", Toast.LENGTH_SHORT).show()
-                }
-        }, 1500)
+        firestore.collection("Notes").document(userId).collection("UserNotes").document(noteId)
+            .set(note)
+            .addOnSuccessListener {
+                hideProgress()
+                Toast.makeText(this, "File uploaded and saved to Firestore!", Toast.LENGTH_SHORT).show()
+            }
+            .addOnFailureListener { e ->
+                hideProgress()
+                Toast.makeText(this, "Firestore save failed: ${e.message}. Check Firestore Rules!", Toast.LENGTH_LONG).show()
+            }
     }
 
     private fun loadUploadedNotes() {
         val userId = auth.currentUser?.uid ?: return
-        database.child("Notes").child(userId).addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                notesList.clear()
-                for (noteSnapshot in snapshot.children) {
-                    val note = noteSnapshot.getValue(StudyNote::class.java)
-                    note?.let { notesList.add(it) }
+        firestore.collection("Notes").document(userId).collection("UserNotes")
+            .orderBy("timestamp", Query.Direction.DESCENDING)
+            .addSnapshotListener { value, error ->
+                if (error != null) {
+                    Toast.makeText(this, "Permission Denied: Check Firestore Rules!", Toast.LENGTH_LONG).show()
+                    return@addSnapshotListener
                 }
-                notesList.sortByDescending { it.timestamp }
+
+                notesList.clear()
+                if (value != null) {
+                    for (doc in value.documents) {
+                        val note = doc.toObject(StudyNote::class.java)
+                        note?.let { notesList.add(it) }
+                    }
+                }
                 notesAdapter.notifyDataSetChanged()
                 
                 layoutEmpty.visibility = if (notesList.isEmpty()) View.VISIBLE else View.GONE
             }
-
-            override fun onCancelled(error: DatabaseError) {
-                Toast.makeText(this@UploadActivity, "Failed to load: ${error.message}", Toast.LENGTH_SHORT).show()
-            }
-        })
     }
 
     private fun showNoteOptions(note: StudyNote) {
-        val options = arrayOf("View file", "Summarize with AI", "Generate exam questions", "Create short notes")
+        val options = arrayOf("View File", "Summarize with AI", "Generate Exam Questions", "Create Short Notes")
         AlertDialog.Builder(this)
             .setTitle(note.name)
             .setItems(options) { _, which ->
                 when (which) {
-                    0 -> Toast.makeText(this, "Opening file...", Toast.LENGTH_SHORT).show()
-                    1 -> Toast.makeText(this, "Generating summary...", Toast.LENGTH_SHORT).show()
-                    2 -> Toast.makeText(this, "Generating questions...", Toast.LENGTH_SHORT).show()
-                    3 -> Toast.makeText(this, "Generating notes...", Toast.LENGTH_SHORT).show()
+                    0 -> openFile(note.url)
+                    1 -> openChatWithPrompt("Summarize the key concepts from the study material: ${note.name}. Provide clear bullet points for exam revision.")
+                    2 -> openChatWithPrompt("Generate important exam questions with answers based on the study material: ${note.name}.")
+                    3 -> openChatWithPrompt("Create short revision notes in bullet points based on the study material: ${note.name}.")
                 }
             }
             .show()
+    }
+
+    private fun openFile(url: String) {
+        val intent = Intent(Intent.ACTION_VIEW)
+        intent.data = Uri.parse(url)
+        startActivity(intent)
+    }
+
+    private fun openChatWithPrompt(prompt: String) {
+        val intent = Intent(this, ChatActivity::class.java)
+        intent.putExtra("PREFILLED_PROMPT", prompt)
+        startActivity(intent)
     }
 
     private fun getFileName(uri: Uri): String {
@@ -202,7 +233,6 @@ class UploadActivity : AppCompatActivity() {
             val tvName: TextView = view.findViewById(R.id.tvNoteName)
             val tvDate: TextView = view.findViewById(R.id.tvNoteDate)
             val ivIcon: ImageView = view.findViewById(R.id.ivNoteIcon)
-            val card: CardView = view as CardView
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): NoteViewHolder {

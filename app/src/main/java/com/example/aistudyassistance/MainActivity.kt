@@ -7,6 +7,8 @@ import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
+import com.example.aistudyassistance.Activity.ChatActivity
+import com.example.aistudyassistance.Activity.UploadActivity
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
@@ -32,7 +34,6 @@ class MainActivity : AppCompatActivity() {
     private fun loadUserData() {
         val user = auth.currentUser
         if (user != null) {
-            // Try to get name from Firebase Database
             val userRef = FirebaseDatabase.getInstance().reference.child("Users").child(user.uid)
             userRef.child("email").get().addOnSuccessListener { snapshot ->
                 val email = snapshot.value?.toString() ?: user.email ?: "Student"
@@ -45,28 +46,26 @@ class MainActivity : AppCompatActivity() {
     private fun setupClickListeners() {
         findViewById<CardView>(R.id.cvProfile).setOnClickListener {
             showToast("Opening Profile...")
-            // startActivity(Intent(this, ProfileActivity::class.java))
         }
 
         findViewById<CardView>(R.id.cvAskAi).setOnClickListener {
-            showToast("Opening AI Chat...")
-            // startActivity(Intent(this, ChatActivity::class.java))
+            startActivity(Intent(this, ChatActivity::class.java))
         }
 
         findViewById<CardView>(R.id.cardChat).setOnClickListener {
-            showToast("Opening AI Study Chat...")
+            startActivity(Intent(this, ChatActivity::class.java))
         }
 
         findViewById<CardView>(R.id.cardUpload).setOnClickListener {
-            showToast("Opening Upload Notes...")
+            startActivity(Intent(this, UploadActivity::class.java))
         }
 
         findViewById<CardView>(R.id.cardQuiz).setOnClickListener {
-            showToast("Opening Quiz Generator...")
+            showToast("Quiz feature coming soon!")
         }
 
         findViewById<CardView>(R.id.cardFlashcards).setOnClickListener {
-            showToast("Opening Flashcards...")
+            showToast("Flashcards feature coming soon!")
         }
     }
 
@@ -78,19 +77,19 @@ class MainActivity : AppCompatActivity() {
             when (item.itemId) {
                 R.id.nav_home -> true
                 R.id.nav_chat -> {
-                    showToast("Navigating to Chat")
+                    startActivity(Intent(this, ChatActivity::class.java))
                     true
                 }
                 R.id.nav_upload -> {
-                    showToast("Navigating to Upload")
+                    startActivity(Intent(this, UploadActivity::class.java))
                     true
                 }
                 R.id.nav_quiz -> {
-                    showToast("Navigating to Quiz")
+                    showToast("Quiz feature coming soon!")
                     true
                 }
                 R.id.nav_profile -> {
-                    showToast("Navigating to Profile")
+                    showToast("Profile feature coming soon!")
                     true
                 }
                 else -> false

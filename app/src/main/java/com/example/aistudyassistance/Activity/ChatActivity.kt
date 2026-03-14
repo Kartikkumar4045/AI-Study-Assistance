@@ -34,6 +34,11 @@ class ChatActivity : AppCompatActivity() {
         initViews()
         setupChat()
         setupQuickActions()
+
+        // Handle prefilled prompt from other screens
+        intent.getStringExtra("PREFILLED_PROMPT")?.let { prompt ->
+            sendMessage(prompt)
+        }
     }
 
     private fun initViews() {
@@ -61,8 +66,10 @@ class ChatActivity : AppCompatActivity() {
             stackFromEnd = true
         }
 
-        // Add initial AI greeting
-        addMessage(ChatMessage("Hello! I'm your AI Study Assistant. How can I help you today?", false))
+        // Add initial AI greeting if no prefilled prompt
+        if (!intent.hasExtra("PREFILLED_PROMPT")) {
+            addMessage(ChatMessage("Hello! I'm your AI Study Assistant. How can I help you today?", false))
+        }
     }
 
     private fun setupQuickActions() {
