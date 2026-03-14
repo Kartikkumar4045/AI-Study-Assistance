@@ -88,7 +88,7 @@ class AuthManager(private val context: Context) {
     // GitHub Sign-In
     fun signInWithGithub(activity: Activity, callback: (AuthResult) -> Unit) {
         val provider = OAuthProvider.newBuilder("github.com")
-            .addCustomParameter("allow_signup", "false")
+            .addCustomParameter("allow_signup", "true") // Fixed: Allow signups
             .build()
 
         auth.startActivityForSignInWithProvider(activity, provider)
@@ -144,18 +144,27 @@ class AuthManager(private val context: Context) {
             try {
                 // Check if email exists in our database first
                 val existingUserData = checkEmailExists(email)
-
-                withContext(Dispatchers.Main) {
-                    if (existingUserData != null) {
-                        // Email already exists with another provider
+                if (existingUserData != null) {
+                    withContext(Dispatchers.Main) {
                         callback(AuthResult.Error(
-                            "An account already exists with this email using ${existingUserData.provider}. " +
-                                    "Please sign in with ${existingUserData.provider} and then link your password."
+                            "An account already exists with this email using ${existingUserData.provider}."
                         ))
-                    } else {
-                        // Create new account with password
-                        createEmailAccount(email, password, phone, callback)
                     }
+                    return@launch
+                }
+
+                // Check if phone exists (Problem #5 fix)
+                val phoneExists = checkPhoneExists(phone)
+                if (phoneExists) {
+                    withContext(Dispatchers.Main) {
+                        callback(AuthResult.Error("This phone number is already registered with another account."))
+                    }
+                    return@launch
+                }
+
+                // Create new account with password
+                withContext(Dispatchers.Main) {
+                    createEmailAccount(email, password, phone, callback)
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
@@ -548,6 +557,22 @@ class AuthManager(private val context: Context) {
         } catch (e: Exception) {
             Log.e(tag, "Error checking email", e)
             null
+        }
+    }
+
+    // Check if phone number already exists in database
+    private suspend fun checkPhoneExists(phone: String): Boolean {
+        if (phone.isEmpty()) return false
+        return try {
+            val snapshot = database.reference.child("Users")
+                .orderByChild("phone")
+                .equalTo(phone)
+                .get()
+                .await()
+            snapshot.exists()
+        } catch (e: Exception) {
+            Log.e(tag, "Error checking phone", e)
+            false
         }
     }
 

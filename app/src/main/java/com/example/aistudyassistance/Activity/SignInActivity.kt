@@ -44,8 +44,26 @@ class SignInActivity : AppCompatActivity() {
         auth = FirebaseAuth.getInstance()
         authManager = AuthManager(this)
 
+        // Problem #2 Fix: Check if user is already logged in
+        if (auth.currentUser != null) {
+            navigateToMain()
+        }
+
         initViews()
         setupClickListeners()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        // Double check on start
+        if (auth.currentUser != null) {
+            navigateToMain()
+        }
+    }
+
+    private fun navigateToMain() {
+        startActivity(Intent(this, MainActivity::class.java))
+        finish()
     }
 
     private fun initViews() {
@@ -136,8 +154,7 @@ class SignInActivity : AppCompatActivity() {
         when (result) {
             is AuthResult.Success -> {
                 Toast.makeText(this, "Welcome back!", Toast.LENGTH_SHORT).show()
-                startActivity(Intent(this, MainActivity::class.java))
-                finish()
+                navigateToMain()
             }
             is AuthResult.Error -> {
                 Toast.makeText(this, result.message ?: "Sign in failed", Toast.LENGTH_LONG).show()
@@ -210,47 +227,20 @@ class SignInActivity : AppCompatActivity() {
             }
 
             btnSendReset.isEnabled = false
-            btnSendReset.text = "Checking..."
+            btnSendReset.text = "Sending..."
 
-            // First check if email exists in Firebase Auth
-            FirebaseAuth.getInstance().fetchSignInMethodsForEmail(email)
+            // Problem #4 Fix: Directly send reset email without deprecated check
+            auth.sendPasswordResetEmail(email)
                 .addOnCompleteListener { task ->
                     if (task.isSuccessful) {
-                        val signInMethods = task.result?.signInMethods ?: emptyList()
-
-                        if (signInMethods.isNotEmpty()) {
-                            // Email exists in Firebase Auth, send reset link
-                            btnSendReset.text = "Sending..."
-
-                            FirebaseAuth.getInstance().sendPasswordResetEmail(email)
-                                .addOnCompleteListener { resetTask ->
-                                    if (resetTask.isSuccessful) {
-                                        Toast.makeText(
-                                            this,
-                                            "Password reset link sent to your email",
-                                            Toast.LENGTH_LONG
-                                        ).show()
-                                        bottomSheetDialog.dismiss()
-                                    } else {
-                                        val error = resetTask.exception?.message ?: "Failed to send reset email"
-                                        Toast.makeText(this, error, Toast.LENGTH_LONG).show()
-                                        btnSendReset.isEnabled = true
-                                        btnSendReset.text = "Send Reset Link"
-                                    }
-                                }
-                        } else {
-                            // Email doesn't exist in Firebase Auth
-                            Toast.makeText(
-                                this,
-                                "No account found with this email address",
-                                Toast.LENGTH_LONG
-                            ).show()
-                            btnSendReset.isEnabled = true
-                            btnSendReset.text = "Send Reset Link"
-                        }
+                        Toast.makeText(
+                            this,
+                            "If an account exists with this email, a reset link has been sent.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                        bottomSheetDialog.dismiss()
                     } else {
-                        // Error checking email
-                        val error = task.exception?.message ?: "Failed to check email"
+                        val error = task.exception?.message ?: "Failed to send reset email"
                         Toast.makeText(this, error, Toast.LENGTH_LONG).show()
                         btnSendReset.isEnabled = true
                         btnSendReset.text = "Send Reset Link"

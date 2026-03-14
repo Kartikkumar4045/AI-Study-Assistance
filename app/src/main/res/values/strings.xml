@@ -1,3 +1,9 @@
 <resources>
     <string name="app_name">AI Study Assistance</string>
+    <string name="default_web_client_id" translatable="false">YOUR_WEB_CLIENT_ID</string>
+    <string name="title_home">Home</string>
+    <string name="title_chat">Chat</string>
+    <string name="title_upload">Upload</string>
+    <string name="title_quiz">Quiz</string>
+    <string name="title_profile">Profile</string>
 </resources>
