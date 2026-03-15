@@ -1,5 +1,7 @@
 package com.example.aistudyassistance.Activity
 
+import android.graphics.Bitmap
+import android.graphics.drawable.BitmapDrawable
 import android.os.Bundle
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -13,11 +15,23 @@ import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import coil.ImageLoader
+import coil.request.ImageRequest
+import coil.request.SuccessResult
 import com.example.aistudyassistance.R
+import com.example.aistudyassistance.Utils.GeminiHelper
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.chip.Chip
+import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
+import com.tom_roush.pdfbox.pdmodel.PDDocument
+import com.tom_roush.pdfbox.text.PDFTextStripper
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.net.URL
 
 class ChatActivity : AppCompatActivity() {
 
@@ -26,18 +40,34 @@ class ChatActivity : AppCompatActivity() {
     private lateinit var btnSend: MaterialButton
     private lateinit var chatAdapter: ChatAdapter
     private val messages = mutableListOf<ChatMessage>()
+    private lateinit var geminiHelper: GeminiHelper
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_chat)
 
+        // Initialize PDFBox
+        PDFBoxResourceLoader.init(applicationContext)
+
+        // Initialize Gemini Helper
+        val apiKey = "AIzaSyDy_U5iHPIhdSpmD_WFi0eD1A6muc9lbN4"
+        geminiHelper = GeminiHelper(apiKey, "gemini-2.5-flash")
+
         initViews()
         setupChat()
         setupQuickActions()
 
-        // Handle prefilled prompt from other screens
-        intent.getStringExtra("PREFILLED_PROMPT")?.let { prompt ->
-            sendMessage(prompt)
+        // Handle file-based prompts from UploadActivity
+        val prompt = intent.getStringExtra("PREFILLED_PROMPT")
+        val fileUrl = intent.getStringExtra("FILE_URL")
+        val fileType = intent.getStringExtra("FILE_TYPE")
+
+        if (prompt != null) {
+            if (fileUrl != null) {
+                processFileAndSendMessage(prompt, fileUrl, fileType ?: "")
+            } else {
+                sendMessage(prompt)
+            }
         }
     }
 
@@ -66,7 +96,6 @@ class ChatActivity : AppCompatActivity() {
             stackFromEnd = true
         }
 
-        // Add initial AI greeting if no prefilled prompt
         if (!intent.hasExtra("PREFILLED_PROMPT")) {
             addMessage(ChatMessage("Hello! I'm your AI Study Assistant. How can I help you today?", false))
         }
@@ -95,7 +124,6 @@ class ChatActivity : AppCompatActivity() {
     private fun showInputDialog(title: String, hint: String, onConfirm: (String) -> Unit) {
         val builder = AlertDialog.Builder(this)
         builder.setTitle(title)
-
         val input = EditText(this)
         input.hint = hint
         val container = FrameLayout(this)
@@ -104,26 +132,93 @@ class ChatActivity : AppCompatActivity() {
         input.layoutParams = params
         container.addView(input)
         builder.setView(container)
-
         builder.setPositiveButton("Generate") { dialog, _ ->
             val text = input.text.toString().trim()
-            if (text.isNotEmpty()) {
-                onConfirm(text)
-            }
+            if (text.isNotEmpty()) onConfirm(text)
             dialog.dismiss()
         }
         builder.setNegativeButton("Cancel") { dialog, _ -> dialog.cancel() }
-
         builder.show()
     }
 
     private fun sendMessage(text: String) {
         addMessage(ChatMessage(text, true))
-        
-        // Simulate AI response
-        rvChat.postDelayed({
-            addMessage(ChatMessage("I'm processing your request for: \"$text\". (This is a placeholder response from your AI Assistant)", false))
-        }, 1000)
+        val typingMessage = ChatMessage("AI is thinking...", false, isTyping = true)
+        addMessage(typingMessage)
+
+        lifecycleScope.launch {
+            val systemPrompt = """
+You are an AI study assistant for students.
+Explain clearly and simply.
+
+Question:
+$text
+""".trimIndent()
+            val response = geminiHelper.getResponse(systemPrompt)
+            updateAiResponse(typingMessage, response)
+        }
+    }
+
+    private fun processFileAndSendMessage(prompt: String, url: String, type: String) {
+        addMessage(ChatMessage(prompt, true))
+        val typingMessage = ChatMessage("Reading file and thinking...", false, isTyping = true)
+        addMessage(typingMessage)
+
+        lifecycleScope.launch {
+            try {
+                val response = if (type == "pdf") {
+                    val text = extractTextFromPdf(url)
+                    geminiHelper.getResponse("$prompt\n\nContent of PDF:\n$text")
+                } else {
+                    val bitmap = downloadImage(url)
+                    if (bitmap != null) {
+                        geminiHelper.getResponseWithImage(prompt, bitmap)
+                    } else {
+                        "Error: Could not process image."
+                    }
+                }
+                updateAiResponse(typingMessage, response)
+            } catch (e: Exception) {
+                updateAiResponse(typingMessage, "Error processing file: ${e.message}")
+            }
+        }
+    }
+
+    private suspend fun extractTextFromPdf(pdfUrl: String): String = withContext(Dispatchers.IO) {
+        try {
+            val url = URL(pdfUrl)
+            val inputStream = url.openStream()
+            val document = PDDocument.load(inputStream)
+            val stripper = PDFTextStripper()
+            val text = stripper.getText(document)
+            document.close()
+            text
+        } catch (e: Exception) {
+            "Could not extract text from PDF: ${e.message}"
+        }
+    }
+
+    private suspend fun downloadImage(imageUrl: String): Bitmap? = withContext(Dispatchers.IO) {
+        try {
+            val loader = ImageLoader(this@ChatActivity)
+            val request = ImageRequest.Builder(this@ChatActivity)
+                .data(imageUrl)
+                .allowHardware(false) // Important for Gemini
+                .build()
+            val result = (loader.execute(request) as SuccessResult).drawable
+            (result as BitmapDrawable).bitmap
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun updateAiResponse(typingMessage: ChatMessage, response: String) {
+        val index = messages.indexOf(typingMessage)
+        if (index != -1) {
+            messages[index] = ChatMessage(response, false)
+            chatAdapter.notifyItemChanged(index)
+            rvChat.scrollToPosition(messages.size - 1)
+        }
     }
 
     private fun addMessage(message: ChatMessage) {
@@ -132,9 +227,7 @@ class ChatActivity : AppCompatActivity() {
         rvChat.scrollToPosition(messages.size - 1)
     }
 
-    // --- Data Classes & Adapter ---
-
-    data class ChatMessage(val text: String, val isUser: Boolean)
+    data class ChatMessage(val text: String, val isUser: Boolean, val isTyping: Boolean = false)
 
     inner class ChatAdapter(private val chatMessages: List<ChatMessage>) :
         RecyclerView.Adapter<ChatAdapter.ChatViewHolder>() {
@@ -153,7 +246,6 @@ class ChatActivity : AppCompatActivity() {
         override fun onBindViewHolder(holder: ChatViewHolder, position: Int) {
             val message = chatMessages[position]
             holder.tvMessage.text = message.text
-
             val params = holder.cardMessage.layoutParams as LinearLayout.LayoutParams
             if (message.isUser) {
                 holder.layoutContainer.gravity = Gravity.END
@@ -167,6 +259,7 @@ class ChatActivity : AppCompatActivity() {
                 holder.tvMessage.setTextColor(getColor(R.color.text_main))
                 params.marginStart = 0
                 params.marginEnd = 100
+                holder.tvMessage.alpha = if (message.isTyping) 0.5f else 1.0f
             }
             holder.cardMessage.layoutParams = params
         }

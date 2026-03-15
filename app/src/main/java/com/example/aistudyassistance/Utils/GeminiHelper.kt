@@ -1,0 +1,60 @@
+package com.example.aistudyassistance.Utils
+
+import android.graphics.Bitmap
+import com.google.ai.client.generativeai.GenerativeModel
+import com.google.ai.client.generativeai.type.content
+import com.google.ai.client.generativeai.type.generationConfig
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
+class GeminiHelper(apiKey: String, private val modelName: String = "gemini-2.5-flash") {
+
+    private val cleanApiKey = apiKey.trim()
+
+    private val generativeModel = GenerativeModel(
+        modelName = modelName,
+        apiKey = cleanApiKey,
+        generationConfig = generationConfig {
+            temperature = 0.7f
+            topK = 40
+            topP = 0.95f
+            // Increased max tokens to prevent truncation errors
+            maxOutputTokens = 4096 
+        }
+    )
+
+    // Standard text-only response
+    suspend fun getResponse(prompt: String): String = withContext(Dispatchers.IO) {
+        try {
+            val response = generativeModel.generateContent(prompt)
+            response.text ?: "The AI returned an empty response. Please try asking in a different way."
+        } catch (e: Exception) {
+            handleError(e)
+        }
+    }
+
+    // Multi-modal response (Text + Image)
+    suspend fun getResponseWithImage(prompt: String, image: Bitmap): String = withContext(Dispatchers.IO) {
+        try {
+            val inputContent = content {
+                image(image)
+                text(prompt)
+            }
+            val response = generativeModel.generateContent(inputContent)
+            response.text ?: "The AI could not analyze this image. Please ensure it contains clear study notes."
+        } catch (e: Exception) {
+            handleError(e)
+        }
+    }
+
+    private fun handleError(e: Exception): String {
+        val errorMessage = e.message ?: "Unknown error"
+        return when {
+            errorMessage.contains("404") -> "Error 404: Model not found. Please verify the model name."
+            errorMessage.contains("403") -> "Error 403: API Key issue or permission denied."
+            errorMessage.contains("MAX_TOKENS") -> "Error: Response was too long and got cut off. Try asking a more specific question."
+            errorMessage.contains("SAFETY") -> "Error: The AI blocked the response due to safety filters. Try rephrasing."
+            else -> "AI Error: $errorMessage"
+        }
+    }
+}

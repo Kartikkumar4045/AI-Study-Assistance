@@ -165,9 +165,9 @@ class UploadActivity : AppCompatActivity() {
             .setItems(options) { _, which ->
                 when (which) {
                     0 -> openFile(note.url)
-                    1 -> openChatWithPrompt("Summarize the key concepts from the study material: ${note.name}. Provide clear bullet points for exam revision.")
-                    2 -> openChatWithPrompt("Generate important exam questions with answers based on the study material: ${note.name}.")
-                    3 -> openChatWithPrompt("Create short revision notes in bullet points based on the study material: ${note.name}.")
+                    1 -> openChatWithFile(note, "Summarize the key concepts from the study material: ${note.name}. Provide clear bullet points for exam revision.")
+                    2 -> openChatWithFile(note, "Generate important exam questions with answers based on the study material: ${note.name}.")
+                    3 -> openChatWithFile(note, "Create short revision notes in bullet points based on the study material: ${note.name}.")
                 }
             }
             .show()
@@ -179,9 +179,13 @@ class UploadActivity : AppCompatActivity() {
         startActivity(intent)
     }
 
-    private fun openChatWithPrompt(prompt: String) {
-        val intent = Intent(this, ChatActivity::class.java)
-        intent.putExtra("PREFILLED_PROMPT", prompt)
+    private fun openChatWithFile(note: StudyNote, prompt: String) {
+        val intent = Intent(this, ChatActivity::class.java).apply {
+            putExtra("PREFILLED_PROMPT", prompt)
+            putExtra("FILE_URL", note.url)
+            putExtra("FILE_TYPE", note.type)
+            putExtra("FILE_NAME", note.name)
+        }
         startActivity(intent)
     }
 

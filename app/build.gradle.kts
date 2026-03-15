@@ -50,6 +50,13 @@ dependencies {
     implementation(libs.firebase.storage)
     implementation(libs.firebase.firestore)
 
+    // Gemini AI
+    implementation(libs.generativeai)
+
+    // Images and PDF Support
+    implementation(libs.coil)
+    implementation(libs.pdfbox)
+
     // Modern Google Identity
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.play.services.auth)
@@ -58,4 +65,8 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+
+    // Coroutines and Lifecycle
+    implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
 }
