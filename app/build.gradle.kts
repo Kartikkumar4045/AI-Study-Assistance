@@ -71,7 +71,10 @@ dependencies {
 
     // Images and PDF Support
     implementation(libs.coil)
-    implementation(libs.pdfbox)
+    implementation("com.tom-roush:pdfbox-android:2.0.27.0")
+
+    // ML Kit for OCR
+    implementation("com.google.mlkit:text-recognition:16.0.0")
 
     // Modern Google Identity
     implementation(libs.androidx.credentials)

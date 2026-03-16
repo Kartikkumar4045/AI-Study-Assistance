@@ -2,6 +2,8 @@ package com.example.aistudyassistance.Activity
 
 import android.app.ProgressDialog
 import android.content.Intent
+
+import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.view.View
 import android.widget.*
@@ -11,13 +13,22 @@ import androidx.cardview.widget.CardView
 import com.example.aistudyassistance.*
 import com.example.aistudyassistance.R
 import com.google.android.material.button.MaterialButton
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.storage.FirebaseStorage
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.channels.Channel
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
+import com.tom_roush.pdfbox.pdmodel.PDDocument
+import com.tom_roush.pdfbox.text.PDFTextStripper
+import java.io.File
 
 class QuizSetupActivity : AppCompatActivity() {
 
@@ -31,9 +42,11 @@ class QuizSetupActivity : AppCompatActivity() {
     private lateinit var tvSelectedNotePreview: TextView
     private lateinit var progressDialog: ProgressDialog
     private lateinit var quizGenerator: QuizGenerator
+    private lateinit var storage: FirebaseStorage
 
     private var selectedSource = "topic" // "topic" or "notes"
     private var questionCount = 5
+    private var notesList = mutableListOf<String>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -52,6 +65,8 @@ class QuizSetupActivity : AppCompatActivity() {
         }
 
         initViews()
+        PDFBoxResourceLoader.init(applicationContext)
+        storage = FirebaseStorage.getInstance()
         setupListeners()
         updateUI()
     }
@@ -65,12 +80,6 @@ class QuizSetupActivity : AppCompatActivity() {
         tvQuestionCount = findViewById(R.id.tvQuestionCount)
         btnGenerateQuiz = findViewById(R.id.btnGenerateQuiz)
         tvSelectedNotePreview = findViewById(R.id.tvSelectedNotePreview)
-
-        // Setup spinner with placeholder notes
-        val notes = arrayOf("Note 1: Data Structures", "Note 2: Algorithms", "Note 3: Operating Systems", "Note 4: Database Systems")
-        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, notes)
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        spinnerNotes.adapter = adapter
 
         // Setup seekbar
         seekBarQuestions.max = 9
@@ -86,6 +95,7 @@ class QuizSetupActivity : AppCompatActivity() {
 
         cardMyNotes.setOnClickListener {
             selectedSource = "notes"
+            loadNotes()
             updateUI()
         }
 
@@ -147,6 +157,32 @@ class QuizSetupActivity : AppCompatActivity() {
         validateInputs()
     }
 
+    private fun loadNotes() {
+        val user = FirebaseAuth.getInstance().currentUser
+        if (user == null) {
+            Toast.makeText(this, "Please login to access notes", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val userId = user.uid
+        val storageRef = storage.reference.child("user_uploads/$userId")
+        storageRef.listAll()
+            .addOnSuccessListener { listResult ->
+                notesList.clear()
+                for (item in listResult.items) {
+                    notesList.add(item.name)
+                }
+                if (notesList.isEmpty()) {
+                    notesList.add("No notes uploaded")
+                }
+                val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, notesList)
+                adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+                spinnerNotes.adapter = adapter
+            }
+            .addOnFailureListener { e ->
+                Toast.makeText(this, "Failed to load notes: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+    }
+
     private fun validateInputs() {
         val isValid = if (selectedSource == "topic") {
             etTopic.text.toString().trim().isNotEmpty()
@@ -173,7 +209,7 @@ class QuizSetupActivity : AppCompatActivity() {
                 } else {
                     // Generate quiz from notes
                     val selectedNote = spinnerNotes.selectedItem.toString()
-                    val noteText = getNoteText(selectedNote) // Placeholder for now
+                    val noteText = downloadAndExtractText(selectedNote)
                     quizGenerator.generateQuizFromNotes(noteText, questionCount)
                 }
 
@@ -199,9 +235,83 @@ class QuizSetupActivity : AppCompatActivity() {
         }
     }
 
-    private fun getNoteText(selectedNote: String): String {
-        // Placeholder function to get note text for the selected note
-        // In the future, this could fetch the note content from a database or file
-        return "Sample content for $selectedNote"
+    private suspend fun downloadAndExtractText(selectedNote: String): String {
+        val channel = Channel<String>()
+        downloadAndExtractTextCallback(selectedNote) { text ->
+            channel.trySend(text)
+        }
+        return channel.receive()
+    }
+
+    private fun downloadAndExtractTextCallback(selectedNote: String, callback: (String) -> Unit) {
+        if (selectedNote == "No notes uploaded") {
+            callback("")
+            return
+        }
+
+        val user = FirebaseAuth.getInstance().currentUser
+        if (user == null) {
+            callback("")
+            return
+        }
+
+        val userId = user.uid
+        val storageRef = storage.reference.child("user_uploads/$userId/$selectedNote")
+
+        val localFile = File.createTempFile("temp", selectedNote.substringAfterLast('.'))
+
+        storageRef.getFile(localFile)
+            .addOnSuccessListener {
+                if (selectedNote.endsWith(".pdf", ignoreCase = true)) {
+                    val text = extractTextFromPDF(localFile)
+                    localFile.delete()
+                    callback(text)
+                } else if (selectedNote.endsWith(".jpg", ignoreCase = true) || selectedNote.endsWith(".jpeg", ignoreCase = true) || selectedNote.endsWith(".png", ignoreCase = true)) {
+                    extractTextFromImage(localFile) { text ->
+                        localFile.delete()
+                        callback(text)
+                    }
+                } else {
+                    localFile.delete()
+                    callback("Unsupported file type. Only PDF and image files (JPG, PNG) are supported.")
+                }
+            }
+            .addOnFailureListener { e ->
+                callback("Failed to download file: ${e.message}")
+            }
+    }
+
+    private fun extractTextFromPDF(file: File): String {
+        val document = PDDocument.load(file)
+        return try {
+            val pdfStripper = PDFTextStripper()
+            pdfStripper.getText(document)
+        } catch (e: Exception) {
+            "Error extracting text from PDF: ${e.message}"
+        } finally {
+            document.close()
+        }
+    }
+
+    private fun extractTextFromImage(file: File, callback: (String) -> Unit) {
+        try {
+            val bitmap = BitmapFactory.decodeFile(file.absolutePath)
+            if (bitmap == null) {
+                callback("Failed to decode image")
+                return
+            }
+            val image = InputImage.fromBitmap(bitmap, 0)
+            val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+
+            recognizer.process(image)
+                .addOnSuccessListener { visionText ->
+                    callback(visionText.text)
+                }
+                .addOnFailureListener { e ->
+                    callback("Error recognizing text: ${e.message}")
+                }
+        } catch (e: Exception) {
+            callback("Error processing image: ${e.message}")
+        }
     }
 }
