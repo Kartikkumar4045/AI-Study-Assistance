@@ -4,6 +4,7 @@ import java.io.FileInputStream
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlinx.serialization)
     alias(libs.plugins.google.gms.google.services)
 }
 
@@ -27,7 +28,7 @@ android {
             localProperties.load(FileInputStream(localPropertiesFile))
         }
         val apiKey = localProperties.getProperty("GEMINI_API_KEY") ?: ""
-        buildConfigField("String", "GEMINI_API_KEY", "\"$apiKey\"")
+        buildConfigField("String", "apiKeySafe", "\"$apiKey\"")
     }
 
     buildTypes {
@@ -84,4 +85,7 @@ dependencies {
     // Coroutines and Lifecycle
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+
+    // Kotlin Serialization
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
 }

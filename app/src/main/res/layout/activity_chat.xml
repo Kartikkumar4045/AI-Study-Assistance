@@ -5,6 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/background"
+    android:fitsSystemWindows="true"
     tools:context=".Activity.ChatActivity">
 
     <!-- Top App Bar -->
@@ -180,9 +181,39 @@
         android:paddingBottom="16dp"
         android:clipToPadding="false"
         app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-        app:layout_constraintBottom_toTopOf="@id/layoutInput"
+        app:layout_constraintBottom_toTopOf="@id/layoutAttachmentBanner"
         app:layout_constraintTop_toBottomOf="@id/hsvQuickActions"
         tools:listitem="@layout/item_chat_message" />
+
+    <!-- Attachment Banner -->
+    <LinearLayout
+        android:id="@+id/layoutAttachmentBanner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/primary_light"
+        android:orientation="horizontal"
+        android:padding="8dp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/layoutInput">
+
+        <TextView
+            android:id="@+id/tvAttachmentInfo"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Using document: example.pdf"
+            android:textColor="@color/primary"
+            android:textSize="14sp" />
+
+        <ImageView
+            android:id="@+id/ivRemoveAttachment"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_gravity="center_vertical"
+            android:src="@android:drawable/ic_menu_close_clear_cancel"
+            app:tint="@color/primary" />
+
+    </LinearLayout>
 
     <!-- Chat Input Area -->
     <LinearLayout
@@ -206,6 +237,19 @@
             android:maxLines="4"
             android:padding="12dp"
             android:textSize="14sp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnAttach"
+            style="@style/Widget.MaterialComponents.Button.Icon"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="8dp"
+            android:padding="0dp"
+            app:cornerRadius="24dp"
+            app:icon="@android:drawable/ic_menu_add"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
+            app:iconTint="@color/white" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnSend"

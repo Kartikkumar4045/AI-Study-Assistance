@@ -33,10 +33,23 @@
 
         <activity
             android:name=".Activity.ChatActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
 
         <activity
             android:name=".Activity.UploadActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".Activity.QuizSetupActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".Activity.QuizActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".Activity.QuizResultActivity"
             android:exported="false" />
 
     </application>

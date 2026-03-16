@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true"
+    android:fillViewport="true"
+    android:background="@color/white">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- Back Button and Title -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="24dp">
+
+            <ImageView
+                android:id="@+id/ivBack"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_back"
+                android:layout_gravity="center_vertical"
+                android:layout_marginEnd="16dp" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Generate Quiz"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_main" />
+
+        </LinearLayout>
+
+        <!-- Quiz Source Section -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Quiz Source"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_main"
+            android:layout_marginBottom="16dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="24dp">
+
+            <androidx.cardview.widget.CardView
+                android:id="@+id/cardTopicQuiz"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginEnd="8dp"
+                app:cardCornerRadius="8dp"
+                app:cardElevation="4dp"
+                android:background="@color/white">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Topic Quiz"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/text_main"
+                        android:layout_marginBottom="8dp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Generate quiz from a topic"
+                        android:textSize="14sp"
+                        android:textColor="@color/text_secondary" />
+
+                </LinearLayout>
+
+            </androidx.cardview.widget.CardView>
+
+            <androidx.cardview.widget.CardView
+                android:id="@+id/cardMyNotes"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                app:cardCornerRadius="8dp"
+                app:cardElevation="4dp"
+                android:background="@color/white">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="My Notes"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/text_main"
+                        android:layout_marginBottom="8dp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Generate quiz from uploaded study materials"
+                        android:textSize="14sp"
+                        android:textColor="@color/text_secondary" />
+
+                </LinearLayout>
+
+            </androidx.cardview.widget.CardView>
+
+        </LinearLayout>
+
+        <!-- Topic Input -->
+        <EditText
+            android:id="@+id/etTopic"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Enter Topic"
+            android:inputType="text"
+            android:layout_marginBottom="24dp"
+            android:background="@drawable/edit_text_background"
+            android:padding="12dp"
+            android:textSize="16sp" />
+
+        <!-- Notes Spinner -->
+        <Spinner
+            android:id="@+id/spinnerNotes"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:visibility="gone"
+            android:background="@drawable/edit_text_background"
+            android:padding="12dp" />
+
+        <!-- Selected Note Preview -->
+        <TextView
+            android:id="@+id/tvSelectedNotePreview"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Selected Note: Note 1: Data Structures"
+            android:textSize="14sp"
+            android:textColor="@color/text_secondary"
+            android:layout_marginBottom="24dp"
+            android:visibility="gone" />
+
+        <!-- Number of Questions Section -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Number of Questions"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_main"
+            android:layout_marginBottom="16dp" />
+
+        <SeekBar
+            android:id="@+id/seekBarQuestions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:progress="5"
+            android:max="10"
+            android:min="1" />
+
+        <TextView
+            android:id="@+id/tvQuestionCount"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Questions: 5"
+            android:textSize="16sp"
+            android:textColor="@color/text_main"
+            android:layout_marginBottom="32dp" />
+
+        <!-- Generate Quiz Button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnGenerateQuiz"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Generate Quiz"
+            android:textSize="18sp"
+            app:cornerRadius="8dp"
+            android:layout_marginBottom="16dp" />
+
+    </LinearLayout>
+
+</ScrollView>

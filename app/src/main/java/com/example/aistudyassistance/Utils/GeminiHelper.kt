@@ -35,19 +35,6 @@ class GeminiHelper(apiKey: String, private val modelName: String = "gemini-2.5-f
         }
     }
 
-    // Multi-modal response (Text + Image)
-    suspend fun getResponseWithImage(prompt: String, image: Bitmap): String = withContext(Dispatchers.IO) {
-        try {
-            val inputContent = content {
-                image(image)
-                text(prompt)
-            }
-            val response = generativeModel.generateContent(inputContent)
-            response.text ?: "The AI could not analyze this image. Please ensure it contains clear study notes."
-        } catch (e: Exception) {
-            handleError(e)
-        }
-    }
 
     // Streaming text-only response
     fun getResponseStream(prompt: String): Flow<String> = flow {
@@ -72,8 +59,8 @@ class GeminiHelper(apiKey: String, private val modelName: String = "gemini-2.5-f
     fun getResponseWithImageStream(prompt: String, image: Bitmap): Flow<String> = flow {
         try {
             val inputContent = content {
-                image(image)
-                text(prompt)
+                image(image) // User Image input
+                text(prompt)   //User question
             }
             val responseFlow = generativeModel.generateContentStream(inputContent)
             var accumulatedText = ""

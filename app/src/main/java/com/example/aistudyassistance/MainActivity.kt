@@ -9,6 +9,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
 import com.example.aistudyassistance.Activity.ChatActivity
 import com.example.aistudyassistance.Activity.UploadActivity
+import com.example.aistudyassistance.Activity.QuizSetupActivity
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
@@ -61,7 +62,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         findViewById<CardView>(R.id.cardQuiz).setOnClickListener {
-            showToast("Quiz feature coming soon!")
+            startActivity(Intent(this, QuizSetupActivity::class.java))
         }
 
         findViewById<CardView>(R.id.cardFlashcards).setOnClickListener {
@@ -85,7 +86,7 @@ class MainActivity : AppCompatActivity() {
                     true
                 }
                 R.id.nav_quiz -> {
-                    showToast("Quiz feature coming soon!")
+                    startActivity(Intent(this, QuizSetupActivity::class.java))
                     true
                 }
                 R.id.nav_profile -> {

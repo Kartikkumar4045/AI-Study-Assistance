@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:fitsSystemWindows="true"
+    android:background="@color/white"
+    android:padding="16dp">
+
+    <!-- Back Button and Title -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="16dp">
+
+        <ImageView
+            android:id="@+id/ivBack"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/ic_back"
+            android:layout_gravity="center_vertical"
+            android:layout_marginEnd="16dp" />
+
+        <TextView
+            android:id="@+id/tvQuizTitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Quiz: Binary Search"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_main" />
+
+    </LinearLayout>
+
+    <!-- Progress -->
+    <TextView
+        android:id="@+id/tvProgress"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Question 1 / 5"
+        android:textSize="16sp"
+        android:textColor="@color/text_secondary"
+        android:layout_marginBottom="8dp" />
+
+    <!-- Progress Bar -->
+    <com.google.android.material.progressindicator.LinearProgressIndicator
+        android:id="@+id/progressBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="24dp"
+        app:indicatorColor="@color/primary"
+        app:trackColor="@color/gray_light"
+        android:progress="20" />
+
+    <!-- Question -->
+    <TextView
+        android:id="@+id/tvQuestion"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="What is the time complexity of binary search?"
+        android:textSize="18sp"
+        android:textColor="@color/text_main"
+        android:layout_marginBottom="24dp"
+        android:lineSpacingExtra="4dp" />
+
+    <!-- Options -->
+    <RadioGroup
+        android:id="@+id/radioGroup"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="32dp">
+
+        <RadioButton
+            android:id="@+id/rbOptionA"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="A. O(n)"
+            android:textSize="16sp"
+            android:textColor="@color/text_main"
+            android:layout_marginBottom="12dp"
+            android:padding="12dp"
+            android:background="@drawable/radio_button_background" />
+
+        <RadioButton
+            android:id="@+id/rbOptionB"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="B. O(log n)"
+            android:textSize="16sp"
+            android:textColor="@color/text_main"
+            android:layout_marginBottom="12dp"
+            android:padding="12dp"
+            android:background="@drawable/radio_button_background" />
+
+        <RadioButton
+            android:id="@+id/rbOptionC"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="C. O(n log n)"
+            android:textSize="16sp"
+            android:textColor="@color/text_main"
+            android:layout_marginBottom="12dp"
+            android:padding="12dp"
+            android:background="@drawable/radio_button_background" />
+
+        <RadioButton
+            android:id="@+id/rbOptionD"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="D. O(n²)"
+            android:textSize="16sp"
+            android:textColor="@color/text_main"
+            android:layout_marginBottom="12dp"
+            android:padding="12dp"
+            android:background="@drawable/radio_button_background" />
+
+    </RadioGroup>
+
+    <!-- Navigation Buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="16dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnPrevious"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Previous"
+            android:layout_marginEnd="8dp"
+            app:cornerRadius="8dp"
+            android:enabled="false" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnNext"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Next"
+            android:layout_marginStart="8dp"
+            app:cornerRadius="8dp" />
+
+    </LinearLayout>
+
+</LinearLayout>
