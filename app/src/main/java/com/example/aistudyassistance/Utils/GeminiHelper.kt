@@ -1,10 +1,12 @@
-package com.example.aistudyassistance.Utils
+package com.example.aistudyassistance
 
 import android.graphics.Bitmap
 import com.google.ai.client.generativeai.GenerativeModel
 import com.google.ai.client.generativeai.type.content
 import com.google.ai.client.generativeai.type.generationConfig
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 
 class GeminiHelper(apiKey: String, private val modelName: String = "gemini-2.5-flash") {
@@ -15,9 +17,9 @@ class GeminiHelper(apiKey: String, private val modelName: String = "gemini-2.5-f
         modelName = modelName,
         apiKey = cleanApiKey,
         generationConfig = generationConfig {
-            temperature = 0.7f
-            topK = 40
-            topP = 0.95f
+            temperature = 0.6f
+            topK = 32
+            topP = 0.9f
             // Increased max tokens to prevent truncation errors
             maxOutputTokens = 4096 
         }
@@ -44,6 +46,48 @@ class GeminiHelper(apiKey: String, private val modelName: String = "gemini-2.5-f
             response.text ?: "The AI could not analyze this image. Please ensure it contains clear study notes."
         } catch (e: Exception) {
             handleError(e)
+        }
+    }
+
+    // Streaming text-only response
+    fun getResponseStream(prompt: String): Flow<String> = flow {
+        try {
+            val responseFlow = generativeModel.generateContentStream(prompt)
+            var accumulatedText = ""
+            responseFlow.collect { chunk ->
+                chunk.text?.let { text ->
+                    accumulatedText += text
+                    emit(accumulatedText)
+                }
+            }
+            if (accumulatedText.isEmpty()) {
+                emit("The AI returned an empty response. Please try asking in a different way.")
+            }
+        } catch (e: Exception) {
+            emit(handleError(e))
+        }
+    }
+
+    // Streaming multi-modal response (Text + Image)
+    fun getResponseWithImageStream(prompt: String, image: Bitmap): Flow<String> = flow {
+        try {
+            val inputContent = content {
+                image(image)
+                text(prompt)
+            }
+            val responseFlow = generativeModel.generateContentStream(inputContent)
+            var accumulatedText = ""
+            responseFlow.collect { chunk ->
+                chunk.text?.let { text ->
+                    accumulatedText += text
+                    emit(accumulatedText)
+                }
+            }
+            if (accumulatedText.isEmpty()) {
+                emit("The AI could not analyze this image. Please ensure it contains clear study notes.")
+            }
+        } catch (e: Exception) {
+            emit(handleError(e))
         }
     }
 

@@ -21,14 +21,17 @@ import androidx.recyclerview.widget.RecyclerView
 import coil.ImageLoader
 import coil.request.ImageRequest
 import coil.request.SuccessResult
+import com.example.aistudyassistance.Config
+import com.example.aistudyassistance.GeminiHelper
 import com.example.aistudyassistance.R
-import com.example.aistudyassistance.Utils.GeminiHelper
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.chip.Chip
+import com.google.android.material.chip.ChipGroup
 import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
 import com.tom_roush.pdfbox.pdmodel.PDDocument
 import com.tom_roush.pdfbox.text.PDFTextStripper
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.net.URL
@@ -41,6 +44,11 @@ class ChatActivity : AppCompatActivity() {
     private lateinit var chatAdapter: ChatAdapter
     private val messages = mutableListOf<ChatMessage>()
     private lateinit var geminiHelper: GeminiHelper
+    private var currentMode = StudyMode.EXPLAIN
+
+    enum class StudyMode {
+        EXPLAIN, SHORT_NOTES, EXAM_ANSWER, QUIZ, FLASHCARDS
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -49,13 +57,14 @@ class ChatActivity : AppCompatActivity() {
         // Initialize PDFBox
         PDFBoxResourceLoader.init(applicationContext)
 
-        // Initialize Gemini Helper
-        val apiKey = "AIzaSyDy_U5iHPIhdSpmD_WFi0eD1A6muc9lbN4"
+        // Initialize Gemini Helper using API key from Config
+        val apiKey = Config.GEMINI_API_KEY
         geminiHelper = GeminiHelper(apiKey, "gemini-2.5-flash")
 
         initViews()
         setupChat()
         setupQuickActions()
+        setupStudyModes()
 
         // Handle file-based prompts from UploadActivity
         val prompt = intent.getStringExtra("PREFILLED_PROMPT")
@@ -147,15 +156,31 @@ class ChatActivity : AppCompatActivity() {
         addMessage(typingMessage)
 
         lifecycleScope.launch {
+            val index = messages.indexOf(typingMessage)
+            val context = buildContext()
             val systemPrompt = """
-You are an AI study assistant for students.
-Explain clearly and simply.
-
-Question:
-$text
+You are an AI study assistant.
+Explain concepts clearly.
+Use bullet points.
+Avoid markdown formatting such as ### or **.
+Keep answers concise (around 8–10 lines).
+Include a simple example when useful.
 """.trimIndent()
-            val response = geminiHelper.getResponse(systemPrompt)
-            updateAiResponse(typingMessage, response)
+            val modePrompt = getModePrompt(currentMode, text)
+            val fullPrompt = "$systemPrompt\n\nConversation context:\n$context\n\n$modePrompt"
+            geminiHelper.getResponseStream(fullPrompt).collect { partialResponse ->
+                val cleaned = cleanResponse(partialResponse)
+                withContext(Dispatchers.Main) {
+                    messages[index] = ChatMessage(cleaned, false, isTyping = true)
+                    chatAdapter.notifyItemChanged(index)
+                }
+            }
+            // After streaming, generate suggestions
+            val finalResponse = messages[index].text
+            val suggestions = generateSuggestions(finalResponse)
+            messages[index] = ChatMessage(finalResponse, false, suggestions = suggestions)
+            chatAdapter.notifyItemChanged(index)
+            rvChat.scrollToPosition(messages.size - 1)
         }
     }
 
@@ -166,20 +191,57 @@ $text
 
         lifecycleScope.launch {
             try {
-                val response = if (type == "pdf") {
-                    val text = extractTextFromPdf(url)
-                    geminiHelper.getResponse("$prompt\n\nContent of PDF:\n$text")
+                val index = messages.indexOf(typingMessage)
+                val context = buildContext()
+                val systemPrompt = """
+You are an AI study assistant.
+Explain concepts clearly.
+Use bullet points.
+Avoid markdown formatting such as ### or **.
+Keep answers concise (around 8–10 lines).
+Include a simple example when useful.
+""".trimIndent()
+                val modePrompt = getModePrompt(currentMode, prompt)
+                if (type == "pdf") {
+                    val textContent = extractTextFromPdf(url)
+                    val fullPrompt = "$systemPrompt\n\nConversation context:\n$context\n\n$modePrompt\n\nContent of PDF:\n$textContent"
+                    geminiHelper.getResponseStream(fullPrompt).collect { partialResponse ->
+                        val cleaned = cleanResponse(partialResponse)
+                        withContext(Dispatchers.Main) {
+                            messages[index] = ChatMessage(cleaned, false, isTyping = true)
+                            chatAdapter.notifyItemChanged(index)
+                        }
+                    }
                 } else {
                     val bitmap = downloadImage(url)
                     if (bitmap != null) {
-                        geminiHelper.getResponseWithImage(prompt, bitmap)
+                        val fullPrompt = "$systemPrompt\n\nConversation context:\n$context\n\n$modePrompt"
+                        geminiHelper.getResponseWithImageStream(fullPrompt, bitmap).collect { partialResponse ->
+                            val cleaned = cleanResponse(partialResponse)
+                            withContext(Dispatchers.Main) {
+                                messages[index] = ChatMessage(cleaned, false, isTyping = true)
+                                chatAdapter.notifyItemChanged(index)
+                            }
+                        }
                     } else {
-                        "Error: Could not process image."
+                        messages[index] = ChatMessage("Error: Could not process image.", false)
+                        chatAdapter.notifyItemChanged(index)
+                        return@launch
                     }
                 }
-                updateAiResponse(typingMessage, response)
+                // After streaming, generate suggestions
+                val finalResponse = messages[index].text
+                val suggestions = generateSuggestions(finalResponse)
+                messages[index] = ChatMessage(finalResponse, false, suggestions = suggestions)
+                chatAdapter.notifyItemChanged(index)
+                rvChat.scrollToPosition(messages.size - 1)
             } catch (e: Exception) {
-                updateAiResponse(typingMessage, "Error processing file: ${e.message}")
+                val index = messages.indexOf(typingMessage)
+                if (index != -1) {
+                    messages[index] = ChatMessage("Error processing file: ${e.message}", false)
+                    chatAdapter.notifyItemChanged(index)
+                    rvChat.scrollToPosition(messages.size - 1)
+                }
             }
         }
     }
@@ -192,7 +254,7 @@ $text
             val stripper = PDFTextStripper()
             val text = stripper.getText(document)
             document.close()
-            text
+            text.take(12000)
         } catch (e: Exception) {
             "Could not extract text from PDF: ${e.message}"
         }
@@ -227,7 +289,88 @@ $text
         rvChat.scrollToPosition(messages.size - 1)
     }
 
-    data class ChatMessage(val text: String, val isUser: Boolean, val isTyping: Boolean = false)
+    private fun buildContext(): String {
+        val recentMessages = messages.filter { !it.isTyping }.takeLast(6)
+        return recentMessages.joinToString("\n") { if (it.isUser) "User: ${it.text}" else "AI: ${it.text}" }
+    }
+
+    private fun cleanResponse(response: String): String {
+        return response.replace(Regex("\\*\\*"), "").replace(Regex("###"), "").replace(Regex("---"), "")
+    }
+
+    private fun setupStudyModes() {
+        val chipExplain = findViewById<Chip>(R.id.chipExplain)
+        val chipShortNotesMode = findViewById<Chip>(R.id.chipShortNotesMode)
+        val chipExamAnswer = findViewById<Chip>(R.id.chipExamAnswer)
+        val chipQuiz = findViewById<Chip>(R.id.chipQuiz)
+        val chipFlashcards = findViewById<Chip>(R.id.chipFlashcards)
+
+        chipExplain.isChecked = true
+
+        chipExplain.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked) {
+                currentMode = StudyMode.EXPLAIN
+                chipShortNotesMode.isChecked = false
+                chipExamAnswer.isChecked = false
+                chipQuiz.isChecked = false
+                chipFlashcards.isChecked = false
+            }
+        }
+        chipShortNotesMode.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked) {
+                currentMode = StudyMode.SHORT_NOTES
+                chipExplain.isChecked = false
+                chipExamAnswer.isChecked = false
+                chipQuiz.isChecked = false
+                chipFlashcards.isChecked = false
+            }
+        }
+        chipExamAnswer.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked) {
+                currentMode = StudyMode.EXAM_ANSWER
+                chipExplain.isChecked = false
+                chipShortNotesMode.isChecked = false
+                chipQuiz.isChecked = false
+                chipFlashcards.isChecked = false
+            }
+        }
+        chipQuiz.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked) {
+                currentMode = StudyMode.QUIZ
+                chipExplain.isChecked = false
+                chipShortNotesMode.isChecked = false
+                chipExamAnswer.isChecked = false
+                chipFlashcards.isChecked = false
+            }
+        }
+        chipFlashcards.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked) {
+                currentMode = StudyMode.FLASHCARDS
+                chipExplain.isChecked = false
+                chipShortNotesMode.isChecked = false
+                chipExamAnswer.isChecked = false
+                chipQuiz.isChecked = false
+            }
+        }
+    }
+
+    private fun getModePrompt(mode: StudyMode, question: String): String {
+        return when (mode) {
+            StudyMode.EXPLAIN -> "Explain this concept clearly with examples: $question"
+            StudyMode.SHORT_NOTES -> "Provide short revision notes in bullet points: $question"
+            StudyMode.EXAM_ANSWER -> "Write the answer as if it were a 5-mark exam answer: $question"
+            StudyMode.QUIZ -> "Generate 5 multiple-choice questions with answers: $question"
+            StudyMode.FLASHCARDS -> "Create flashcards in Q/A format: $question"
+        }
+    }
+
+    private suspend fun generateSuggestions(response: String): List<String> {
+        val prompt = "Based on this AI response, generate 3 short follow-up questions that a student might ask. Keep them concise and relevant.\n\nResponse: $response\n\nQuestions:"
+        val suggestionsText = geminiHelper.getResponse(prompt)
+        return suggestionsText.lines().filter { it.isNotBlank() && it.trim().isNotEmpty() }.take(3).map { it.trim() }
+    }
+
+    data class ChatMessage(val text: String, val isUser: Boolean, val isTyping: Boolean = false, val suggestions: List<String> = emptyList())
 
     inner class ChatAdapter(private val chatMessages: List<ChatMessage>) :
         RecyclerView.Adapter<ChatAdapter.ChatViewHolder>() {
@@ -236,6 +379,7 @@ $text
             val tvMessage: TextView = view.findViewById(R.id.tvMessage)
             val cardMessage: CardView = view.findViewById(R.id.cardMessage)
             val layoutContainer: LinearLayout = view as LinearLayout
+            val chipGroupSuggestions: ChipGroup = view.findViewById(R.id.chipGroupSuggestions)
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ChatViewHolder {
@@ -253,6 +397,7 @@ $text
                 holder.tvMessage.setTextColor(getColor(R.color.white))
                 params.marginStart = 100
                 params.marginEnd = 0
+                holder.chipGroupSuggestions.visibility = View.GONE
             } else {
                 holder.layoutContainer.gravity = Gravity.START
                 holder.cardMessage.setCardBackgroundColor(getColor(R.color.white))
@@ -260,6 +405,23 @@ $text
                 params.marginStart = 0
                 params.marginEnd = 100
                 holder.tvMessage.alpha = if (message.isTyping) 0.5f else 1.0f
+                if (message.isTyping || message.suggestions.isEmpty()) {
+                    holder.chipGroupSuggestions.visibility = View.GONE
+                } else {
+                    holder.chipGroupSuggestions.visibility = View.VISIBLE
+                    holder.chipGroupSuggestions.removeAllViews()
+                    for (suggestion in message.suggestions) {
+                        val chip = Chip(holder.itemView.context).apply {
+                            text = suggestion
+                            setChipBackgroundColorResource(R.color.primary_light)
+                            setTextColor(getColor(R.color.primary))
+                            setOnClickListener {
+                                sendMessage(suggestion)
+                            }
+                        }
+                        holder.chipGroupSuggestions.addView(chip)
+                    }
+                }
             }
             holder.cardMessage.layoutParams = params
         }

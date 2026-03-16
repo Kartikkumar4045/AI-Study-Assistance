@@ -40,6 +40,78 @@
         </RelativeLayout>
     </androidx.cardview.widget.CardView>
 
+    <!-- Study Mode Selector -->
+    <HorizontalScrollView
+        android:id="@+id/hsvStudyModes"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingVertical="8dp"
+        android:paddingHorizontal="16dp"
+        android:scrollbars="none"
+        app:layout_constraintTop_toBottomOf="@id/cardAppBar">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipExplain"
+                style="@style/Widget.MaterialComponents.Chip.Choice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:text="Explain"
+                app:chipBackgroundColor="@color/primary_light"
+                app:chipStrokeWidth="1dp"
+                android:textColor="@color/primary" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipShortNotesMode"
+                style="@style/Widget.MaterialComponents.Chip.Choice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:text="Short Notes"
+                app:chipBackgroundColor="@color/primary_light"
+                app:chipStrokeWidth="1dp"
+                android:textColor="@color/primary" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipExamAnswer"
+                style="@style/Widget.MaterialComponents.Chip.Choice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:text="Exam Answer"
+                app:chipBackgroundColor="@color/primary_light"
+                app:chipStrokeWidth="1dp"
+                android:textColor="@color/primary" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipQuiz"
+                style="@style/Widget.MaterialComponents.Chip.Choice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:text="Quiz"
+                app:chipBackgroundColor="@color/primary_light"
+                app:chipStrokeWidth="1dp"
+                android:textColor="@color/primary" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipFlashcards"
+                style="@style/Widget.MaterialComponents.Chip.Choice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Flashcards"
+                app:chipBackgroundColor="@color/primary_light"
+                app:chipStrokeWidth="1dp"
+                android:textColor="@color/primary" />
+
+        </LinearLayout>
+    </HorizontalScrollView>
+
     <!-- Quick AI Task Buttons -->
     <HorizontalScrollView
         android:id="@+id/hsvQuickActions"
@@ -48,7 +120,7 @@
         android:paddingVertical="12dp"
         android:paddingHorizontal="16dp"
         android:scrollbars="none"
-        app:layout_constraintTop_toBottomOf="@id/cardAppBar">
+        app:layout_constraintTop_toBottomOf="@id/hsvStudyModes">
 
         <LinearLayout
             android:layout_width="wrap_content"
