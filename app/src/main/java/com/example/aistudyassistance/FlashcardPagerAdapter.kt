@@ -19,9 +19,13 @@ import com.google.android.material.button.MaterialButton
 class FlashcardPagerAdapter(
     private val flashcards: List<Flashcard>,
     private val revealedStates: MutableList<Boolean>,
+    private val answerRevealedStates: MutableList<Boolean>,
     private val difficultyStates: MutableList<Int>,
+    private val isActiveRecallEnabled: () -> Boolean,
     private val onCardTapped: (Int) -> Unit,
+    private val onShowAnswerClicked: (Int) -> Unit,
     private val onDifficultyClicked: (Int, Int) -> Unit,
+    private val onAnswerRevealed: (Int) -> Unit,
     private val onFlipStateChanged: (Int, Boolean) -> Unit
 ) : RecyclerView.Adapter<FlashcardPagerAdapter.FlashcardViewHolder>() {
 
@@ -37,9 +41,11 @@ class FlashcardPagerAdapter(
         holder.bind(
             flashcard = flashcards[position],
             revealed = revealedStates[position],
+            answerRevealed = answerRevealedStates[position],
             difficulty = difficultyStates[position],
             position = position,
-            animateFlip = false
+            animateFlip = false,
+            animateReveal = false
         )
     }
 
@@ -54,12 +60,15 @@ class FlashcardPagerAdapter(
         }
 
         val animateFlip = payloads.contains(PAYLOAD_FLIP)
+        val animateReveal = payloads.contains(PAYLOAD_SHOW_ANSWER)
         holder.bind(
             flashcard = flashcards[position],
             revealed = revealedStates[position],
+            answerRevealed = answerRevealedStates[position],
             difficulty = difficultyStates[position],
             position = position,
-            animateFlip = animateFlip
+            animateFlip = animateFlip,
+            animateReveal = animateReveal
         )
     }
 
@@ -70,6 +79,15 @@ class FlashcardPagerAdapter(
     fun toggleRevealState(position: Int): Boolean {
         if (position !in revealedStates.indices || isCardFlipping(position)) return false
         revealedStates[position] = !revealedStates[position]
+
+        if (revealedStates[position] && !isActiveRecallEnabled()) {
+            val wasRevealed = answerRevealedStates[position]
+            answerRevealedStates[position] = true
+            if (!wasRevealed) {
+                onAnswerRevealed(position)
+            }
+        }
+
         notifyItemChanged(position, PAYLOAD_FLIP)
         return true
     }
@@ -84,16 +102,28 @@ class FlashcardPagerAdapter(
         onFlipStateChanged(position, isFlipping)
     }
 
-    private fun showCardState(holder: FlashcardViewHolder, flashcard: Flashcard, revealed: Boolean) {
+    private fun showCardState(
+        holder: FlashcardViewHolder,
+        flashcard: Flashcard,
+        revealed: Boolean,
+        answerRevealed: Boolean
+    ) {
         holder.tvQuestion.text = flashcard.question
         holder.tvAnswer.text = flashcard.answer
+
+        val activeRecall = isActiveRecallEnabled()
 
         if (revealed) {
             stopHintPulse(holder.tvHint)
             holder.tvHint.visibility = View.GONE
-            holder.tvAnswer.visibility = View.VISIBLE
-            holder.layoutDifficulty.visibility = View.VISIBLE
+            val shouldShowAnswer = !activeRecall || answerRevealed
+            holder.tvThinkPrompt.visibility = if (activeRecall && !answerRevealed) View.VISIBLE else View.GONE
+            holder.btnShowAnswer.visibility = if (activeRecall && !answerRevealed) View.VISIBLE else View.GONE
+            holder.tvAnswer.visibility = if (shouldShowAnswer) View.VISIBLE else View.GONE
+            holder.layoutDifficulty.visibility = if (shouldShowAnswer) View.VISIBLE else View.GONE
         } else {
+            holder.tvThinkPrompt.visibility = View.GONE
+            holder.btnShowAnswer.visibility = View.GONE
             holder.tvAnswer.visibility = View.GONE
             holder.layoutDifficulty.visibility = View.GONE
             holder.tvHint.visibility = View.VISIBLE
@@ -101,14 +131,36 @@ class FlashcardPagerAdapter(
         }
     }
 
+    private fun animateAnswerReveal(holder: FlashcardViewHolder) {
+        if (holder.tvAnswer.visibility != View.VISIBLE) return
+
+        holder.tvAnswer.alpha = 0f
+        holder.layoutDifficulty.alpha = 0f
+
+        holder.tvAnswer.animate()
+            .alpha(1f)
+            .setDuration(220L)
+            .start()
+
+        holder.layoutDifficulty.animate()
+            .alpha(1f)
+            .setDuration(220L)
+            .start()
+    }
+
     private fun applyDifficultyState(holder: FlashcardViewHolder, difficulty: Int) {
         val context = holder.itemView.context
         val buttons = listOf(holder.btnEasy, holder.btnMedium, holder.btnHard)
+        val defaultBg = ContextCompat.getColor(context, R.color.card_bg)
+        val defaultText = ContextCompat.getColor(context, R.color.text_main)
+        val defaultStroke = ContextCompat.getColor(context, R.color.divider)
 
         buttons.forEach { button ->
-            button.backgroundTintList = null
+            button.backgroundTintList = ColorStateList.valueOf(defaultBg)
+            button.strokeColor = ColorStateList.valueOf(defaultStroke)
+            button.strokeWidth = 2
             button.alpha = 1f
-            button.setTextColor(ContextCompat.getColor(context, R.color.text_main))
+            button.setTextColor(defaultText)
             button.isEnabled = difficulty == DIFFICULTY_NONE
         }
 
@@ -121,6 +173,7 @@ class FlashcardPagerAdapter(
             }
 
             selectedButton.backgroundTintList = ColorStateList.valueOf(selectedColor)
+            selectedButton.strokeColor = ColorStateList.valueOf(selectedColor)
             selectedButton.alpha = 1f
             selectedButton.setTextColor(
                 ContextCompat.getColor(
@@ -209,7 +262,8 @@ class FlashcardPagerAdapter(
             }
 
             override fun onAnimationEnd(animation: Animator) {
-                showCardState(holder, flashcard, revealed)
+                val answerRevealed = answerRevealedStates.getOrElse(position) { false }
+                showCardState(holder, flashcard, revealed, answerRevealed)
             }
 
             override fun onAnimationCancel(animation: Animator) = Unit
@@ -240,6 +294,8 @@ class FlashcardPagerAdapter(
         private val tvQuestionTitle: TextView = itemView.findViewById(R.id.tvQuestionTitle)
         val tvQuestion: TextView = itemView.findViewById(R.id.tvQuestion)
         val tvHint: TextView = itemView.findViewById(R.id.tvTapHint)
+        val tvThinkPrompt: TextView = itemView.findViewById(R.id.tvThinkPrompt)
+        val btnShowAnswer: MaterialButton = itemView.findViewById(R.id.btnShowAnswer)
         val tvAnswer: TextView = itemView.findViewById(R.id.tvAnswer)
         val layoutDifficulty: View = itemView.findViewById(R.id.layoutDifficulty)
         val btnEasy: MaterialButton = itemView.findViewById(R.id.btnEasy)
@@ -249,9 +305,11 @@ class FlashcardPagerAdapter(
         fun bind(
             flashcard: Flashcard,
             revealed: Boolean,
+            answerRevealed: Boolean,
             difficulty: Int,
             position: Int,
-            animateFlip: Boolean
+            animateFlip: Boolean,
+            animateReveal: Boolean
         ) {
             tvQuestionTitle.text = "Question"
             cardFlashcard.cameraDistance = itemView.resources.displayMetrics.density * 8000f
@@ -260,6 +318,12 @@ class FlashcardPagerAdapter(
                     onCardTapped(position)
                 }
             }
+
+            btnShowAnswer.setOnClickListener {
+                onShowAnswer(position)
+            }
+            btnShowAnswer.isEnabled = true
+            btnShowAnswer.alpha = 1f
 
             btnEasy.setOnClickListener { onDifficultySelected(position, DIFFICULTY_EASY) }
             btnMedium.setOnClickListener { onDifficultySelected(position, DIFFICULTY_MEDIUM) }
@@ -274,12 +338,34 @@ class FlashcardPagerAdapter(
                 cardFlashcard.scaleX = 1f
                 cardFlashcard.scaleY = 1f
                 markFlipping(position, false, this)
-                showCardState(this, flashcard, revealed)
+                showCardState(this, flashcard, revealed, answerRevealed)
+                if (animateReveal) {
+                    animateAnswerReveal(this)
+                }
             }
+        }
+
+        private fun onShowAnswer(position: Int) {
+            if (position !in answerRevealedStates.indices) return
+            if (!revealedStates[position]) return
+            if (answerRevealedStates[position]) return
+
+            btnShowAnswer.isEnabled = false
+            btnShowAnswer.alpha = 0.65f
+            itemView.postDelayed({
+                if (position !in answerRevealedStates.indices) return@postDelayed
+                if (answerRevealedStates[position]) return@postDelayed
+
+                answerRevealedStates[position] = true
+                onShowAnswerClicked(position)
+                onAnswerRevealed(position)
+                notifyItemChanged(position, PAYLOAD_SHOW_ANSWER)
+            }, 350L)
         }
 
         private fun onDifficultySelected(position: Int, difficulty: Int) {
             if (position !in difficultyStates.indices) return
+            if (position !in answerRevealedStates.indices || !answerRevealedStates[position]) return
             if (difficultyStates[position] != DIFFICULTY_NONE) return
 
             difficultyStates[position] = difficulty
@@ -295,6 +381,7 @@ class FlashcardPagerAdapter(
         const val DIFFICULTY_HARD = 2
 
         private const val PAYLOAD_FLIP = "payload_flip"
+        private const val PAYLOAD_SHOW_ANSWER = "payload_show_answer"
     }
 }
 

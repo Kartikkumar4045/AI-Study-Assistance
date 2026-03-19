@@ -48,10 +48,30 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="18dp"
-                android:text="Tap to reveal answer 👆"
+                android:text="Tap to flip card 👆"
                 android:textColor="@color/primary"
                 android:textSize="15sp"
                 android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvThinkPrompt"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:gravity="center"
+                android:text="🧠 Try to answer before revealing"
+                android:textColor="@color/text_secondary"
+                android:textSize="14sp"
+                android:visibility="gone" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnShowAnswer"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="Show Answer"
+                android:visibility="gone" />
 
             <TextView
                 android:id="@+id/tvAnswer"
@@ -83,7 +103,7 @@
             android:layout_height="wrap_content"
             android:layout_marginEnd="6dp"
             android:layout_weight="1"
-            android:text="Easy" />
+            android:text="😎 I knew this" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnMedium"
@@ -92,7 +112,7 @@
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="6dp"
             android:layout_weight="1"
-            android:text="Medium" />
+            android:text="🤔 Almost" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnHard"
@@ -101,7 +121,7 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="6dp"
             android:layout_weight="1"
-            android:text="Hard" />
+            android:text="😓 Didn’t know" />
     </LinearLayout>
 
 </LinearLayout>
