@@ -1,12 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fitsSystemWindows="true"
+    android:background="@color/background"
     android:fillViewport="true"
-    android:background="@color/background">
+    android:fitsSystemWindows="true">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -14,57 +13,54 @@
         android:orientation="vertical"
         android:padding="16dp">
 
-        <!-- Back Button and Title -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="24dp">
+            android:layout_marginBottom="24dp"
+            android:orientation="horizontal">
 
             <ImageView
                 android:id="@+id/ivBack"
                 android:layout_width="24dp"
                 android:layout_height="24dp"
-                android:src="@drawable/ic_back"
                 android:layout_gravity="center_vertical"
-                android:layout_marginEnd="16dp" />
+                android:layout_marginEnd="16dp"
+                android:src="@drawable/ic_back" />
 
             <TextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Generate Quiz"
+                android:text="Generate Flashcards"
+                android:textColor="@color/text_main"
                 android:textSize="24sp"
-                android:textStyle="bold"
-                android:textColor="@color/text_main" />
-
+                android:textStyle="bold" />
         </LinearLayout>
 
-        <!-- Quiz Source Section -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Quiz Source"
-            android:textSize="18sp"
-            android:textStyle="bold"
+            android:layout_marginBottom="16dp"
+            android:text="Source"
             android:textColor="@color/text_main"
-            android:layout_marginBottom="16dp" />
+            android:textSize="18sp"
+            android:textStyle="bold" />
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="24dp">
+            android:layout_marginBottom="24dp"
+            android:orientation="horizontal">
 
             <androidx.cardview.widget.CardView
-                android:id="@+id/cardTopicQuiz"
+                android:id="@+id/cardTopic"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
                 android:layout_marginEnd="8dp"
-                app:cardCornerRadius="8dp"
-                app:cardElevation="4dp"
-                app:cardBackgroundColor="@color/card_bg">
+                android:layout_weight="1"
+                app:cardBackgroundColor="@color/card_bg"
+                app:cardCornerRadius="10dp"
+                app:cardElevation="4dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -75,32 +71,30 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Topic Quiz"
-                        android:textSize="16sp"
-                        android:textStyle="bold"
+                        android:layout_marginBottom="8dp"
+                        android:text="Topic"
                         android:textColor="@color/text_main"
-                        android:layout_marginBottom="8dp" />
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
 
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Generate quiz from a topic"
-                        android:textSize="14sp"
-                        android:textColor="@color/text_secondary" />
-
+                        android:text="Generate flashcards from a topic"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp" />
                 </LinearLayout>
-
             </androidx.cardview.widget.CardView>
 
             <androidx.cardview.widget.CardView
                 android:id="@+id/cardMyNotes"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
                 android:layout_marginStart="8dp"
-                app:cardCornerRadius="8dp"
-                app:cardElevation="4dp"
-                app:cardBackgroundColor="@color/card_bg">
+                android:layout_weight="1"
+                app:cardBackgroundColor="@color/card_bg"
+                app:cardCornerRadius="10dp"
+                app:cardElevation="4dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -111,96 +105,90 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:layout_marginBottom="8dp"
                         android:text="My Notes"
-                        android:textSize="16sp"
-                        android:textStyle="bold"
                         android:textColor="@color/text_main"
-                        android:layout_marginBottom="8dp" />
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
 
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Generate quiz from uploaded study materials"
-                        android:textSize="14sp"
-                        android:textColor="@color/text_secondary" />
-
+                        android:text="Generate flashcards from uploaded study materials"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp" />
                 </LinearLayout>
-
             </androidx.cardview.widget.CardView>
-
         </LinearLayout>
 
-        <!-- Topic Input -->
         <EditText
-            android:id="@+id/etTopic"
+            android:id="@+id/etFlashcardTopic"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginBottom="24dp"
+            android:background="@drawable/edit_text_background"
             android:hint="Enter Topic"
             android:inputType="text"
-            android:layout_marginBottom="24dp"
-            android:background="@drawable/edit_text_background"
             android:padding="12dp"
+            android:textColor="@color/text_main"
+            android:textColorHint="@color/text_hint"
             android:textSize="16sp" />
 
-        <!-- Notes Spinner -->
         <Spinner
-            android:id="@+id/spinnerNotes"
+            android:id="@+id/spinnerFlashcardNotes"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="8dp"
-            android:visibility="gone"
             android:background="@drawable/edit_text_background"
-            android:padding="12dp" />
-
-        <!-- Selected Note Preview -->
-        <TextView
-            android:id="@+id/tvSelectedNotePreview"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Selected Note: Note 1: Data Structures"
-            android:textSize="14sp"
-            android:textColor="@color/text_secondary"
-            android:layout_marginBottom="24dp"
+            android:padding="12dp"
             android:visibility="gone" />
 
-        <!-- Number of Questions Section -->
+        <TextView
+            android:id="@+id/tvFlashcardSelectedNotePreview"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="24dp"
+            android:text="Selected Note: -"
+            android:textColor="@color/text_secondary"
+            android:textSize="14sp"
+            android:visibility="gone" />
+
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Number of Questions"
-            android:textSize="18sp"
-            android:textStyle="bold"
+            android:layout_marginBottom="16dp"
+            android:text="Number of Flashcards"
             android:textColor="@color/text_main"
-            android:layout_marginBottom="16dp" />
+            android:textSize="18sp"
+            android:textStyle="bold" />
 
         <SeekBar
-            android:id="@+id/seekBarQuestions"
+            android:id="@+id/seekBarFlashcardCount"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="8dp"
-            android:progress="5"
-            android:max="10"
-            android:min="1" />
+            android:max="19"
+            android:progress="9" />
 
         <TextView
-            android:id="@+id/tvQuestionCount"
+            android:id="@+id/tvFlashcardCount"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Questions: 5"
-            android:textSize="16sp"
+            android:layout_marginBottom="28dp"
+            android:text="Flashcards: 10"
             android:textColor="@color/text_main"
-            android:layout_marginBottom="32dp" />
+            android:textSize="16sp" />
 
-        <!-- Generate Quiz Button -->
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnGenerateQuiz"
+            android:id="@+id/btnGenerateFlashcards"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Generate Quiz"
+            android:layout_marginBottom="16dp"
+            android:enabled="false"
+            android:text="Generate Flashcards"
             android:textSize="18sp"
-            app:cornerRadius="8dp"
-            android:layout_marginBottom="16dp" />
+            app:cornerRadius="8dp" />
 
     </LinearLayout>
-
 </ScrollView>
+

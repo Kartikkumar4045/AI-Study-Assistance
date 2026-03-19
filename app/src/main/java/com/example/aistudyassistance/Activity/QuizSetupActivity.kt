@@ -143,12 +143,12 @@ class QuizSetupActivity : AppCompatActivity() {
     private fun updateUI() {
         if (selectedSource == "topic") {
             cardTopicQuiz.setCardBackgroundColor(getColor(R.color.primary))
-            cardMyNotes.setCardBackgroundColor(getColor(R.color.white))
+            cardMyNotes.setCardBackgroundColor(getColor(R.color.card_bg))
             etTopic.visibility = View.VISIBLE
             spinnerNotes.visibility = View.GONE
             tvSelectedNotePreview.visibility = View.GONE
         } else {
-            cardTopicQuiz.setCardBackgroundColor(getColor(R.color.white))
+            cardTopicQuiz.setCardBackgroundColor(getColor(R.color.card_bg))
             cardMyNotes.setCardBackgroundColor(getColor(R.color.primary))
             etTopic.visibility = View.GONE
             spinnerNotes.visibility = View.VISIBLE

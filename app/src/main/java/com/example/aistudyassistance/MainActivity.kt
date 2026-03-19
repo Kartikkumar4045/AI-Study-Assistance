@@ -8,6 +8,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
 import com.example.aistudyassistance.Activity.ChatActivity
+import com.example.aistudyassistance.Activity.FlashcardSetupActivity
 import com.example.aistudyassistance.Activity.UploadActivity
 import com.example.aistudyassistance.Activity.QuizSetupActivity
 import com.google.android.material.bottomnavigation.BottomNavigationView
@@ -66,7 +67,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         findViewById<CardView>(R.id.cardFlashcards).setOnClickListener {
-            showToast("Flashcards feature coming soon!")
+            startActivity(Intent(this, FlashcardSetupActivity::class.java))
         }
     }
 

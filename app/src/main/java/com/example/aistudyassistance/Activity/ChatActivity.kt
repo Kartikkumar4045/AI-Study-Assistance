@@ -617,7 +617,7 @@ Include a simple example when useful.
                 holder.tvShowMore.visibility = View.GONE
             } else {
                 holder.layoutContainer.gravity = Gravity.START
-                holder.cardMessage.setCardBackgroundColor(getColor(R.color.white))
+                holder.cardMessage.setCardBackgroundColor(getColor(R.color.background))
                 holder.tvMessage.setTextColor(getColor(R.color.text_main))
                 params.marginStart = 0
                 params.marginEnd = 100

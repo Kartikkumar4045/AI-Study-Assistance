@@ -52,6 +52,14 @@
             android:name=".Activity.QuizResultActivity"
             android:exported="false" />
 
+        <activity
+            android:name=".Activity.FlashcardSetupActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".Activity.FlashcardActivity"
+            android:exported="false" />
+
     </application>
 
 </manifest>
