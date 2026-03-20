@@ -103,6 +103,8 @@ class QuizResultActivity : AppCompatActivity() {
 
     inner class ReviewAdapter : RecyclerView.Adapter<ReviewAdapter.ReviewViewHolder>() {
 
+        private val optionLabels = listOf("A", "B", "C", "D")
+
         inner class ReviewViewHolder(view: View) : RecyclerView.ViewHolder(view) {
             val tvQuestion: TextView = view.findViewById(R.id.tvQuestion)
             val tvUserAnswer: TextView = view.findViewById(R.id.tvUserAnswer)
@@ -117,26 +119,23 @@ class QuizResultActivity : AppCompatActivity() {
         }
 
         override fun onBindViewHolder(holder: ReviewViewHolder, position: Int) {
-            val question = questions[position]
-            val userAnswer = userAnswers[position]
-            val correctAnswer = correctAnswers[position]
+            val question = questions.getOrNull(position).orEmpty()
+            val userAnswer = userAnswers.getOrNull(position) ?: -1
+            val correctAnswer = correctAnswers.getOrNull(position) ?: -1
 
             holder.tvQuestion.text = "Q${position + 1}: $question"
 
-            // Dummy options for display
-            val options = listOf("A", "B", "C", "D")
-            val correctOption = options[correctAnswer]
+            val correctOption = optionLabels.getOrNull(correctAnswer) ?: "-"
             holder.tvCorrectAnswer.text = "Correct Answer: $correctOption"
 
-            // Display user's answer
-            val userOption = options[userAnswer]
+            val userOption = optionLabels.getOrNull(userAnswer) ?: "Not Answered"
             holder.tvUserAnswer.text = "Your Answer: $userOption"
 
             // Placeholder explanations
             holder.tvExplanation.text = explanations.getOrElse(position) { "Explanation not available." }
 
             // Set status icon
-            if (userAnswer == correctAnswer) {
+            if (userAnswer >= 0 && userAnswer == correctAnswer) {
                 holder.ivStatus.setImageResource(R.drawable.ic_correct)
                 holder.ivStatus.setColorFilter(getColor(R.color.green))
             } else {
@@ -145,6 +144,6 @@ class QuizResultActivity : AppCompatActivity() {
             }
         }
 
-        override fun getItemCount() = questions.size
+        override fun getItemCount() = minOf(questions.size, userAnswers.size, correctAnswers.size)
     }
 }

@@ -65,6 +65,9 @@ class QuizSetupActivity : AppCompatActivity() {
         }
 
         initViews()
+        intent.getStringExtra(EXTRA_PREFILL_TOPIC)
+            ?.takeIf { it.isNotBlank() }
+            ?.let { etTopic.setText(it) }
         PDFBoxResourceLoader.init(applicationContext)
         storage = FirebaseStorage.getInstance()
         setupListeners()
@@ -220,8 +223,16 @@ class QuizSetupActivity : AppCompatActivity() {
                     // Start QuizActivity with the generated quiz data
                     val intent = Intent(this@QuizSetupActivity, QuizActivity::class.java)
                     val json = Json.encodeToString(quizData)
+                    val topicValue = if (selectedSource == "topic") {
+                        etTopic.text.toString().trim()
+                    } else {
+                        spinnerNotes.selectedItem?.toString().orEmpty()
+                    }
                     intent.putExtra("quizDataJson", json)
                     intent.putExtra("questionCount", quizData.size)
+                    intent.putExtra("quizSource", selectedSource)
+                    intent.putExtra("topicText", topicValue)
+                    intent.putExtra("selectedNoteId", spinnerNotes.selectedItem?.toString().orEmpty())
                     startActivity(intent)
                 }
             } catch (e: Exception) {
@@ -313,5 +324,9 @@ class QuizSetupActivity : AppCompatActivity() {
         } catch (e: Exception) {
             callback("Error processing image: ${e.message}")
         }
+    }
+
+    companion object {
+        const val EXTRA_PREFILL_TOPIC = "prefillTopic"
     }
 }

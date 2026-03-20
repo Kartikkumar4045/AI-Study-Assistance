@@ -13,6 +13,7 @@ import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.viewpager2.widget.ViewPager2
+import com.example.aistudyassistance.ContinueLearningPrefs
 import com.example.aistudyassistance.Flashcard
 import com.example.aistudyassistance.FlashcardPagerAdapter
 import com.example.aistudyassistance.MainActivity
@@ -66,6 +67,9 @@ class FlashcardActivity : AppCompatActivity() {
     private var swipeHintShown = false
     private var isFlipping = false
     private var isDeckCompleted = false
+    private var pendingRevealedStates: List<Boolean> = emptyList()
+    private var pendingAnswerRevealedStates: List<Boolean> = emptyList()
+    private var pendingDifficultyStates: List<Int> = emptyList()
     private var currentCardTimerStartMs = 0L
     private val timerHandler = Handler(Looper.getMainLooper())
     private val timerRunnable = object : Runnable {
@@ -107,9 +111,33 @@ class FlashcardActivity : AppCompatActivity() {
         cardCount = intent.getIntExtra(FlashcardSetupActivity.EXTRA_CARD_COUNT, 10).coerceIn(1, 20)
         activeRecallEnabled = intent.getBooleanExtra(EXTRA_ACTIVE_RECALL_MODE, false)
 
-        val flashcardsJson = intent.getStringExtra(FlashcardSetupActivity.EXTRA_FLASHCARDS_JSON)
+        val flashcardsJson = intent.getStringExtra(FlashcardSetupActivity.EXTRA_FLASHCARDS_JSON).orEmpty()
+        if (flashcardsJson.isBlank()) {
+            val saved = ContinueLearningPrefs.readFlashcardProgress(this)
+            if (saved.inProgress && saved.totalCards > 0 && saved.flashcardsJson.isNotBlank()) {
+                val restored = try {
+                    Json.decodeFromString<List<Flashcard>>(saved.flashcardsJson)
+                } catch (_: Exception) {
+                    emptyList()
+                }
+
+                if (restored.isNotEmpty()) {
+                    source = saved.source.ifBlank { FlashcardSetupActivity.SOURCE_TOPIC }
+                    topicText = saved.topic
+                    selectedNote = saved.selectedNote
+                    generatedFlashcards = restored
+                    cardCount = restored.size
+                    currentCardIndex = saved.currentIndex.coerceIn(0, restored.lastIndex)
+                    pendingRevealedStates = saved.revealedStates
+                    pendingAnswerRevealedStates = saved.answerRevealedStates
+                    pendingDifficultyStates = saved.difficultyStates
+                    return
+                }
+            }
+        }
+
         generatedFlashcards = try {
-            if (flashcardsJson.isNullOrBlank()) {
+            if (flashcardsJson.isBlank()) {
                 emptyList()
             } else {
                 Json.decodeFromString(flashcardsJson)
@@ -196,6 +224,29 @@ class FlashcardActivity : AppCompatActivity() {
         answerRevealedStates = MutableList(flashcards.size) { false }.toMutableList()
         difficultyStates = MutableList(flashcards.size) { FlashcardPagerAdapter.DIFFICULTY_NONE }.toMutableList()
         timeSpentMs = MutableList(flashcards.size) { 0L }.toMutableList()
+        applyPendingProgressState()
+    }
+
+    private fun applyPendingProgressState() {
+        pendingRevealedStates.forEachIndexed { index, value ->
+            if (index in revealedStates.indices) revealedStates[index] = value
+        }
+        pendingAnswerRevealedStates.forEachIndexed { index, value ->
+            if (index in answerRevealedStates.indices) answerRevealedStates[index] = value
+        }
+        pendingDifficultyStates.forEachIndexed { index, value ->
+            if (index in difficultyStates.indices) difficultyStates[index] = value
+        }
+
+        if (!activeRecallEnabled) {
+            revealedStates.forEachIndexed { index, revealed ->
+                if (revealed && index in answerRevealedStates.indices) {
+                    answerRevealedStates[index] = true
+                }
+            }
+        }
+
+        currentCardIndex = currentCardIndex.coerceIn(0, flashcards.lastIndex.coerceAtLeast(0))
     }
 
     private fun restoreState(savedInstanceState: Bundle?) {
@@ -257,19 +308,24 @@ class FlashcardActivity : AppCompatActivity() {
             isActiveRecallEnabled = { activeRecallEnabled },
             onCardTapped = { position ->
                 if (!isFlipping) {
-                    adapter.toggleRevealState(position)
+                    val changed = adapter.toggleRevealState(position)
+                    if (changed) persistFlashcardProgress()
                 }
             },
             onShowAnswerClicked = { position ->
                 if (position == currentCardIndex) {
                     stopTimerForCard(position)
                 }
+                persistFlashcardProgress()
             },
-            onDifficultyClicked = { _, _ -> },
+            onDifficultyClicked = { _, _ ->
+                persistFlashcardProgress()
+            },
             onAnswerRevealed = { position ->
                 if (position == currentCardIndex) {
                     stopTimerForCard(position)
                 }
+                persistFlashcardProgress()
             },
             onFlipStateChanged = { position, flipping ->
                 if (position == viewPager.currentItem) {
@@ -292,6 +348,7 @@ class FlashcardActivity : AppCompatActivity() {
                 isFlipping = adapter.isCardFlipping(position)
                 updateFlipButtonState()
                 startTimerForCard(position)
+                persistFlashcardProgress()
             }
         })
     }
@@ -395,6 +452,7 @@ class FlashcardActivity : AppCompatActivity() {
         } else {
             adapter.notifyDataSetChanged()
         }
+        persistFlashcardProgress()
     }
 
     private fun startTimerForCard(index: Int) {
@@ -454,6 +512,9 @@ class FlashcardActivity : AppCompatActivity() {
     private fun showCompletionView() {
         stopTimerForCard(currentCardIndex)
         isDeckCompleted = true
+        val summaryTopic = if (source == FlashcardSetupActivity.SOURCE_TOPIC) topicText else selectedNote
+        ContinueLearningPrefs.saveFlashcardActivity(this, summaryTopic.ifBlank { "General Study" }, flashcards.size)
+        ContinueLearningPrefs.markFlashcardCompleted(this)
         tvStudyModeLabel.visibility = View.GONE
         toggleStudyMode.visibility = View.GONE
         layoutFlashcardContent.visibility = View.GONE
@@ -539,19 +600,24 @@ class FlashcardActivity : AppCompatActivity() {
             isActiveRecallEnabled = { activeRecallEnabled },
             onCardTapped = { position ->
                 if (!isFlipping) {
-                    adapter.toggleRevealState(position)
+                    val changed = adapter.toggleRevealState(position)
+                    if (changed) persistFlashcardProgress()
                 }
             },
             onShowAnswerClicked = { position ->
                 if (position == currentCardIndex) {
                     stopTimerForCard(position)
                 }
+                persistFlashcardProgress()
             },
-            onDifficultyClicked = { _, _ -> },
+            onDifficultyClicked = { _, _ ->
+                persistFlashcardProgress()
+            },
             onAnswerRevealed = { position ->
                 if (position == currentCardIndex) {
                     stopTimerForCard(position)
                 }
+                persistFlashcardProgress()
             },
             onFlipStateChanged = { position, flipping ->
                 if (position == viewPager.currentItem) {
@@ -568,6 +634,36 @@ class FlashcardActivity : AppCompatActivity() {
         updateProgress(0)
         updateNavigationButtons(0)
         startTimerForCard(0)
+        persistFlashcardProgress()
+    }
+
+    private fun persistFlashcardProgress() {
+        if (isDeckCompleted || flashcards.isEmpty()) return
+        val safeIndex = if (::viewPager.isInitialized) {
+            viewPager.currentItem.coerceIn(0, flashcards.lastIndex)
+        } else {
+            currentCardIndex.coerceIn(0, flashcards.lastIndex)
+        }
+
+        val flashcardsJson = try {
+            Json.encodeToString(flashcards)
+        } catch (_: Exception) {
+            ""
+        }
+
+        ContinueLearningPrefs.saveFlashcardProgress(
+            context = this,
+            topic = topicText,
+            source = source,
+            selectedNote = selectedNote,
+            totalCards = flashcards.size,
+            currentIndex = safeIndex,
+            revealedStates = revealedStates.toList(),
+            answerRevealedStates = answerRevealedStates.toList(),
+            difficultyStates = difficultyStates.toList(),
+            flashcardsJson = flashcardsJson,
+            inProgress = true
+        )
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -586,6 +682,12 @@ class FlashcardActivity : AppCompatActivity() {
     override fun onDestroy() {
         stopTimer()
         super.onDestroy()
+    }
+
+    override fun onPause() {
+        stopTimerForCard(currentCardIndex)
+        persistFlashcardProgress()
+        super.onPause()
     }
 
     companion object {

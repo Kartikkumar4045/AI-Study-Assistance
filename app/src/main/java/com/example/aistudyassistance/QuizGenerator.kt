@@ -19,6 +19,7 @@ class QuizGenerator(private val geminiHelper: GeminiHelper) {
             Output ONLY a valid JSON array containing exactly $questionCount question objects.
             Do not include any text outside the JSON array.
             Do not generate more or fewer than $questionCount questions.
+            No markdown code fences.
 
             JSON format:
             [
@@ -88,7 +89,8 @@ class QuizGenerator(private val geminiHelper: GeminiHelper) {
 
     private fun parseQuizJson(jsonString: String, expectedCount: Int): List<QuizQuestion> {
         return try {
-            val jsonArray = JSONArray(jsonString)
+            val normalized = extractJsonPayload(jsonString)
+            val jsonArray = parseAsJsonArray(normalized)
             val questions = mutableListOf<QuizQuestion>()
 
             for (i in 0 until jsonArray.length()) {
@@ -114,14 +116,58 @@ class QuizGenerator(private val geminiHelper: GeminiHelper) {
                 questions.add(QuizQuestion(question, options, correctAnswer, explanation))
             }
 
-            if (questions.size != expectedCount) {
-                throw JSONException("Generated ${questions.size} questions, but expected $expectedCount")
+            if (questions.isEmpty()) {
+                throw JSONException("Generated 0 valid questions")
             }
 
-            questions
+            if (questions.size != expectedCount) {
+                Log.w(tag, "Generated ${questions.size} questions, expected $expectedCount. Proceeding with available questions.")
+            }
+
+            questions.take(expectedCount)
         } catch (e: JSONException) {
             Log.e(tag, "JSON parsing error", e)
             throw Exception("Invalid quiz format received from AI: ${e.message}")
+        }
+    }
+
+    private fun extractJsonPayload(raw: String): String {
+        val trimmed = raw.trim()
+        if (trimmed.isBlank()) {
+            throw JSONException("AI returned an empty response")
+        }
+
+        // Handles responses wrapped in ```json ... ```.
+        val withoutFences = if (trimmed.startsWith("```")) {
+            trimmed
+                .removePrefix("```json")
+                .removePrefix("```")
+                .removeSuffix("```")
+                .trim()
+        } else {
+            trimmed
+        }
+
+        if (withoutFences.startsWith("[") || withoutFences.startsWith("{")) {
+            return withoutFences
+        }
+
+        val arrayStart = withoutFences.indexOf('[')
+        val arrayEnd = withoutFences.lastIndexOf(']')
+        if (arrayStart >= 0 && arrayEnd > arrayStart) {
+            return withoutFences.substring(arrayStart, arrayEnd + 1)
+        }
+
+        throw JSONException("No JSON payload found in AI response")
+    }
+
+    private fun parseAsJsonArray(payload: String): JSONArray {
+        return try {
+            JSONArray(payload)
+        } catch (_: JSONException) {
+            val jsonObject = JSONObject(payload)
+            jsonObject.optJSONArray("questions")
+                ?: throw JSONException("JSON object does not contain a 'questions' array")
         }
     }
 }

@@ -2,16 +2,15 @@ package com.example.aistudyassistance.Activity
 
 import android.content.Intent
 import android.os.Bundle
-import android.view.View
 import android.widget.*
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.cardview.widget.CardView
+import com.example.aistudyassistance.ContinueLearningPrefs
 import com.example.aistudyassistance.QuizQuestion
 import com.example.aistudyassistance.R
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.progressindicator.LinearProgressIndicator
-import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 class QuizActivity : AppCompatActivity() {
@@ -34,6 +33,8 @@ class QuizActivity : AppCompatActivity() {
     private var selectedNoteId = ""
     private var questionCount = 5
     private val userAnswers = mutableListOf<Int>() // Store selected option index (0-3)
+    private var questionsJsonRaw: String = ""
+    private var quizCompleted = false
 
     private var quizQuestions = listOf<QuizQuestion>()
 
@@ -42,23 +43,67 @@ class QuizActivity : AppCompatActivity() {
         enableEdgeToEdge()
         setContentView(R.layout.activity_quiz)
 
-        // Get extras
-        quizSource = intent.getStringExtra("quizSource") ?: "topic"
-        topicText = intent.getStringExtra("topicText") ?: ""
-        selectedNoteId = intent.getStringExtra("selectedNoteId") ?: ""
-        questionCount = intent.getIntExtra("questionCount", 5)
-
-        // Get quiz questions from intent
-        val json = intent.getStringExtra("quizDataJson")
-        quizQuestions = if (json != null) {
-            Json.decodeFromString(json)
-        } else {
-            emptyList()
+        loadQuizState()
+        if (quizQuestions.isEmpty()) {
+            Toast.makeText(this, "Quiz session data is unavailable. Please start a new quiz.", Toast.LENGTH_SHORT).show()
+            finish()
+            return
         }
 
         initViews()
         setupQuiz()
         displayQuestion()
+        persistQuizProgress()
+    }
+
+    private fun loadQuizState() {
+        val intentJson = intent.getStringExtra("quizDataJson").orEmpty()
+        if (intentJson.isNotBlank()) {
+            quizSource = intent.getStringExtra("quizSource") ?: "topic"
+            topicText = intent.getStringExtra("topicText") ?: ""
+            selectedNoteId = intent.getStringExtra("selectedNoteId") ?: ""
+
+            quizQuestions = try {
+                Json.decodeFromString(intentJson)
+            } catch (_: Exception) {
+                emptyList()
+            }
+            questionsJsonRaw = if (quizQuestions.isNotEmpty()) intentJson else ""
+            questionCount = quizQuestions.size
+            currentQuestionIndex = 0
+            userAnswers.clear()
+            repeat(questionCount) { userAnswers.add(-1) }
+            return
+        }
+
+        val saved = ContinueLearningPrefs.readQuizProgress(this)
+        if (!saved.inProgress || saved.questionsJson.isBlank()) {
+            quizQuestions = emptyList()
+            return
+        }
+
+        val restoredQuestions = try {
+            Json.decodeFromString<List<QuizQuestion>>(saved.questionsJson)
+        } catch (_: Exception) {
+            emptyList()
+        }
+        if (restoredQuestions.isEmpty()) {
+            quizQuestions = emptyList()
+            return
+        }
+
+        quizQuestions = restoredQuestions
+        questionsJsonRaw = saved.questionsJson
+        quizSource = saved.source.ifBlank { "topic" }
+        topicText = saved.topic
+        selectedNoteId = saved.selectedNoteId
+        questionCount = quizQuestions.size
+        currentQuestionIndex = saved.currentIndex.coerceIn(0, questionCount - 1)
+
+        userAnswers.clear()
+        repeat(questionCount) { index ->
+            userAnswers.add(saved.answers.getOrElse(index) { -1 })
+        }
     }
 
     private fun initViews() {
@@ -77,11 +122,6 @@ class QuizActivity : AppCompatActivity() {
         // Set quiz title
         val title = if (quizSource == "topic") "Quiz: $topicText" else "Quiz: $selectedNoteId"
         tvQuizTitle.text = title
-
-        // Initialize user answers
-        for (i in 0 until questionCount) {
-            userAnswers.add(-1) // -1 means not answered
-        }
 
         btnPrevious.setOnClickListener {
             if (currentQuestionIndex > 0) {
@@ -113,6 +153,7 @@ class QuizActivity : AppCompatActivity() {
     }
 
     private fun displayQuestion() {
+        if (quizQuestions.isEmpty() || currentQuestionIndex !in quizQuestions.indices) return
         val question = quizQuestions[currentQuestionIndex]
 
         tvProgress.text = "Question ${currentQuestionIndex + 1} / ${quizQuestions.size}"
@@ -142,6 +183,7 @@ class QuizActivity : AppCompatActivity() {
         // Update progress bar
         val progress = ((currentQuestionIndex + 1) / quizQuestions.size.toFloat()) * 100
         progressBar.setProgressCompat(progress.toInt(), true)
+        persistQuizProgress()
     }
 
     private fun saveCurrentAnswer() {
@@ -154,31 +196,60 @@ class QuizActivity : AppCompatActivity() {
             else -> -1
         }
         userAnswers[currentQuestionIndex] = selectedIndex
+        persistQuizProgress()
+    }
+
+    private fun persistQuizProgress() {
+        if (quizCompleted || quizQuestions.isEmpty()) return
+        val safeIndex = currentQuestionIndex.coerceIn(0, quizQuestions.lastIndex)
+        val topic = topicText.ifBlank { selectedNoteId }
+        ContinueLearningPrefs.saveQuizProgress(
+            context = this,
+            topic = topic,
+            source = quizSource.ifBlank { "topic" },
+            selectedNoteId = selectedNoteId,
+            totalQuestions = quizQuestions.size,
+            currentIndex = safeIndex,
+            answers = userAnswers.toList(),
+            questionsJson = questionsJsonRaw.ifBlank {
+                try {
+                    Json.encodeToString<List<QuizQuestion>>(quizQuestions)
+                } catch (_: Exception) {
+                    ""
+                }
+            },
+            inProgress = true
+        )
     }
 
     private fun submitQuiz() {
         // Calculate score
         var correctAnswers = 0
-        for (i in 0 until questionCount) {
+        for (i in quizQuestions.indices) {
             if (userAnswers[i] == quizQuestions[i].correctAnswer) {
                 correctAnswers++
             }
         }
 
+        quizCompleted = true
+        val summaryTopic = topicText.ifBlank { selectedNoteId }.ifBlank { "General Quiz" }
+        ContinueLearningPrefs.saveQuizActivity(this, summaryTopic, correctAnswers)
+        ContinueLearningPrefs.markQuizCompleted(this)
+
         // Navigate to result
         val intent = Intent(this, QuizResultActivity::class.java)
         intent.putExtra("score", correctAnswers)
-        intent.putExtra("total", questionCount)
+        intent.putExtra("total", quizQuestions.size)
         intent.putExtra("quizSource", quizSource)
         intent.putExtra("topicText", topicText)
         intent.putExtra("selectedNoteId", selectedNoteId)
-        intent.putExtra("questionCount", questionCount)
+        intent.putExtra("questionCount", quizQuestions.size)
         // Pass questions and answers for review
         val questionsList = ArrayList<String>()
         val userAnswersList = ArrayList<Int>()
         val correctAnswersList = ArrayList<Int>()
         val explanationsList = ArrayList<String>()
-        for (i in 0 until questionCount) {
+        for (i in quizQuestions.indices) {
             questionsList.add(quizQuestions[i].question)
             userAnswersList.add(userAnswers[i])
             correctAnswersList.add(quizQuestions[i].correctAnswer)
@@ -190,5 +261,10 @@ class QuizActivity : AppCompatActivity() {
         intent.putStringArrayListExtra("explanations", explanationsList)
         startActivity(intent)
         finish()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        persistQuizProgress()
     }
 }
