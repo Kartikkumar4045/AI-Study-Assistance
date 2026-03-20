@@ -3,8 +3,9 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:background="@color/card_bg"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:padding="@dimen/space_16">
 
     <TextView
         android:layout_width="match_parent"
@@ -14,21 +15,21 @@
         android:textStyle="bold"
         android:textColor="@color/text_main"
         android:gravity="center"
-        android:layout_marginBottom="16dp" />
+        android:layout_marginBottom="@dimen/space_16" />
 
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/cardUploadPdf"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp"
-        app:cardCornerRadius="8dp"
-        app:cardElevation="4dp">
+        android:layout_marginBottom="@dimen/space_8"
+        app:cardCornerRadius="@dimen/radius_m"
+        app:cardElevation="2dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:padding="16dp"
+            android:padding="@dimen/space_16"
             android:gravity="center_vertical">
 
             <ImageView
@@ -41,7 +42,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:layout_marginStart="16dp"
+                android:layout_marginStart="@dimen/space_16"
                 android:text="Upload PDF"
                 android:textColor="@color/text_main"
                 android:textSize="16sp" />
@@ -53,15 +54,15 @@
         android:id="@+id/cardUploadImage"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp"
-        app:cardCornerRadius="8dp"
-        app:cardElevation="4dp">
+        android:layout_marginBottom="@dimen/space_8"
+        app:cardCornerRadius="@dimen/radius_m"
+        app:cardElevation="2dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:padding="16dp"
+            android:padding="@dimen/space_16"
             android:gravity="center_vertical">
 
             <ImageView
@@ -74,7 +75,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:layout_marginStart="16dp"
+                android:layout_marginStart="@dimen/space_16"
                 android:text="Upload Image"
                 android:textColor="@color/text_main"
                 android:textSize="16sp" />
@@ -86,14 +87,14 @@
         android:id="@+id/cardMyUploadedNotes"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        app:cardCornerRadius="8dp"
-        app:cardElevation="4dp">
+        app:cardCornerRadius="@dimen/radius_m"
+        app:cardElevation="2dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:padding="16dp"
+            android:padding="@dimen/space_16"
             android:gravity="center_vertical">
 
             <ImageView
@@ -106,7 +107,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:layout_marginStart="16dp"
+                android:layout_marginStart="@dimen/space_16"
                 android:text="My Uploaded Notes"
                 android:textColor="@color/text_main"
                 android:textSize="16sp" />

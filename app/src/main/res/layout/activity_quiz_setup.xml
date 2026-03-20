@@ -12,14 +12,14 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:padding="@dimen/space_16">
 
         <!-- Back Button and Title -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginBottom="24dp">
+            android:layout_marginBottom="@dimen/space_24">
 
             <ImageView
                 android:id="@+id/ivBack"
@@ -27,14 +27,14 @@
                 android:layout_height="24dp"
                 android:src="@drawable/ic_back"
                 android:layout_gravity="center_vertical"
-                android:layout_marginEnd="16dp" />
+                android:layout_marginEnd="@dimen/space_16" />
 
             <TextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="Generate Quiz"
-                android:textSize="24sp"
+                android:textSize="22sp"
                 android:textStyle="bold"
                 android:textColor="@color/text_main" />
 
@@ -48,29 +48,29 @@
             android:textSize="18sp"
             android:textStyle="bold"
             android:textColor="@color/text_main"
-            android:layout_marginBottom="16dp" />
+            android:layout_marginBottom="@dimen/space_16" />
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginBottom="24dp">
+            android:layout_marginBottom="@dimen/space_24">
 
             <androidx.cardview.widget.CardView
                 android:id="@+id/cardTopicQuiz"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:layout_marginEnd="8dp"
-                app:cardCornerRadius="8dp"
-                app:cardElevation="4dp"
+                android:layout_marginEnd="@dimen/space_8"
+                app:cardCornerRadius="@dimen/radius_m"
+                app:cardElevation="2dp"
                 app:cardBackgroundColor="@color/card_bg">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="16dp">
+                    android:padding="@dimen/space_16">
 
                     <TextView
                         android:layout_width="match_parent"
@@ -79,7 +79,7 @@
                         android:textSize="16sp"
                         android:textStyle="bold"
                         android:textColor="@color/text_main"
-                        android:layout_marginBottom="8dp" />
+                        android:layout_marginBottom="@dimen/space_8" />
 
                     <TextView
                         android:layout_width="match_parent"
@@ -97,16 +97,16 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:layout_marginStart="8dp"
-                app:cardCornerRadius="8dp"
-                app:cardElevation="4dp"
+                android:layout_marginStart="@dimen/space_8"
+                app:cardCornerRadius="@dimen/radius_m"
+                app:cardElevation="2dp"
                 app:cardBackgroundColor="@color/card_bg">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="16dp">
+                    android:padding="@dimen/space_16">
 
                     <TextView
                         android:layout_width="match_parent"
@@ -115,7 +115,7 @@
                         android:textSize="16sp"
                         android:textStyle="bold"
                         android:textColor="@color/text_main"
-                        android:layout_marginBottom="8dp" />
+                        android:layout_marginBottom="@dimen/space_8" />
 
                     <TextView
                         android:layout_width="match_parent"
@@ -137,9 +137,9 @@
             android:layout_height="wrap_content"
             android:hint="Enter Topic"
             android:inputType="text"
-            android:layout_marginBottom="24dp"
+            android:layout_marginBottom="@dimen/space_24"
             android:background="@drawable/edit_text_background"
-            android:padding="12dp"
+            android:padding="@dimen/space_16"
             android:textSize="16sp" />
 
         <!-- Notes Spinner -->
@@ -147,20 +147,20 @@
             android:id="@+id/spinnerNotes"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
+            android:layout_marginBottom="@dimen/space_8"
             android:visibility="gone"
             android:background="@drawable/edit_text_background"
-            android:padding="12dp" />
+            android:padding="@dimen/space_16" />
 
         <!-- Selected Note Preview -->
         <TextView
             android:id="@+id/tvSelectedNotePreview"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Selected Note: Note 1: Data Structures"
+            android:text="Selected Note:-"
             android:textSize="14sp"
             android:textColor="@color/text_secondary"
-            android:layout_marginBottom="24dp"
+            android:layout_marginBottom="@dimen/space_24"
             android:visibility="gone" />
 
         <!-- Number of Questions Section -->
@@ -171,13 +171,13 @@
             android:textSize="18sp"
             android:textStyle="bold"
             android:textColor="@color/text_main"
-            android:layout_marginBottom="16dp" />
+            android:layout_marginBottom="@dimen/space_16" />
 
         <SeekBar
             android:id="@+id/seekBarQuestions"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
+            android:layout_marginBottom="@dimen/space_8"
             android:progress="5"
             android:max="10"
             android:min="1" />
@@ -189,17 +189,16 @@
             android:text="Questions: 5"
             android:textSize="16sp"
             android:textColor="@color/text_main"
-            android:layout_marginBottom="32dp" />
+            android:layout_marginBottom="@dimen/space_24" />
 
         <!-- Generate Quiz Button -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnGenerateQuiz"
+            style="@style/Widget.AIStudyAssistance.Button.Primary"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Generate Quiz"
-            android:textSize="18sp"
-            app:cornerRadius="8dp"
-            android:layout_marginBottom="16dp" />
+            android:layout_marginBottom="@dimen/space_16" />
 
     </LinearLayout>
 

@@ -5,6 +5,7 @@ import android.os.Handler
 import android.os.Bundle
 import android.os.Looper
 import android.os.SystemClock
+import android.view.HapticFeedbackConstants
 import android.view.View
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -308,6 +309,7 @@ class FlashcardActivity : AppCompatActivity() {
             isActiveRecallEnabled = { activeRecallEnabled },
             onCardTapped = { position ->
                 if (!isFlipping) {
+                    viewPager.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                     val changed = adapter.toggleRevealState(position)
                     if (changed) persistFlashcardProgress()
                 }
@@ -319,6 +321,7 @@ class FlashcardActivity : AppCompatActivity() {
                 persistFlashcardProgress()
             },
             onDifficultyClicked = { _, _ ->
+                viewPager.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
                 persistFlashcardProgress()
             },
             onAnswerRevealed = { position ->
@@ -361,6 +364,7 @@ class FlashcardActivity : AppCompatActivity() {
         }
 
         btnPrevious.setOnClickListener {
+            it.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
             val current = viewPager.currentItem
             if (current > 0) {
                 viewPager.currentItem = current - 1
@@ -369,11 +373,13 @@ class FlashcardActivity : AppCompatActivity() {
 
         btnFlip.setOnClickListener {
             if (!isFlipping) {
+                it.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                 adapter.toggleRevealState(viewPager.currentItem)
             }
         }
 
         btnNext.setOnClickListener {
+            it.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
             val current = viewPager.currentItem
             if (current < flashcards.lastIndex) {
                 viewPager.currentItem = current + 1
@@ -383,6 +389,7 @@ class FlashcardActivity : AppCompatActivity() {
         }
 
         btnRestartDeck.setOnClickListener {
+            it.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
             restartDeck()
         }
 

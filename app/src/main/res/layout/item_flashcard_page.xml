@@ -5,7 +5,7 @@
     android:layout_height="match_parent"
     android:gravity="center"
     android:orientation="vertical"
-    android:padding="8dp">
+    android:padding="@dimen/space_8">
 
     <androidx.cardview.widget.CardView
         android:id="@+id/cardFlashcard"
@@ -13,15 +13,15 @@
         android:layout_height="0dp"
         android:layout_weight="1"
         app:cardBackgroundColor="@color/card_bg"
-        app:cardCornerRadius="20dp"
-        app:cardElevation="6dp">
+        app:cardCornerRadius="@dimen/radius_m"
+        app:cardElevation="3dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:gravity="center"
             android:orientation="vertical"
-            android:padding="28dp">
+            android:padding="@dimen/space_24">
 
             <TextView
                 android:id="@+id/tvQuestionTitle"
@@ -30,7 +30,7 @@
                 android:layout_marginBottom="8dp"
                 android:text="Question"
                 android:textColor="@color/text_secondary"
-                android:textSize="14sp" />
+                android:textSize="13sp" />
 
             <TextView
                 android:id="@+id/tvQuestion"
@@ -40,14 +40,14 @@
                 android:text="Flashcard question"
                 android:textColor="@color/text_main"
                 android:lineSpacingExtra="4dp"
-                android:textSize="22sp"
+                android:textSize="20sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/tvTapHint"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="18dp"
+                android:layout_marginTop="@dimen/space_16"
                 android:text="Tap to flip card 👆"
                 android:textColor="@color/primary"
                 android:textSize="15sp"
@@ -57,7 +57,7 @@
                 android:id="@+id/tvThinkPrompt"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
+                android:layout_marginTop="@dimen/space_8"
                 android:gravity="center"
                 android:text="🧠 Try to answer before revealing"
                 android:textColor="@color/text_secondary"
@@ -66,10 +66,10 @@
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnShowAnswer"
-                style="@style/Widget.Material3.Button.OutlinedButton"
+                style="@style/Widget.AIStudyAssistance.Button.Secondary"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
+                android:layout_marginTop="@dimen/space_16"
                 android:text="Show Answer"
                 android:visibility="gone" />
 
@@ -77,12 +77,12 @@
                 android:id="@+id/tvAnswer"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="18dp"
+                android:layout_marginTop="@dimen/space_16"
                 android:gravity="center"
                 android:text="Flashcard answer"
                 android:textColor="@color/text_main"
                 android:lineSpacingExtra="3dp"
-                android:textSize="17sp"
+                android:textSize="16sp"
                 android:visibility="gone" />
         </LinearLayout>
     </androidx.cardview.widget.CardView>
@@ -91,37 +91,43 @@
         android:id="@+id/layoutDifficulty"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
+        android:layout_marginTop="@dimen/space_16"
         android:gravity="center"
         android:orientation="horizontal"
         android:visibility="gone">
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnEasy"
-            style="@style/Widget.Material3.Button.OutlinedButton"
+            style="@style/Widget.AIStudyAssistance.Button.Secondary"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="6dp"
+            android:layout_marginEnd="@dimen/space_8"
             android:layout_weight="1"
-            android:text="😎 I knew this" />
+            android:text="I knew"
+            android:textColor="@color/ds_success"
+            app:strokeColor="@color/ds_success" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnMedium"
-            style="@style/Widget.Material3.Button.OutlinedButton"
+            style="@style/Widget.AIStudyAssistance.Button.Secondary"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginHorizontal="6dp"
+            android:layout_marginHorizontal="@dimen/space_8"
             android:layout_weight="1"
-            android:text="🤔 Almost" />
+            android:text="Almost"
+            android:textColor="@color/ds_warning"
+            app:strokeColor="@color/ds_warning" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnHard"
-            style="@style/Widget.Material3.Button.OutlinedButton"
+            style="@style/Widget.AIStudyAssistance.Button.Secondary"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
+            android:layout_marginStart="@dimen/space_8"
             android:layout_weight="1"
-            android:text="😓 Didn’t know" />
+            android:text="Didn't know"
+            android:textColor="@color/ds_error"
+            app:strokeColor="@color/ds_error" />
     </LinearLayout>
 
 </LinearLayout>

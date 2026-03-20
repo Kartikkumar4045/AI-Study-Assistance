@@ -2,26 +2,45 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    <color name="primary">#4A7FD4</color>
-    <color name="primary_light">#1A3A5C</color>
-    <color name="background">#121212</color>
-    <color name="text_main">#E0E0E0</color>
-    <color name="text_secondary">#B0B0B0</color>
-    <color name="card_bg">#1E1E1E</color>
-    <color name="divider">#333333</color>
-    <color name="accent_orange">#FF9800</color>
-    <color name="accent_green">#4CAF50</color>
-    <color name="accent_purple">#9C27B0</color>
-    <color name="green">#4CAF50</color>
-    <color name="red">#F44336</color>
-    <color name="gray_light">#424242</color>
-    <color name="input_bg">#2A2A2A</color>
-    <color name="input_stroke">#404040</color>
-    <color name="button_bg">#333333</color>
-    <color name="button_stroke">#555555</color>
-    <color name="text_hint">#A0A0A0</color>
-    <color name="icon_secondary">#808080</color>
-    <color name="divider_light">#404040</color>
-    <color name="button_stroke_light">#555555</color>
-    <color name="input_bg_light">#2A2A2A</color>
+
+    <!-- Design system tokens -->
+    <color name="ds_primary">#A29BFE</color>
+    <color name="ds_background">#121212</color>
+    <color name="ds_surface">#1E1E2C</color>
+    <color name="ds_text_primary">#FFFFFF</color>
+    <color name="ds_text_secondary">#B0B0C3</color>
+    <color name="ds_border">#2C2C3A</color>
+    <color name="ds_success">#00C853</color>
+    <color name="ds_warning">#FFB300</color>
+    <color name="ds_error">#FF5252</color>
+
+    <!-- Legacy aliases (kept to avoid breaking existing UI logic) -->
+    <color name="primary">@color/ds_primary</color>
+    <color name="primary_light">#2A2740</color>
+    <color name="background">@color/ds_background</color>
+    <color name="text_main">@color/ds_text_primary</color>
+    <color name="text_secondary">@color/ds_text_secondary</color>
+    <color name="card_bg">@color/ds_surface</color>
+    <color name="divider">@color/ds_border</color>
+    <color name="accent_orange">@color/ds_warning</color>
+    <color name="accent_green">@color/ds_success</color>
+    <color name="accent_purple">@color/ds_primary</color>
+    <color name="green">@color/ds_success</color>
+    <color name="red">@color/ds_error</color>
+    <color name="gray_light">@color/ds_border</color>
+    <color name="input_bg">#262635</color>
+    <color name="input_stroke">@color/ds_border</color>
+    <color name="button_bg">#28263A</color>
+    <color name="button_stroke">@color/ds_border</color>
+    <color name="text_hint">#9999B0</color>
+    <color name="icon_secondary">#8A8AA1</color>
+    <color name="divider_light">@color/ds_border</color>
+    <color name="button_stroke_light">@color/ds_border</color>
+    <color name="input_bg_light">#262635</color>
+
+    <!-- Flashcard dynamic state colors (dark) -->
+    <color name="flashcard_quick_question_bg">#2A2740</color>
+    <color name="flashcard_quick_answer_bg">#25362F</color>
+    <color name="flashcard_active_question_bg">#262639</color>
+    <color name="flashcard_active_answer_bg">#233140</color>
 </resources>

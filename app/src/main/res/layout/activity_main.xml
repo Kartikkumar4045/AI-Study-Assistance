@@ -19,7 +19,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="20dp">
+            android:padding="@dimen/space_16">
 
             <!-- HEADER SECTION -->
             <RelativeLayout
@@ -33,17 +33,16 @@
 
                     <TextView
                         android:id="@+id/tvWelcome"
+                        style="@style/TextAppearance.AIStudyAssistance.Title"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Hello, Student 👋"
-                        android:textColor="@color/text_main"
-                        android:textSize="22sp"
-                        android:textStyle="bold" />
+                        android:textSize="22sp" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
+                        android:layout_marginTop="@dimen/space_8"
                         android:text="What would you like to study today?"
                         android:textColor="@color/text_secondary"
                         android:textSize="14sp" />
@@ -51,11 +50,11 @@
 
                 <androidx.cardview.widget.CardView
                     android:id="@+id/cvProfile"
-                    android:layout_width="45dp"
-                    android:layout_height="45dp"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
                     android:layout_alignParentEnd="true"
                     android:layout_centerVertical="true"
-                    app:cardCornerRadius="22.5dp"
+                    app:cardCornerRadius="24dp"
                     app:cardElevation="2dp">
 
                     <ImageView
@@ -72,16 +71,16 @@
                 android:id="@+id/cvAskAi"
                 android:layout_width="match_parent"
                 android:layout_height="56dp"
-                android:layout_marginTop="24dp"
-                app:cardCornerRadius="28dp"
-                app:cardElevation="4dp">
+                android:layout_marginTop="@dimen/space_24"
+                app:cardCornerRadius="24dp"
+                app:cardElevation="2dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
-                    android:paddingStart="20dp"
+                    android:paddingStart="@dimen/space_16"
                     android:paddingEnd="16dp">
 
                     <ImageView
@@ -93,7 +92,7 @@
                     <TextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="12dp"
+                        android:layout_marginStart="@dimen/space_16"
                         android:layout_weight="1"
                         android:text="Ask AI anything about your studies..."
                         android:textColor="@color/text_secondary"
@@ -112,31 +111,30 @@
                 android:id="@+id/layoutContinueLearningSection"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="28dp"
+                android:layout_marginTop="@dimen/space_24"
                 android:orientation="vertical"
                 android:visibility="gone">
 
                 <TextView
                     android:id="@+id/tvContinueLearningTitle"
+                    style="@style/TextAppearance.AIStudyAssistance.Section"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Continue Learning"
-                    android:textColor="@color/text_main"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
+                    android:text="Continue Learning" />
 
                 <androidx.cardview.widget.CardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="1dp">
+                    android:layout_marginTop="@dimen/space_16"
+                    app:cardCornerRadius="@dimen/radius_m"
+                    app:cardElevation="2dp"
+                    app:cardBackgroundColor="@color/primary_light">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:padding="8dp">
+                        android:padding="@dimen/space_8">
 
                         <LinearLayout
                             android:id="@+id/itemContinueFlashcard"
@@ -147,7 +145,7 @@
                             android:focusable="true"
                             android:foreground="?attr/selectableItemBackground"
                             android:gravity="center_vertical"
-                            android:padding="10dp"
+                            android:padding="@dimen/space_16"
                             android:visibility="gone">
 
                             <ImageView
@@ -159,7 +157,7 @@
                             <LinearLayout
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
-                                android:layout_marginStart="12dp"
+                                android:layout_marginStart="@dimen/space_16"
                                 android:layout_weight="1"
                                 android:orientation="vertical">
 
@@ -168,7 +166,7 @@
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:textColor="@color/text_main"
-                                    android:textSize="14sp"
+                                    android:textSize="16sp"
                                     android:textStyle="bold"
                                     tools:text="Flashcards: Binary Trees" />
 
@@ -177,7 +175,7 @@
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:textColor="@color/text_secondary"
-                                    android:textSize="11sp"
+                                    android:textSize="13sp"
                                     tools:text="Resume your last session" />
                             </LinearLayout>
                         </LinearLayout>
@@ -186,7 +184,7 @@
                             android:id="@+id/viewContinueDivider"
                             android:layout_width="match_parent"
                             android:layout_height="1dp"
-                            android:layout_marginHorizontal="12dp"
+                            android:layout_marginHorizontal="@dimen/space_16"
                             android:background="@color/divider"
                             android:visibility="gone" />
 
@@ -199,7 +197,7 @@
                             android:focusable="true"
                             android:foreground="?attr/selectableItemBackground"
                             android:gravity="center_vertical"
-                            android:padding="10dp"
+                            android:padding="@dimen/space_16"
                             android:visibility="gone">
 
                             <ImageView
@@ -211,7 +209,7 @@
                             <LinearLayout
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
-                                android:layout_marginStart="12dp"
+                                android:layout_marginStart="@dimen/space_16"
                                 android:layout_weight="1"
                                 android:orientation="vertical">
 
@@ -220,7 +218,7 @@
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:textColor="@color/text_main"
-                                    android:textSize="14sp"
+                                    android:textSize="16sp"
                                     android:textStyle="bold"
                                     tools:text="Quiz: Data Structures" />
 
@@ -229,7 +227,7 @@
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:textColor="@color/text_secondary"
-                                    android:textSize="11sp"
+                                    android:textSize="13sp"
                                     tools:text="Resume your last session" />
                             </LinearLayout>
                         </LinearLayout>
@@ -239,18 +237,17 @@
 
             <!-- QUICK ACTION FEATURE CARDS -->
             <TextView
+                style="@style/TextAppearance.AIStudyAssistance.Section"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="28dp"
+                android:layout_marginTop="@dimen/space_24"
                 android:text="Quick Actions"
-                android:textColor="@color/text_main"
-                android:textSize="18sp"
-                android:textStyle="bold" />
+                android:textColor="@color/text_main" />
 
             <GridLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
+                android:layout_marginTop="@dimen/space_16"
                 android:columnCount="2"
                 android:useDefaultMargins="true">
 
@@ -260,7 +257,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_columnWeight="1"
-                    android:layout_margin="6dp"
+                    android:layout_margin="@dimen/space_8"
                     app:cardCornerRadius="16dp"
                     app:cardElevation="2dp">
 
@@ -279,7 +276,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="12dp"
+                            android:layout_marginTop="@dimen/space_16"
                             android:text="AI Chat"
                             android:textColor="@color/text_main"
                             android:textSize="15sp"
@@ -288,7 +285,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
+                            android:layout_marginTop="@dimen/space_8"
                             android:text="Ask AI to explain topics"
                             android:textColor="@color/text_secondary"
                             android:textSize="12sp" />
@@ -301,7 +298,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_columnWeight="1"
-                    android:layout_margin="6dp"
+                    android:layout_margin="@dimen/space_8"
                     app:cardCornerRadius="16dp"
                     app:cardElevation="2dp">
 
@@ -320,7 +317,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="12dp"
+                            android:layout_marginTop="@dimen/space_16"
                             android:text="Upload Notes"
                             android:textColor="@color/text_main"
                             android:textSize="15sp"
@@ -329,7 +326,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
+                            android:layout_marginTop="@dimen/space_8"
                             android:text="Analyze PDFs or images"
                             android:textColor="@color/text_secondary"
                             android:textSize="12sp" />
@@ -342,7 +339,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_columnWeight="1"
-                    android:layout_margin="6dp"
+                    android:layout_margin="@dimen/space_8"
                     app:cardCornerRadius="16dp"
                     app:cardElevation="2dp">
 
@@ -361,7 +358,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="12dp"
+                            android:layout_marginTop="@dimen/space_16"
                             android:text="Generate Quiz"
                             android:textColor="@color/text_main"
                             android:textSize="15sp"
@@ -370,7 +367,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
+                            android:layout_marginTop="@dimen/space_8"
                             android:text="Practice questions"
                             android:textColor="@color/text_secondary"
                             android:textSize="12sp" />
@@ -383,7 +380,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_columnWeight="1"
-                    android:layout_margin="6dp"
+                    android:layout_margin="@dimen/space_8"
                     app:cardCornerRadius="16dp"
                     app:cardElevation="2dp">
 
@@ -402,7 +399,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="12dp"
+                            android:layout_marginTop="@dimen/space_16"
                             android:text="Flashcards"
                             android:textColor="@color/text_main"
                             android:textSize="15sp"
@@ -411,7 +408,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
+                            android:layout_marginTop="@dimen/space_8"
                             android:text="Revise your notes"
                             android:textColor="@color/text_secondary"
                             android:textSize="12sp" />
@@ -632,8 +629,8 @@
         android:layout_height="wrap_content"
         android:background="@color/card_bg"
         app:elevation="8dp"
-        app:itemIconTint="@color/primary"
-        app:itemTextColor="@color/primary"
+        app:itemIconTint="@color/bottom_nav_tint"
+        app:itemTextColor="@color/bottom_nav_tint"
         app:layout_constraintBottom_toBottomOf="parent"
         app:menu="@menu/bottom_nav_menu" />
 

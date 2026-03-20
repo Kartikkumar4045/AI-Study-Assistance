@@ -2,6 +2,8 @@ package com.example.aistudyassistance.Activity
 
 import android.content.Intent
 import android.os.Bundle
+import android.view.HapticFeedbackConstants
+import android.view.View
 import android.widget.*
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -125,6 +127,7 @@ class QuizActivity : AppCompatActivity() {
 
         btnPrevious.setOnClickListener {
             if (currentQuestionIndex > 0) {
+                it.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
                 saveCurrentAnswer()
                 currentQuestionIndex--
                 displayQuestion()
@@ -132,6 +135,7 @@ class QuizActivity : AppCompatActivity() {
         }
 
         btnNext.setOnClickListener {
+            it.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
             saveCurrentAnswer()
             if (currentQuestionIndex < quizQuestions.size - 1) {
                 currentQuestionIndex++
@@ -140,6 +144,16 @@ class QuizActivity : AppCompatActivity() {
                 // Submit quiz
                 submitQuiz()
             }
+        }
+
+        radioGroup.setOnCheckedChangeListener { group, checkedId ->
+            if (checkedId == View.NO_ID) return@setOnCheckedChangeListener
+            group.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+            val selectedView = group.findViewById<RadioButton>(checkedId)
+            selectedView?.animate()?.scaleX(1.01f)?.scaleY(1.01f)?.setDuration(120L)
+                ?.withEndAction {
+                    selectedView.animate().scaleX(1f).scaleY(1f).setDuration(120L).start()
+                }?.start()
         }
 
         findViewById<ImageView>(R.id.ivBack).setOnClickListener {

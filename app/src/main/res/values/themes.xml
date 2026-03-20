@@ -1,8 +1,18 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
     <style name="Base.Theme.AIStudyAssistance" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorPrimaryContainer">@color/primary_light</item>
+        <item name="colorOnPrimaryContainer">@color/text_main</item>
+        <item name="android:colorBackground">@color/background</item>
+        <item name="colorSurface">@color/card_bg</item>
+        <item name="colorOnSurface">@color/text_main</item>
+        <item name="colorOutline">@color/divider</item>
+
+        <item name="materialButtonStyle">@style/Widget.AIStudyAssistance.Button.Primary</item>
+        <item name="materialCardViewStyle">@style/Widget.AIStudyAssistance.Card</item>
+        <item name="chipStyle">@style/Widget.AIStudyAssistance.Chip</item>
+        <item name="editTextStyle">@style/Widget.AIStudyAssistance.EditText</item>
     </style>
 
     <style name="Theme.AIStudyAssistance" parent="Base.Theme.AIStudyAssistance" />

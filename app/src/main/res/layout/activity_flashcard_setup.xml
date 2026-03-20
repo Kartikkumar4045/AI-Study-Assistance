@@ -11,12 +11,12 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:padding="@dimen/space_16">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
+            android:layout_marginBottom="@dimen/space_24"
             android:orientation="horizontal">
 
             <ImageView
@@ -24,7 +24,7 @@
                 android:layout_width="24dp"
                 android:layout_height="24dp"
                 android:layout_gravity="center_vertical"
-                android:layout_marginEnd="16dp"
+                android:layout_marginEnd="@dimen/space_16"
                 android:src="@drawable/ic_back" />
 
             <TextView
@@ -33,14 +33,14 @@
                 android:layout_weight="1"
                 android:text="Generate Flashcards"
                 android:textColor="@color/text_main"
-                android:textSize="24sp"
+                android:textSize="22sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
+            android:layout_marginBottom="@dimen/space_16"
             android:text="Source"
             android:textColor="@color/text_main"
             android:textSize="18sp"
@@ -49,29 +49,29 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
+            android:layout_marginBottom="@dimen/space_24"
             android:orientation="horizontal">
 
             <androidx.cardview.widget.CardView
                 android:id="@+id/cardTopic"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
+                android:layout_marginEnd="@dimen/space_8"
                 android:layout_weight="1"
                 app:cardBackgroundColor="@color/card_bg"
-                app:cardCornerRadius="10dp"
-                app:cardElevation="4dp">
+                app:cardCornerRadius="@dimen/radius_m"
+                app:cardElevation="2dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="16dp">
+                    android:padding="@dimen/space_16">
 
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginBottom="8dp"
+                        android:layout_marginBottom="@dimen/space_8"
                         android:text="Topic"
                         android:textColor="@color/text_main"
                         android:textSize="16sp"
@@ -90,22 +90,22 @@
                 android:id="@+id/cardMyNotes"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
+                android:layout_marginStart="@dimen/space_8"
                 android:layout_weight="1"
                 app:cardBackgroundColor="@color/card_bg"
-                app:cardCornerRadius="10dp"
-                app:cardElevation="4dp">
+                app:cardCornerRadius="@dimen/radius_m"
+                app:cardElevation="2dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="16dp">
+                    android:padding="@dimen/space_16">
 
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginBottom="8dp"
+                        android:layout_marginBottom="@dimen/space_8"
                         android:text="My Notes"
                         android:textColor="@color/text_main"
                         android:textSize="16sp"
@@ -125,11 +125,11 @@
             android:id="@+id/etFlashcardTopic"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
+            android:layout_marginBottom="@dimen/space_24"
             android:background="@drawable/edit_text_background"
             android:hint="Enter Topic"
             android:inputType="text"
-            android:padding="12dp"
+            android:padding="@dimen/space_16"
             android:textColor="@color/text_main"
             android:textColorHint="@color/text_hint"
             android:textSize="16sp" />
@@ -138,16 +138,16 @@
             android:id="@+id/spinnerFlashcardNotes"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
+            android:layout_marginBottom="@dimen/space_8"
             android:background="@drawable/edit_text_background"
-            android:padding="12dp"
+            android:padding="@dimen/space_16"
             android:visibility="gone" />
 
         <TextView
             android:id="@+id/tvFlashcardSelectedNotePreview"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
+            android:layout_marginBottom="@dimen/space_24"
             android:text="Selected Note: -"
             android:textColor="@color/text_secondary"
             android:textSize="14sp"
@@ -156,7 +156,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
+            android:layout_marginBottom="@dimen/space_16"
             android:text="Number of Flashcards"
             android:textColor="@color/text_main"
             android:textSize="18sp"
@@ -166,7 +166,7 @@
             android:id="@+id/seekBarFlashcardCount"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
+            android:layout_marginBottom="@dimen/space_8"
             android:max="19"
             android:progress="9" />
 
@@ -174,20 +174,19 @@
             android:id="@+id/tvFlashcardCount"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="28dp"
+            android:layout_marginBottom="@dimen/space_24"
             android:text="Flashcards: 10"
             android:textColor="@color/text_main"
             android:textSize="16sp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnGenerateFlashcards"
+            style="@style/Widget.AIStudyAssistance.Button.Primary"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
+            android:layout_marginBottom="@dimen/space_16"
             android:enabled="false"
-            android:text="Generate Flashcards"
-            android:textSize="18sp"
-            app:cornerRadius="8dp" />
+            android:text="Generate Flashcards" />
 
     </LinearLayout>
 </ScrollView>

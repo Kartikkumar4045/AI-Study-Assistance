@@ -71,7 +71,7 @@ class QuizResultActivity : AppCompatActivity() {
         }
 
         btnRetryQuiz.setOnClickListener {
-            // Go back to setup with same parameters
+            // Go back to set up with same parameters
             val intent = Intent(this, QuizSetupActivity::class.java)
             startActivity(intent)
             finish()

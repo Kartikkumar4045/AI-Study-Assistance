@@ -29,6 +29,11 @@ class FlashcardPagerAdapter(
     private val onFlipStateChanged: (Int, Boolean) -> Unit
 ) : RecyclerView.Adapter<FlashcardPagerAdapter.FlashcardViewHolder>() {
 
+    private enum class StudyMode {
+        QUICK_REVIEW,
+        ACTIVE_RECALL
+    }
+
     private val flippingPositions = mutableSetOf<Int>()
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): FlashcardViewHolder {
@@ -112,6 +117,13 @@ class FlashcardPagerAdapter(
         holder.tvAnswer.text = flashcard.answer
 
         val activeRecall = isActiveRecallEnabled()
+        val studyMode = if (activeRecall) StudyMode.ACTIVE_RECALL else StudyMode.QUICK_REVIEW
+        applyCardFaceVisualState(
+            holder = holder,
+            isFlipped = revealed,
+            studyMode = studyMode,
+            animateBackground = false
+        )
 
         if (revealed) {
             stopHintPulse(holder.tvHint)
@@ -128,6 +140,48 @@ class FlashcardPagerAdapter(
             holder.layoutDifficulty.visibility = View.GONE
             holder.tvHint.visibility = View.VISIBLE
             startHintPulse(holder.tvHint)
+        }
+    }
+
+    private fun resolveCardBackgroundColor(holder: FlashcardViewHolder, isFlipped: Boolean, studyMode: StudyMode): Int {
+        val colorRes = when (studyMode) {
+            StudyMode.QUICK_REVIEW -> if (isFlipped) {
+                R.color.flashcard_quick_answer_bg
+            } else {
+                R.color.flashcard_quick_question_bg
+            }
+
+            StudyMode.ACTIVE_RECALL -> if (isFlipped) {
+                R.color.flashcard_active_answer_bg
+            } else {
+                R.color.flashcard_active_question_bg
+            }
+        }
+        return ContextCompat.getColor(holder.itemView.context, colorRes)
+    }
+
+    private fun applyCardFaceVisualState(
+        holder: FlashcardViewHolder,
+        isFlipped: Boolean,
+        studyMode: StudyMode,
+        animateBackground: Boolean
+    ) {
+        holder.tvQuestionTitle.text = if (isFlipped) "Answer" else "Question"
+
+        val targetColor = resolveCardBackgroundColor(holder, isFlipped, studyMode)
+        if (!animateBackground) {
+            holder.cardFlashcard.setCardBackgroundColor(targetColor)
+            return
+        }
+
+        val startColor = holder.cardFlashcard.cardBackgroundColor.defaultColor
+        ValueAnimator.ofArgb(startColor, targetColor).apply {
+            duration = 240L
+            interpolator = DecelerateInterpolator()
+            addUpdateListener { animator ->
+                holder.cardFlashcard.setCardBackgroundColor(animator.animatedValue as Int)
+            }
+            start()
         }
     }
 
@@ -219,32 +273,32 @@ class FlashcardPagerAdapter(
         card.cameraDistance = card.resources.displayMetrics.density * 8000f
 
         val firstHalfRotation = ObjectAnimator.ofFloat(card, View.ROTATION_Y, 0f, 90f).apply {
-            duration = 180
+            duration = 130
             interpolator = DecelerateInterpolator()
         }
 
         val firstHalfScaleX = ObjectAnimator.ofFloat(card, View.SCALE_X, 1f, 0.95f).apply {
-            duration = 180
+            duration = 130
             interpolator = AccelerateDecelerateInterpolator()
         }
 
         val firstHalfScaleY = ObjectAnimator.ofFloat(card, View.SCALE_Y, 1f, 0.95f).apply {
-            duration = 180
+            duration = 130
             interpolator = AccelerateDecelerateInterpolator()
         }
 
         val secondHalfRotation = ObjectAnimator.ofFloat(card, View.ROTATION_Y, -90f, 0f).apply {
-            duration = 180
+            duration = 130
             interpolator = AccelerateDecelerateInterpolator()
         }
 
         val secondHalfScaleX = ObjectAnimator.ofFloat(card, View.SCALE_X, 0.95f, 1f).apply {
-            duration = 180
+            duration = 130
             interpolator = AccelerateDecelerateInterpolator()
         }
 
         val secondHalfScaleY = ObjectAnimator.ofFloat(card, View.SCALE_Y, 0.95f, 1f).apply {
-            duration = 180
+            duration = 130
             interpolator = AccelerateDecelerateInterpolator()
         }
 
@@ -264,6 +318,13 @@ class FlashcardPagerAdapter(
             override fun onAnimationEnd(animation: Animator) {
                 val answerRevealed = answerRevealedStates.getOrElse(position) { false }
                 showCardState(holder, flashcard, revealed, answerRevealed)
+                val studyMode = if (isActiveRecallEnabled()) StudyMode.ACTIVE_RECALL else StudyMode.QUICK_REVIEW
+                applyCardFaceVisualState(
+                    holder = holder,
+                    isFlipped = revealed,
+                    studyMode = studyMode,
+                    animateBackground = true
+                )
             }
 
             override fun onAnimationCancel(animation: Animator) = Unit
@@ -291,7 +352,7 @@ class FlashcardPagerAdapter(
 
     inner class FlashcardViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val cardFlashcard: CardView = itemView.findViewById(R.id.cardFlashcard)
-        private val tvQuestionTitle: TextView = itemView.findViewById(R.id.tvQuestionTitle)
+        val tvQuestionTitle: TextView = itemView.findViewById(R.id.tvQuestionTitle)
         val tvQuestion: TextView = itemView.findViewById(R.id.tvQuestion)
         val tvHint: TextView = itemView.findViewById(R.id.tvTapHint)
         val tvThinkPrompt: TextView = itemView.findViewById(R.id.tvThinkPrompt)
@@ -311,7 +372,8 @@ class FlashcardPagerAdapter(
             animateFlip: Boolean,
             animateReveal: Boolean
         ) {
-            tvQuestionTitle.text = "Question"
+            val isFlipped = revealed
+            val studyMode = if (isActiveRecallEnabled()) StudyMode.ACTIVE_RECALL else StudyMode.QUICK_REVIEW
             cardFlashcard.cameraDistance = itemView.resources.displayMetrics.density * 8000f
             cardFlashcard.setOnClickListener {
                 if (!isCardFlipping(position)) {
@@ -330,6 +392,12 @@ class FlashcardPagerAdapter(
             btnHard.setOnClickListener { onDifficultySelected(position, DIFFICULTY_HARD) }
 
             applyDifficultyState(this, difficulty)
+            applyCardFaceVisualState(
+                holder = this,
+                isFlipped = isFlipped,
+                studyMode = studyMode,
+                animateBackground = false
+            )
 
             if (animateFlip) {
                 flipCard(this, flashcard, revealed, position)

@@ -47,6 +47,7 @@ class QuizSetupActivity : AppCompatActivity() {
     private var selectedSource = "topic" // "topic" or "notes"
     private var questionCount = 5
     private var notesList = mutableListOf<String>()
+    private var selectedNoteName = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -65,6 +66,7 @@ class QuizSetupActivity : AppCompatActivity() {
         }
 
         initViews()
+        setupEmptyNotesSpinner()
         intent.getStringExtra(EXTRA_PREFILL_TOPIC)
             ?.takeIf { it.isNotBlank() }
             ?.let { etTopic.setText(it) }
@@ -88,6 +90,14 @@ class QuizSetupActivity : AppCompatActivity() {
         seekBarQuestions.max = 9
         seekBarQuestions.progress = 4
         tvQuestionCount.text = "Questions: 5"
+    }
+
+    private fun setupEmptyNotesSpinner() {
+        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, listOf("Select Note"))
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        spinnerNotes.adapter = adapter
+        selectedNoteName = ""
+        tvSelectedNotePreview.text = "Selected Note: -"
     }
 
     private fun setupListeners() {
@@ -130,14 +140,24 @@ class QuizSetupActivity : AppCompatActivity() {
         })
 
         spinnerNotes.setOnItemSelectedListener(object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>, view: View, position: Int, id: Long) {
-                val selectedNote = parent.getItemAtPosition(position).toString()
-                tvSelectedNotePreview.text = "Selected Note: $selectedNote"
+            override fun onItemSelected(parent: AdapterView<*>, view: View?, position: Int, id: Long) {
+                selectedNoteName = if (position <= 0 || notesList.isEmpty()) {
+                    ""
+                } else {
+                    notesList[position - 1]
+                }
+
+                tvSelectedNotePreview.text = if (selectedNoteName.isNotBlank()) {
+                    "Selected Note: $selectedNoteName"
+                } else {
+                    "Selected Note: -"
+                }
                 validateInputs()
             }
 
             override fun onNothingSelected(parent: AdapterView<*>) {
-                tvSelectedNotePreview.text = ""
+                selectedNoteName = ""
+                tvSelectedNotePreview.text = "Selected Note: -"
                 validateInputs()
             }
         })
@@ -174,12 +194,19 @@ class QuizSetupActivity : AppCompatActivity() {
                 for (item in listResult.items) {
                     notesList.add(item.name)
                 }
+
+                val spinnerItems = mutableListOf("Select Note")
+                spinnerItems.addAll(notesList)
                 if (notesList.isEmpty()) {
-                    notesList.add("No notes uploaded")
+                    spinnerItems.add("No notes uploaded")
                 }
-                val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, notesList)
+
+                val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, spinnerItems)
                 adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
                 spinnerNotes.adapter = adapter
+                selectedNoteName = ""
+                tvSelectedNotePreview.text = "Selected Note: -"
+                validateInputs()
             }
             .addOnFailureListener { e ->
                 Toast.makeText(this, "Failed to load notes: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -190,7 +217,7 @@ class QuizSetupActivity : AppCompatActivity() {
         val isValid = if (selectedSource == "topic") {
             etTopic.text.toString().trim().isNotEmpty()
         } else {
-            spinnerNotes.selectedItem != null
+            selectedNoteName.isNotBlank()
         }
         btnGenerateQuiz.isEnabled = isValid
         btnGenerateQuiz.alpha = if (isValid) 1.0f else 0.5f
@@ -211,7 +238,7 @@ class QuizSetupActivity : AppCompatActivity() {
                     quizGenerator.generateQuizFromTopic(topic, questionCount)
                 } else {
                     // Generate quiz from notes
-                    val selectedNote = spinnerNotes.selectedItem.toString()
+                    val selectedNote = selectedNoteName
                     val noteText = downloadAndExtractText(selectedNote)
                     quizGenerator.generateQuizFromNotes(noteText, questionCount)
                 }
@@ -226,13 +253,13 @@ class QuizSetupActivity : AppCompatActivity() {
                     val topicValue = if (selectedSource == "topic") {
                         etTopic.text.toString().trim()
                     } else {
-                        spinnerNotes.selectedItem?.toString().orEmpty()
+                        selectedNoteName
                     }
                     intent.putExtra("quizDataJson", json)
                     intent.putExtra("questionCount", quizData.size)
                     intent.putExtra("quizSource", selectedSource)
                     intent.putExtra("topicText", topicValue)
-                    intent.putExtra("selectedNoteId", spinnerNotes.selectedItem?.toString().orEmpty())
+                    intent.putExtra("selectedNoteId", selectedNoteName)
                     startActivity(intent)
                 }
             } catch (e: Exception) {
@@ -255,7 +282,7 @@ class QuizSetupActivity : AppCompatActivity() {
     }
 
     private fun downloadAndExtractTextCallback(selectedNote: String, callback: (String) -> Unit) {
-        if (selectedNote == "No notes uploaded") {
+        if (selectedNote.isBlank() || selectedNote == "No notes uploaded") {
             callback("")
             return
         }

@@ -6,12 +6,12 @@
     android:background="@color/background"
     android:fitsSystemWindows="true"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:padding="@dimen/space_16">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
+        android:layout_marginBottom="@dimen/space_16"
         android:orientation="horizontal">
 
         <ImageView
@@ -19,40 +19,39 @@
             android:layout_width="24dp"
             android:layout_height="24dp"
             android:layout_gravity="center_vertical"
-            android:layout_marginEnd="16dp"
+            android:layout_marginEnd="@dimen/space_16"
             android:src="@drawable/ic_back" />
 
         <TextView
             android:id="@+id/tvFlashcardTitle"
+            style="@style/TextAppearance.AIStudyAssistance.Title"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="Flashcards: Topic"
-            android:textColor="@color/text_main"
-            android:textSize="20sp"
-            android:textStyle="bold" />
+            android:textSize="20sp" />
     </LinearLayout>
 
     <TextView
         android:id="@+id/tvStudyModeLabel"
+        style="@style/TextAppearance.AIStudyAssistance.Body"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Study Mode"
-        android:textColor="@color/text_main"
         android:textStyle="bold"
-        android:layout_marginBottom="8dp" />
+        android:layout_marginBottom="@dimen/space_8" />
 
     <com.google.android.material.button.MaterialButtonToggleGroup
         android:id="@+id/toggleStudyMode"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp"
+        android:layout_marginBottom="@dimen/space_8"
         app:singleSelection="true"
         app:selectionRequired="true">
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnModeQuickReview"
-            style="@style/Widget.Material3.Button.OutlinedButton"
+            style="@style/Widget.AIStudyAssistance.Button.Secondary"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -60,7 +59,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnModeActiveRecall"
-            style="@style/Widget.Material3.Button.OutlinedButton"
+            style="@style/Widget.AIStudyAssistance.Button.Secondary"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -78,28 +77,28 @@
             android:id="@+id/tvCardTimer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="6dp"
+            android:layout_marginBottom="@dimen/space_8"
             android:text="⏱ 0s"
             android:textColor="@color/text_secondary"
             android:textSize="14sp" />
 
         <TextView
             android:id="@+id/tvFlashcardProgress"
+            style="@style/TextAppearance.AIStudyAssistance.Body"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
+            android:layout_marginBottom="@dimen/space_8"
             android:text="Card 1 / 10"
-            android:textColor="@color/text_secondary"
-            android:textSize="16sp" />
+            android:textColor="@color/text_secondary" />
 
         <com.google.android.material.progressindicator.LinearProgressIndicator
             android:id="@+id/flashcardProgressBar"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
+            android:layout_height="4dp"
+            android:layout_marginBottom="@dimen/space_16"
             android:progress="10"
             app:indicatorColor="@color/primary"
-            app:trackColor="@color/gray_light" />
+            app:trackColor="@color/divider" />
 
         <androidx.viewpager2.widget.ViewPager2
             android:id="@+id/viewPagerFlashcards"
@@ -107,41 +106,41 @@
             android:layout_height="0dp"
             android:layout_weight="1"
             android:clipToPadding="false"
-            android:paddingTop="8dp"
-            android:paddingBottom="8dp" />
+            android:paddingTop="@dimen/space_8"
+            android:paddingBottom="@dimen/space_8" />
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="@dimen/space_16"
             android:orientation="horizontal">
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnFlashcardPrevious"
+                style="@style/Widget.AIStudyAssistance.Button.Secondary"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
-                android:layout_weight="1"
-                android:text="Previous"
-                app:cornerRadius="8dp" />
+                android:layout_marginEnd="@dimen/space_8"
+                android:layout_weight="1.1"
+                android:text="Previous" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnFlashcardFlip"
+                style="@style/Widget.AIStudyAssistance.Button.Secondary"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginHorizontal="4dp"
+                android:layout_marginHorizontal="@dimen/space_8"
                 android:layout_weight="1"
-                android:text="Flip"
-                app:cornerRadius="8dp" />
+                android:text="Flip" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnFlashcardNext"
+                style="@style/Widget.AIStudyAssistance.Button.Primary"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
+                android:layout_marginStart="@dimen/space_8"
                 android:layout_weight="1"
-                android:text="Next"
-                app:cornerRadius="8dp" />
+                android:text="Next" />
         </LinearLayout>
     </LinearLayout>
 
@@ -152,7 +151,7 @@
         android:layout_weight="1"
         android:gravity="center"
         android:orientation="vertical"
-        android:padding="24dp"
+        android:padding="@dimen/space_24"
         android:visibility="gone">
 
         <TextView
@@ -167,7 +166,7 @@
             android:id="@+id/tvCompletedCount"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="@dimen/space_16"
             android:text="Total Cards: 10"
             android:textColor="@color/text_secondary"
             android:textSize="16sp" />
@@ -176,7 +175,7 @@
             android:id="@+id/tvCompletedDifficulty"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="@dimen/space_8"
             android:text="Easy: 0 | Medium: 0 | Hard: 0"
             android:textColor="@color/text_secondary"
             android:textSize="16sp" />
@@ -185,7 +184,7 @@
             android:id="@+id/tvCompletedAvgTime"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="@dimen/space_8"
             android:text="Avg Time: 0 sec"
             android:textColor="@color/text_secondary"
             android:textSize="16sp" />
@@ -194,45 +193,42 @@
             android:id="@+id/tvCompletedUnattempted"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="@dimen/space_8"
             android:text="Unattempted Cards: 0"
             android:textColor="@color/text_secondary"
             android:textSize="16sp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnRestartDeck"
+            style="@style/Widget.AIStudyAssistance.Button.Primary"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="Restart"
-            app:cornerRadius="8dp" />
+            android:layout_marginTop="@dimen/space_24"
+            android:text="Restart" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnBackHome"
-            style="@style/Widget.Material3.Button.OutlinedButton"
+            style="@style/Widget.AIStudyAssistance.Button.Secondary"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="Back to Home"
-            app:cornerRadius="8dp" />
+            android:layout_marginTop="@dimen/space_16"
+            android:text="Back to Home" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnReviewHardCards"
-            style="@style/Widget.Material3.Button.OutlinedButton"
+            style="@style/Widget.AIStudyAssistance.Button.Secondary"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="Review Hard Cards"
-            app:cornerRadius="8dp" />
+            android:layout_marginTop="@dimen/space_16"
+            android:text="Review Hard Cards" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnReviewUnattemptedCards"
-            style="@style/Widget.Material3.Button.OutlinedButton"
+            style="@style/Widget.AIStudyAssistance.Button.Secondary"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="Review Unattempted Cards"
-            app:cornerRadius="8dp" />
+            android:layout_marginTop="@dimen/space_16"
+            android:text="Review Unattempted Cards" />
     </LinearLayout>
 
 </LinearLayout>
