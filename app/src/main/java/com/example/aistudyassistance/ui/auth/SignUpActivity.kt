@@ -1,15 +1,12 @@
-package com.example.aistudyassistance.Activity
+﻿package com.example.aistudyassistance.ui.auth
 
 import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Bundle
-import android.text.method.HideReturnsTransformationMethod
-import android.text.method.PasswordTransformationMethod
 import android.util.Patterns
 import android.widget.EditText
-import android.widget.ImageView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -17,10 +14,9 @@ import com.example.aistudyassistance.R
 import com.google.android.material.button.MaterialButton
 import com.google.firebase.auth.FirebaseAuth
 import android.widget.TextView
-import androidx.cardview.widget.CardView
-import com.example.aistudyassistance.Authentication.AuthManager
-import com.example.aistudyassistance.Authentication.AuthResult
-import com.example.aistudyassistance.MainActivity
+import com.example.aistudyassistance.data.repository.AuthManager
+import com.example.aistudyassistance.data.model.AuthResult
+import com.example.aistudyassistance.ui.home.MainActivity
 
 class SignUpActivity : AppCompatActivity() {
 
@@ -33,11 +29,8 @@ class SignUpActivity : AppCompatActivity() {
     private lateinit var etPassword: EditText
     private lateinit var etConfirmPassword: EditText
     private lateinit var btnSignUp: MaterialButton
-    private lateinit var cvGoogle: CardView
-    private lateinit var cvGithub: CardView
-
-    private var isPasswordVisible1 = false
-    private var isPasswordVisible2 = false
+    private lateinit var btnGoogle: MaterialButton
+    private lateinit var btnGithub: MaterialButton
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -57,40 +50,14 @@ class SignUpActivity : AppCompatActivity() {
         etPassword = findViewById(R.id.etCreatePassword)
         etConfirmPassword = findViewById(R.id.etConfirmPassword)
         btnSignUp = findViewById(R.id.btnSignUp)
-        cvGoogle = findViewById(R.id.cvGoogle)
-        cvGithub = findViewById(R.id.cvGithub)
+        btnGoogle = findViewById(R.id.btnGoogle)
+        btnGithub = findViewById(R.id.btnGithub)
 
         val tvSignIn = findViewById<TextView>(R.id.tvSignIn)
-        val toggle1 = findViewById<ImageView>(R.id.ivTogglePassword1)
-        val toggle2 = findViewById<ImageView>(R.id.ivTogglePassword2)
 
         tvSignIn.setOnClickListener {
             startActivity(Intent(this, SignInActivity::class.java))
             finish()
-        }
-
-        toggle1.setOnClickListener {
-            isPasswordVisible1 = !isPasswordVisible1
-            if (isPasswordVisible1) {
-                etPassword.transformationMethod = HideReturnsTransformationMethod.getInstance()
-                toggle1.setImageResource(R.drawable.visibilityon45)
-            } else {
-                etPassword.transformationMethod = PasswordTransformationMethod.getInstance()
-                toggle1.setImageResource(R.drawable.visisbilityoff45)
-            }
-            etPassword.setSelection(etPassword.text.length)
-        }
-
-        toggle2.setOnClickListener {
-            isPasswordVisible2 = !isPasswordVisible2
-            if (isPasswordVisible2) {
-                etConfirmPassword.transformationMethod = HideReturnsTransformationMethod.getInstance()
-                toggle2.setImageResource(R.drawable.visibilityon45)
-            } else {
-                etConfirmPassword.transformationMethod = PasswordTransformationMethod.getInstance()
-                toggle2.setImageResource(R.drawable.visisbilityoff45)
-            }
-            etConfirmPassword.setSelection(etConfirmPassword.text.length)
         }
     }
 
@@ -118,14 +85,14 @@ class SignUpActivity : AppCompatActivity() {
             }
         }
 
-        cvGoogle.setOnClickListener {
+        btnGoogle.setOnClickListener {
             disableSocialButtons()
             authManager.signInWithGoogle { result ->
                 handleSignUpResult(result)
             }
         }
 
-        cvGithub.setOnClickListener {
+        btnGithub.setOnClickListener {
             disableSocialButtons()
             authManager.signInWithGithub(this) { result ->
                 handleSignUpResult(result)
@@ -192,19 +159,19 @@ class SignUpActivity : AppCompatActivity() {
 
     private fun disableSocialButtons() {
         btnSignUp.isEnabled = false
-        cvGoogle.isEnabled = false
-        cvGithub.isEnabled = false
-        cvGoogle.alpha = 0.5f
-        cvGithub.alpha = 0.5f
+        btnGoogle.isEnabled = false
+        btnGithub.isEnabled = false
+        btnGoogle.alpha = 0.5f
+        btnGithub.alpha = 0.5f
     }
 
     private fun enableAllButtons() {
         btnSignUp.isEnabled = true
         btnSignUp.text = "Sign Up"
-        cvGoogle.isEnabled = true
-        cvGithub.isEnabled = true
-        cvGoogle.alpha = 1f
-        cvGithub.alpha = 1f
+        btnGoogle.isEnabled = true
+        btnGithub.isEnabled = true
+        btnGoogle.alpha = 1f
+        btnGithub.alpha = 1f
     }
 
     private fun isNetworkAvailable(): Boolean {
@@ -217,3 +184,4 @@ class SignUpActivity : AppCompatActivity() {
                         networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET))
     }
 }
+

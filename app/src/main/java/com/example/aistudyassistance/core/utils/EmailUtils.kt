@@ -1,4 +1,4 @@
-package com.example.aistudyassistance.utils
+﻿package com.example.aistudyassistance.core.utils
 
 object EmailUtils {
     fun encodeEmail(email: String): String {

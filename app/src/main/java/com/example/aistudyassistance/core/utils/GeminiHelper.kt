@@ -1,4 +1,4 @@
-package com.example.aistudyassistance
+﻿package com.example.aistudyassistance.core.utils
 
 import android.graphics.Bitmap
 import com.google.ai.client.generativeai.GenerativeModel

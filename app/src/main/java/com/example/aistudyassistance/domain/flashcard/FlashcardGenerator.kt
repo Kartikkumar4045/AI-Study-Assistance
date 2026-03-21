@@ -1,6 +1,8 @@
-package com.example.aistudyassistance
+﻿package com.example.aistudyassistance.domain.flashcard
 
 import android.util.Log
+import com.example.aistudyassistance.core.utils.GeminiHelper
+import com.example.aistudyassistance.data.model.Flashcard
 import org.json.JSONArray
 import org.json.JSONException
 
@@ -104,5 +106,6 @@ class FlashcardGenerator(private val geminiHelper: GeminiHelper) {
         }
     }
 }
+
 
 

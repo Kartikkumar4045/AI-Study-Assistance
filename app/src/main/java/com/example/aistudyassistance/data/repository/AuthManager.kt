@@ -1,16 +1,15 @@
-package com.example.aistudyassistance.Authentication
+﻿package com.example.aistudyassistance.data.repository
 
 import android.app.Activity
 import android.content.Context
 import android.util.Log
 import androidx.credentials.*
 import androidx.credentials.exceptions.GetCredentialException
+import com.example.aistudyassistance.R
+import com.example.aistudyassistance.data.model.AuthResult as AppAuthResult
 import com.google.android.libraries.identity.googleid.*
 import com.google.firebase.auth.*
 import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -39,11 +38,11 @@ class AuthManager(private val context: Context) {
     }
 
     // Google Sign-In
-    fun signInWithGoogle(callback: (AuthResult) -> Unit) {
+    fun signInWithGoogle(callback: (AppAuthResult) -> Unit) {
         val googleIdOption = GetGoogleIdOption.Builder()
             .setFilterByAuthorizedAccounts(false)
             .setServerClientId(
-                context.getString(com.example.aistudyassistance.R.string.default_web_client_id)
+                context.getString(R.string.default_web_client_id)
             )
             .build()
 
@@ -73,20 +72,20 @@ class AuthManager(private val context: Context) {
                         callback = callback
                     )
                 } else {
-                    callback(AuthResult.Error("Invalid credential type"))
+                    callback(AppAuthResult.Error("Invalid credential type"))
                 }
             } catch (e: GetCredentialException) {
                 if (e.message?.contains("cancelled", ignoreCase = true) == true) {
-                    callback(AuthResult.Cancelled)
+                    callback(AppAuthResult.Cancelled)
                 } else {
-                    callback(AuthResult.Error(e.message))
+                    callback(AppAuthResult.Error(e.message))
                 }
             }
         }
     }
 
     // GitHub Sign-In
-    fun signInWithGithub(activity: Activity, callback: (AuthResult) -> Unit) {
+    fun signInWithGithub(activity: Activity, callback: (AppAuthResult) -> Unit) {
         val provider = OAuthProvider.newBuilder("github.com")
             .addCustomParameter("allow_signup", "true") // Fixed: Allow signups
             .build()
@@ -105,7 +104,7 @@ class AuthManager(private val context: Context) {
                                 if (existingUserData != null && existingUserData.uid != it.uid) {
                                     // Email exists with different UID - this shouldn't happen with GitHub
                                     // Handle by linking or showing error
-                                    callback(AuthResult.Error(
+                                    callback(AppAuthResult.Error(
                                         "This email is already registered with ${existingUserData.provider}. " +
                                                 "Please sign in with ${existingUserData.provider} first."
                                     ))
@@ -123,30 +122,30 @@ class AuthManager(private val context: Context) {
                             }
                         } catch (e: Exception) {
                             withContext(Dispatchers.Main) {
-                                callback(AuthResult.Error(e.message))
+                                callback(AppAuthResult.Error(e.message))
                             }
                         }
                     }
-                } ?: callback(AuthResult.Error("Failed to get user info"))
+                } ?: callback(AppAuthResult.Error("Failed to get user info"))
             }
             .addOnFailureListener { e ->
                 if (e.message?.contains("cancelled", ignoreCase = true) == true) {
-                    callback(AuthResult.Cancelled)
+                    callback(AppAuthResult.Cancelled)
                 } else {
-                    callback(AuthResult.Error(e.message ?: "GitHub sign-in failed"))
+                    callback(AppAuthResult.Error(e.message ?: "GitHub sign-in failed"))
                 }
             }
     }
 
     // Email/Password Sign Up
-    fun signUpWithEmail(email: String, password: String, phone: String, callback: (AuthResult) -> Unit) {
+    fun signUpWithEmail(email: String, password: String, phone: String, callback: (AppAuthResult) -> Unit) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 // Check if email exists in our database first
                 val existingUserData = checkEmailExists(email)
                 if (existingUserData != null) {
                     withContext(Dispatchers.Main) {
-                        callback(AuthResult.Error(
+                        callback(AppAuthResult.Error(
                             "An account already exists with this email using ${existingUserData.provider}."
                         ))
                     }
@@ -157,7 +156,7 @@ class AuthManager(private val context: Context) {
                 val phoneExists = checkPhoneExists(phone)
                 if (phoneExists) {
                     withContext(Dispatchers.Main) {
-                        callback(AuthResult.Error("This phone number is already registered with another account."))
+                        callback(AppAuthResult.Error("This phone number is already registered with another account."))
                     }
                     return@launch
                 }
@@ -168,32 +167,32 @@ class AuthManager(private val context: Context) {
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    callback(AuthResult.Error(e.message))
+                    callback(AppAuthResult.Error(e.message))
                 }
             }
         }
     }
 
     // Email/Password Sign In
-    fun signInWithEmail(email: String, password: String, callback: (AuthResult) -> Unit) {
+    fun signInWithEmail(email: String, password: String, callback: (AppAuthResult) -> Unit) {
         auth.signInWithEmailAndPassword(email, password)
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     val user = auth.currentUser
                     user?.let {
                         updateUserPhoneIfNeeded(it.uid, email, callback)
-                    } ?: callback(AuthResult.Error("User not found"))
+                    } ?: callback(AppAuthResult.Error("User not found"))
                 } else {
                     val exception = task.exception
                     when {
                         exception is FirebaseAuthInvalidUserException -> {
-                            callback(AuthResult.Error("No account found with this email"))
+                            callback(AppAuthResult.Error("No account found with this email"))
                         }
                         exception is FirebaseAuthInvalidCredentialsException -> {
-                            callback(AuthResult.Error("Invalid password"))
+                            callback(AppAuthResult.Error("Invalid password"))
                         }
                         else -> {
-                            callback(AuthResult.Error(exception?.message ?: "Sign in failed"))
+                            callback(AppAuthResult.Error(exception?.message ?: "Sign in failed"))
                         }
                     }
                 }
@@ -205,7 +204,7 @@ class AuthManager(private val context: Context) {
         idToken: String,
         provider: String,
         email: String,
-        callback: (AuthResult) -> Unit
+        callback: (AppAuthResult) -> Unit
     ) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
@@ -234,7 +233,7 @@ class AuthManager(private val context: Context) {
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    callback(AuthResult.Error(e.message))
+                    callback(AppAuthResult.Error(e.message))
                 }
             }
         }
@@ -246,7 +245,7 @@ class AuthManager(private val context: Context) {
         provider: String,
         existingUid: String,
         existingProvider: String,
-        callback: (AuthResult) -> Unit
+        callback: (AppAuthResult) -> Unit
     ) {
         val credential = when (provider) {
             "google.com" -> GoogleAuthProvider.getCredential(idToken, null)
@@ -254,7 +253,7 @@ class AuthManager(private val context: Context) {
         }
 
         if (credential == null) {
-            callback(AuthResult.Error("Invalid provider"))
+            callback(AppAuthResult.Error("Invalid provider"))
             return
         }
 
@@ -279,7 +278,7 @@ class AuthManager(private val context: Context) {
                             handleAccountCollision(exception, provider, callback)
                         }
                         else -> {
-                            callback(AuthResult.Error(exception?.message ?: "Authentication failed"))
+                            callback(AppAuthResult.Error(exception?.message ?: "Authentication failed"))
                         }
                     }
                 }
@@ -290,7 +289,7 @@ class AuthManager(private val context: Context) {
     private fun handleAccountCollision(
         exception: FirebaseAuthUserCollisionException,
         newProvider: String,
-        callback: (AuthResult) -> Unit
+        callback: (AppAuthResult) -> Unit
     ) {
         val email = exception.email ?: ""
 
@@ -300,17 +299,17 @@ class AuthManager(private val context: Context) {
 
                 withContext(Dispatchers.Main) {
                     if (existingUserData != null) {
-                        callback(AuthResult.Error(
+                        callback(AppAuthResult.Error(
                             "This email is already registered with ${existingUserData.provider}. " +
                                     "Please sign in with ${existingUserData.provider} first, then you can link your $newProvider account."
                         ))
                     } else {
-                        callback(AuthResult.Error("Email already in use with another provider"))
+                        callback(AppAuthResult.Error("Email already in use with another provider"))
                     }
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    callback(AuthResult.Error(e.message))
+                    callback(AppAuthResult.Error(e.message))
                 }
             }
         }
@@ -321,10 +320,10 @@ class AuthManager(private val context: Context) {
         newUser: FirebaseUser?,
         existingUid: String,
         provider: String,
-        callback: (AuthResult) -> Unit
+        callback: (AppAuthResult) -> Unit
     ) {
         if (newUser == null) {
-            callback(AuthResult.Error("Failed to link accounts"))
+            callback(AppAuthResult.Error("Failed to link accounts"))
             return
         }
 
@@ -333,7 +332,7 @@ class AuthManager(private val context: Context) {
         // For now, we'll delete the new account and ask user to sign in with original provider
         newUser.delete()
             .addOnCompleteListener {
-                callback(AuthResult.Error(
+                callback(AppAuthResult.Error(
                     "Please sign in with your original provider first, then link this provider."
                 ))
             }
@@ -344,7 +343,7 @@ class AuthManager(private val context: Context) {
         idToken: String,
         provider: String,
         email: String,
-        callback: (AuthResult) -> Unit
+        callback: (AppAuthResult) -> Unit
     ) {
         val credential = when (provider) {
             "google.com" -> GoogleAuthProvider.getCredential(idToken, null)
@@ -365,9 +364,9 @@ class AuthManager(private val context: Context) {
                                 isNewUser = true,
                                 callback = callback
                             )
-                        } ?: callback(AuthResult.Error("Failed to create account"))
+                        } ?: callback(AppAuthResult.Error("Failed to create account"))
                     } else {
-                        callback(AuthResult.Error(task.exception?.message ?: "Authentication failed"))
+                        callback(AppAuthResult.Error(task.exception?.message ?: "Authentication failed"))
                     }
                 }
         }
@@ -378,7 +377,7 @@ class AuthManager(private val context: Context) {
         email: String,
         password: String,
         phone: String,
-        callback: (AuthResult) -> Unit
+        callback: (AppAuthResult) -> Unit
     ) {
         auth.createUserWithEmailAndPassword(email, password)
             .addOnCompleteListener { task ->
@@ -393,15 +392,15 @@ class AuthManager(private val context: Context) {
                             isNewUser = true,
                             callback = callback
                         )
-                    } ?: callback(AuthResult.Error("Failed to create account"))
+                    } ?: callback(AppAuthResult.Error("Failed to create account"))
                 } else {
                     val exception = task.exception
                     when {
                         exception is FirebaseAuthUserCollisionException -> {
-                            callback(AuthResult.Error("Email already registered. Please sign in instead."))
+                            callback(AppAuthResult.Error("Email already registered. Please sign in instead."))
                         }
                         else -> {
-                            callback(AuthResult.Error(exception?.message ?: "Sign up failed"))
+                            callback(AppAuthResult.Error(exception?.message ?: "Sign up failed"))
                         }
                     }
                 }
@@ -415,7 +414,7 @@ class AuthManager(private val context: Context) {
         phone: String,
         provider: String,
         isNewUser: Boolean,
-        callback: (AuthResult) -> Unit
+        callback: (AppAuthResult) -> Unit
     ) {
         val userMap = HashMap<String, Any>().apply {
             put("email", email.lowercase())
@@ -439,16 +438,16 @@ class AuthManager(private val context: Context) {
                             provider = provider,
                             timestamp = System.currentTimeMillis()
                         )
-                        callback(AuthResult.Success(isNewUser))
+                        callback(AppAuthResult.Success(isNewUser))
                     }
                     .addOnFailureListener { e ->
                         Log.e(tag, "Failed to save email mapping", e)
-                        callback(AuthResult.Success(isNewUser))
+                        callback(AppAuthResult.Success(isNewUser))
                     }
             }
             .addOnFailureListener { e ->
                 Log.e(tag, "Failed to save user", e)
-                callback(AuthResult.Error("Failed to save user data: ${e.message}"))
+                callback(AppAuthResult.Error("Failed to save user data: ${e.message}"))
             }
     }
 
@@ -456,7 +455,7 @@ class AuthManager(private val context: Context) {
     private fun updateUserData(
         uid: String,
         provider: String,
-        callback: (AuthResult) -> Unit
+        callback: (AppAuthResult) -> Unit
     ) {
         val updates = mapOf<String, Any>(
             "lastLogin" to System.currentTimeMillis(),
@@ -466,11 +465,11 @@ class AuthManager(private val context: Context) {
         database.reference.child("Users").child(uid)
             .updateChildren(updates)
             .addOnSuccessListener {
-                callback(AuthResult.Success(false))
+                callback(AppAuthResult.Success(false))
             }
             .addOnFailureListener { e ->
                 Log.e(tag, "Failed to update user", e)
-                callback(AuthResult.Success(false))
+                callback(AppAuthResult.Success(false))
             }
     }
 
@@ -478,7 +477,7 @@ class AuthManager(private val context: Context) {
     private fun updateUserPhoneIfNeeded(
         uid: String,
         email: String,
-        callback: (AuthResult) -> Unit
+        callback: (AppAuthResult) -> Unit
     ) {
         database.reference.child("Users").child(uid).get()
             .addOnSuccessListener { snapshot ->
@@ -498,7 +497,7 @@ class AuthManager(private val context: Context) {
                             }
                         }
 
-                    callback(AuthResult.Success(false))
+                    callback(AppAuthResult.Success(false))
                 } else {
                     // User exists in Auth but not in DB - fix inconsistency
                     val provider = auth.currentUser?.providerData?.firstOrNull()?.providerId ?: "unknown"
@@ -506,7 +505,7 @@ class AuthManager(private val context: Context) {
                 }
             }
             .addOnFailureListener {
-                callback(AuthResult.Success(false))
+                callback(AppAuthResult.Success(false))
             }
     }
 
@@ -599,3 +598,4 @@ class AuthManager(private val context: Context) {
         emailUserCache.clear()
     }
 }
+

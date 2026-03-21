@@ -1,4 +1,4 @@
-package com.example.aistudyassistance.Activity
+﻿package com.example.aistudyassistance.ui.flashcard
 
 import android.app.ProgressDialog
 import android.content.Intent
@@ -10,8 +10,6 @@ import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.EditText
-import android.widget.ImageView
-import android.widget.SeekBar
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
@@ -21,10 +19,12 @@ import androidx.cardview.widget.CardView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.example.aistudyassistance.BuildConfig
-import com.example.aistudyassistance.FlashcardGenerator
-import com.example.aistudyassistance.GeminiHelper
+import com.example.aistudyassistance.domain.flashcard.FlashcardGenerator
+import com.example.aistudyassistance.core.utils.GeminiHelper
 import com.example.aistudyassistance.R
+import com.example.aistudyassistance.data.model.Flashcard
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.slider.Slider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
@@ -50,7 +50,7 @@ class FlashcardSetupActivity : AppCompatActivity() {
     private lateinit var etTopic: EditText
     private lateinit var spinnerNotes: Spinner
     private lateinit var tvSelectedNotePreview: TextView
-    private lateinit var seekBarCards: SeekBar
+    private lateinit var sliderCards: Slider
     private lateinit var tvCardCount: TextView
     private lateinit var btnGenerateFlashcards: MaterialButton
     private lateinit var progressDialog: ProgressDialog
@@ -78,7 +78,7 @@ class FlashcardSetupActivity : AppCompatActivity() {
         PDFBoxResourceLoader.init(applicationContext)
 
         progressDialog = ProgressDialog(this).apply {
-            setMessage("Generating Flashcards...")
+            setMessage(getString(R.string.flashcard_setup_generating))
             setCancelable(false)
         }
 
@@ -94,21 +94,22 @@ class FlashcardSetupActivity : AppCompatActivity() {
         etTopic = findViewById(R.id.etFlashcardTopic)
         spinnerNotes = findViewById(R.id.spinnerFlashcardNotes)
         tvSelectedNotePreview = findViewById(R.id.tvFlashcardSelectedNotePreview)
-        seekBarCards = findViewById(R.id.seekBarFlashcardCount)
+        sliderCards = findViewById(R.id.sliderFlashcardCount)
         tvCardCount = findViewById(R.id.tvFlashcardCount)
         btnGenerateFlashcards = findViewById(R.id.btnGenerateFlashcards)
 
-        seekBarCards.max = 19
-        seekBarCards.progress = 9
-        tvCardCount.text = "Flashcards: 10"
-
-        findViewById<ImageView>(R.id.ivBack).setOnClickListener {
-            finish()
-        }
+        cardCount = sliderCards.value.toInt()
+        tvCardCount.text = getString(R.string.flashcard_setup_card_count_format, cardCount)
+        findViewById<com.google.android.material.appbar.MaterialToolbar>(R.id.toolbar)
+            .setNavigationOnClickListener { finish() }
     }
 
     private fun setupEmptyNotesSpinner() {
-        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, listOf("Select Note"))
+        val adapter = ArrayAdapter(
+            this,
+            android.R.layout.simple_spinner_item,
+            listOf(getString(R.string.flashcard_setup_select_note))
+        )
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         spinnerNotes.adapter = adapter
     }
@@ -144,29 +145,25 @@ class FlashcardSetupActivity : AppCompatActivity() {
                 }
 
                 tvSelectedNotePreview.text = if (selectedNoteName.isNotBlank()) {
-                    "Selected Note: $selectedNoteName"
+                    getString(R.string.flashcard_setup_selected_note_format, selectedNoteName)
                 } else {
-                    "Selected Note: -"
+                    getString(R.string.flashcard_setup_selected_note_empty)
                 }
                 validateInputs()
             }
 
             override fun onNothingSelected(parent: AdapterView<*>) {
                 selectedNoteName = ""
-                tvSelectedNotePreview.text = "Selected Note: -"
+                tvSelectedNotePreview.text = getString(R.string.flashcard_setup_selected_note_empty)
                 validateInputs()
             }
         }
 
-        seekBarCards.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                cardCount = progress + 1
-                tvCardCount.text = "Flashcards: $cardCount"
-            }
-
-            override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
-            override fun onStopTrackingTouch(seekBar: SeekBar?) = Unit
-        })
+        sliderCards.addOnChangeListener { _, value, _ ->
+                cardCount = value.toInt()
+                tvCardCount.text = getString(R.string.flashcard_setup_card_count_format, cardCount)
+                validateInputs()
+        }
 
         btnGenerateFlashcards.setOnClickListener {
             generateFlashcards()
@@ -202,7 +199,7 @@ class FlashcardSetupActivity : AppCompatActivity() {
     private fun loadNotes() {
         val user = FirebaseAuth.getInstance().currentUser
         if (user == null) {
-            Toast.makeText(this, "Please login to access notes", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.flashcard_setup_login_required), Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -221,10 +218,10 @@ class FlashcardSetupActivity : AppCompatActivity() {
                     }
                 }
 
-                val spinnerItems = mutableListOf("Select Note")
+                val spinnerItems = mutableListOf(getString(R.string.flashcard_setup_select_note))
                 spinnerItems.addAll(notesList.map { it.name })
                 if (notesList.isEmpty()) {
-                    spinnerItems.add("No notes uploaded")
+                    spinnerItems.add(getString(R.string.flashcard_setup_no_notes_uploaded))
                 }
 
                 val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, spinnerItems)
@@ -233,11 +230,15 @@ class FlashcardSetupActivity : AppCompatActivity() {
 
                 selectedNote = null
                 selectedNoteName = ""
-                tvSelectedNotePreview.text = "Selected Note: -"
+                tvSelectedNotePreview.text = getString(R.string.flashcard_setup_selected_note_empty)
                 validateInputs()
             }
             .addOnFailureListener { e ->
-                Toast.makeText(this, "Failed to load notes: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    this,
+                    getString(R.string.flashcard_setup_load_notes_failed, e.message.orEmpty()),
+                    Toast.LENGTH_SHORT
+                ).show()
             }
     }
 
@@ -254,9 +255,9 @@ class FlashcardSetupActivity : AppCompatActivity() {
                     if (selectedSource == SOURCE_TOPIC) {
                         flashcardGenerator.generateFromTopic(topicText, cardCount)
                     } else {
-                        if (note == null) return@withContext emptyList()
+                        if (note == null) return@withContext emptyList<Flashcard>()
                         val extractedText = downloadAndExtractText(note).take(12000)
-                        if (extractedText.isBlank()) return@withContext emptyList()
+                        if (extractedText.isBlank()) return@withContext emptyList<Flashcard>()
                         flashcardGenerator.generateFromNotes(extractedText, cardCount)
                     }
                 }
@@ -264,7 +265,7 @@ class FlashcardSetupActivity : AppCompatActivity() {
                 if (generated.isEmpty()) {
                     Toast.makeText(
                         this@FlashcardSetupActivity,
-                        "Could not generate flashcards. Please try again.",
+                        getString(R.string.flashcard_setup_generation_failed),
                         Toast.LENGTH_LONG
                     ).show()
                     return@launch
@@ -281,7 +282,7 @@ class FlashcardSetupActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 Toast.makeText(
                     this@FlashcardSetupActivity,
-                    "Could not generate flashcards. Please try again.",
+                    getString(R.string.flashcard_setup_generation_failed),
                     Toast.LENGTH_LONG
                 ).show()
             } finally {
@@ -296,7 +297,7 @@ class FlashcardSetupActivity : AppCompatActivity() {
         cardMyNotes.isEnabled = !generating
         etTopic.isEnabled = !generating
         spinnerNotes.isEnabled = !generating
-        seekBarCards.isEnabled = !generating
+        sliderCards.isEnabled = !generating
         validateInputs()
 
         if (generating) {
@@ -396,4 +397,6 @@ class FlashcardSetupActivity : AppCompatActivity() {
         const val EXTRA_FLASHCARDS_JSON = "flashcardsJson"
     }
 }
+
+
 

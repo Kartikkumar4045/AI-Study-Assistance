@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
@@ -6,41 +6,42 @@
     android:layout_height="match_parent"
     android:background="@color/background"
     android:fitsSystemWindows="true"
-    tools:context=".Activity.ChatActivity">
+    tools:context=".ui.chat.ChatActivity">
 
-    <!-- Top App Bar -->
-    <androidx.cardview.widget.CardView
-        android:id="@+id/cardAppBar"
+    <!-- Standardized Top App Bar -->
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbar"
         android:layout_width="match_parent"
-        android:layout_height="64dp"
-        app:cardBackgroundColor="@color/card_bg"
-        app:cardElevation="2dp"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/card_bg"
+        app:elevation="4dp"
         app:layout_constraintTop_toTopOf="parent">
 
         <RelativeLayout
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:paddingHorizontal="16dp">
+            android:layout_height="match_parent">
 
             <ImageView
                 android:id="@+id/ivBack"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
                 android:layout_centerVertical="true"
-                android:src="@android:drawable/ic_menu_revert"
+                android:padding="8dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_back"
                 app:tint="@color/text_main" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_centerInParent="true"
-                android:text="AI Study Chat"
+                android:text="AI Study Assistant"
                 android:textColor="@color/text_main"
-                android:textSize="18sp"
+                android:textSize="@dimen/text_subtitle"
                 android:textStyle="bold" />
 
         </RelativeLayout>
-    </androidx.cardview.widget.CardView>
+    </com.google.android.material.appbar.MaterialToolbar>
 
     <!-- Study Mode Selector -->
     <HorizontalScrollView
@@ -50,127 +51,50 @@
         android:paddingVertical="@dimen/space_8"
         android:paddingHorizontal="@dimen/space_16"
         android:scrollbars="none"
-        app:layout_constraintTop_toBottomOf="@id/cardAppBar">
+        app:layout_constraintTop_toBottomOf="@id/toolbar">
 
-        <LinearLayout
+        <com.google.android.material.chip.ChipGroup
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="horizontal">
+            app:singleLine="true"
+            app:chipSpacingHorizontal="@dimen/space_8">
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chipExplain"
                 style="@style/Widget.AIStudyAssistance.Chip"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
-                android:text="Explain"
-                app:chipBackgroundColor="@color/primary_light"
-                app:chipStrokeWidth="1dp"
-                android:textColor="@color/primary" />
+                android:text="Explain" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chipShortNotesMode"
                 style="@style/Widget.AIStudyAssistance.Chip"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
-                android:text="Short Notes"
-                app:chipBackgroundColor="@color/primary_light"
-                app:chipStrokeWidth="1dp"
-                android:textColor="@color/primary" />
+                android:text="Short Notes" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chipExamAnswer"
                 style="@style/Widget.AIStudyAssistance.Chip"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
-                android:text="Exam Answer"
-                app:chipBackgroundColor="@color/primary_light"
-                app:chipStrokeWidth="1dp"
-                android:textColor="@color/primary" />
+                android:text="Exam Answer" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chipQuiz"
                 style="@style/Widget.AIStudyAssistance.Chip"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
-                android:text="Quiz"
-                app:chipBackgroundColor="@color/primary_light"
-                app:chipStrokeWidth="1dp"
-                android:textColor="@color/primary" />
+                android:text="Quiz" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chipFlashcards"
                 style="@style/Widget.AIStudyAssistance.Chip"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Flashcards"
-                app:chipBackgroundColor="@color/primary_light"
-                app:chipStrokeWidth="1dp"
-                android:textColor="@color/primary" />
+                android:text="Flashcards" />
 
-        </LinearLayout>
-    </HorizontalScrollView>
-
-    <!-- Quick AI Task Buttons -->
-    <HorizontalScrollView
-        android:id="@+id/hsvQuickActions"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:paddingVertical="@dimen/space_8"
-        android:paddingHorizontal="@dimen/space_16"
-        android:scrollbars="none"
-        app:layout_constraintTop_toBottomOf="@id/hsvStudyModes">
-
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
-
-            <!-- Exam Questions Button -->
-            <com.google.android.material.chip.Chip
-                android:id="@+id/chipExamQuestions"
-                style="@style/Widget.AIStudyAssistance.Chip"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
-                android:text="Exam Questions"
-                app:chipBackgroundColor="@color/primary_light"
-                app:chipIcon="@android:drawable/ic_menu_help"
-                app:chipIconTint="@color/primary"
-                app:chipStrokeWidth="0dp"
-                android:textColor="@color/primary" />
-
-            <!-- Summarize Button -->
-            <com.google.android.material.chip.Chip
-                android:id="@+id/chipSummarize"
-                style="@style/Widget.AIStudyAssistance.Chip"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
-                android:text="Summarize"
-                app:chipBackgroundColor="@color/primary_light"
-                app:chipIcon="@android:drawable/ic_menu_sort_by_size"
-                app:chipIconTint="@color/primary"
-                app:chipStrokeWidth="0dp"
-                android:textColor="@color/primary" />
-
-            <!-- Short Notes Button -->
-            <com.google.android.material.chip.Chip
-                android:id="@+id/chipShortNotes"
-                style="@style/Widget.AIStudyAssistance.Chip"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Short Notes"
-                app:chipBackgroundColor="@color/primary_light"
-                app:chipIcon="@android:drawable/ic_menu_edit"
-                app:chipIconTint="@color/primary"
-                app:chipStrokeWidth="0dp"
-                android:textColor="@color/primary" />
-
-        </LinearLayout>
+        </com.google.android.material.chip.ChipGroup>
     </HorizontalScrollView>
 
     <!-- Chat Messages RecyclerView -->
@@ -178,93 +102,111 @@
         android:id="@+id/rvChat"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:paddingHorizontal="@dimen/space_16"
+        android:paddingHorizontal="@dimen/space_8"
         android:paddingBottom="@dimen/space_16"
         android:clipToPadding="false"
         app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
         app:layout_constraintBottom_toTopOf="@id/layoutAttachmentBanner"
-        app:layout_constraintTop_toBottomOf="@id/hsvQuickActions"
+        app:layout_constraintTop_toBottomOf="@id/hsvStudyModes"
         tools:listitem="@layout/item_chat_message" />
 
     <!-- Attachment Banner -->
-    <LinearLayout
+    <androidx.cardview.widget.CardView
         android:id="@+id/layoutAttachmentBanner"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/primary_light"
-        android:orientation="horizontal"
-        android:padding="@dimen/space_8"
+        android:layout_marginHorizontal="@dimen/space_16"
+        android:layout_marginBottom="@dimen/space_8"
+        app:cardBackgroundColor="@color/primary_light"
+        app:cardCornerRadius="@dimen/radius_m"
+        app:cardElevation="0dp"
         android:visibility="gone"
         app:layout_constraintBottom_toTopOf="@id/layoutInput">
 
-        <TextView
-            android:id="@+id/tvAttachmentInfo"
-            android:layout_width="0dp"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Using document: example.pdf"
-            android:textColor="@color/primary"
-            android:textSize="14sp" />
+            android:orientation="horizontal"
+            android:padding="@dimen/space_12">
 
-        <ImageView
-            android:id="@+id/ivRemoveAttachment"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:layout_gravity="center_vertical"
-            android:src="@android:drawable/ic_menu_close_clear_cancel"
-            app:tint="@color/primary" />
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@android:drawable/ic_menu_agenda"
+                app:tint="@color/primary" />
 
-    </LinearLayout>
+            <TextView
+                android:id="@+id/tvAttachmentInfo"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="@dimen/space_8"
+                android:text="Using document: example.pdf"
+                android:textColor="@color/primary"
+                android:textSize="@dimen/text_caption"
+                android:textStyle="bold" />
 
-    <!-- Chat Input Area -->
-    <LinearLayout
+            <ImageView
+                android:id="@+id/ivRemoveAttachment"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="center_vertical"
+                android:src="@android:drawable/ic_menu_close_clear_cancel"
+                app:tint="@color/primary" />
+
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
+    <!-- Modern Chat Input Area -->
+    <androidx.cardview.widget.CardView
         android:id="@+id/layoutInput"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/card_bg"
-        android:elevation="2dp"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:padding="@dimen/space_16"
+        android:layout_margin="@dimen/space_12"
+        app:cardCornerRadius="@dimen/radius_l"
+        app:cardElevation="8dp"
+        app:cardBackgroundColor="@color/card_bg"
         app:layout_constraintBottom_toBottomOf="parent">
 
-        <EditText
-            android:id="@+id/etMessage"
-            android:layout_width="0dp"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:background="@drawable/bg_input_field"
-            android:hint="Type your message..."
-            android:maxLines="4"
-            android:padding="@dimen/space_16"
-            android:textSize="14sp" />
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="@dimen/space_8">
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnAttach"
-            style="@style/Widget.AIStudyAssistance.Button.Primary"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginStart="@dimen/space_8"
-            android:padding="0dp"
-            app:cornerRadius="24dp"
-            app:icon="@android:drawable/ic_menu_add"
-            app:iconGravity="textStart"
-            app:iconPadding="0dp"
-            app:iconTint="@color/white" />
+            <ImageButton
+                android:id="@+id/btnAttach"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@android:drawable/ic_menu_add"
+                app:tint="@color/primary" />
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnSend"
-            style="@style/Widget.AIStudyAssistance.Button.Primary"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginStart="@dimen/space_8"
-            android:padding="0dp"
-            app:cornerRadius="24dp"
-            app:icon="@android:drawable/ic_menu_send"
-            app:iconGravity="textStart"
-            app:iconPadding="0dp"
-            app:iconTint="@color/white" />
+            <EditText
+                android:id="@+id/etMessage"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:background="@null"
+                android:hint="Ask your study assistant..."
+                android:maxLines="4"
+                android:padding="@dimen/space_12"
+                android:textColor="@color/text_main"
+                android:textColorHint="@color/text_hint"
+                android:textSize="@dimen/text_body" />
 
-    </LinearLayout>
+            <com.google.android.material.floatingactionbutton.FloatingActionButton
+                android:id="@+id/btnSend"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:fabSize="mini"
+                app:elevation="0dp"
+                app:tint="@color/white"
+                android:backgroundTint="@color/primary"
+                android:src="@android:drawable/ic_menu_send" />
+
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <View
+        android:layout_width="40dp"
+        android:layout_height="4dp"
+        android:layout_gravity="center"
+        android:layout_marginBottom="16dp"
+        android:background="@color/divider" />
+
+    <TextView
+        android:id="@+id/tvModeTitle"
+        style="@style/TextAppearance.AIStudyAssistance.Section"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Quick action"
+        android:textAlignment="center" />
+
+    <TextView
+        android:id="@+id/tvModeMessage"
+        style="@style/TextAppearance.AIStudyAssistance.Body"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:text="Choose what to generate"
+        android:textAlignment="center"
+        android:textColor="@color/text_secondary" />
+
+    <EditText
+        android:id="@+id/etModeTopic"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/bg_input_field"
+        android:hint="Type topic name"
+        android:inputType="text"
+        android:paddingHorizontal="14dp"
+        android:paddingVertical="12dp"
+        android:textColor="@color/text_main"
+        android:textColorHint="@color/text_hint"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:orientation="horizontal">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnModePrimary"
+            style="@style/Widget.AIStudyAssistance.Button.Primary"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
+            android:layout_weight="1"
+            android:text="Continue" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnModeSecondary"
+            style="@style/Widget.AIStudyAssistance.Button.Secondary"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:text="Cancel" />
+    </LinearLayout>
+
+</LinearLayout>
+
+

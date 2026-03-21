@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:gravity="center"
     android:orientation="vertical"
-    android:padding="@dimen/space_8">
+    android:padding="@dimen/space_12">
 
     <androidx.cardview.widget.CardView
         android:id="@+id/cardFlashcard"
@@ -13,55 +14,63 @@
         android:layout_height="0dp"
         android:layout_weight="1"
         app:cardBackgroundColor="@color/card_bg"
-        app:cardCornerRadius="@dimen/radius_m"
-        app:cardElevation="3dp">
+        app:cardCornerRadius="@dimen/radius_l"
+        app:cardElevation="4dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:gravity="center"
             android:orientation="vertical"
-            android:padding="@dimen/space_24">
+            android:padding="@dimen/space_32">
 
             <TextView
                 android:id="@+id/tvQuestionTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="8dp"
-                android:text="Question"
-                android:textColor="@color/text_secondary"
-                android:textSize="13sp" />
+                android:layout_marginBottom="@dimen/space_12"
+                android:text="@string/flashcard_question_label"
+                android:textAllCaps="true"
+                android:letterSpacing="0.1"
+                android:textColor="@color/primary"
+                android:textSize="@dimen/text_overline"
+                android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/tvQuestion"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="center"
-                android:text="Flashcard question"
                 android:textColor="@color/text_main"
-                android:lineSpacingExtra="4dp"
-                android:textSize="20sp"
-                android:textStyle="bold" />
+                android:lineSpacingExtra="8dp"
+                android:textSize="@dimen/text_title"
+                android:textStyle="bold"
+                tools:text="What is the time complexity of binary search?" />
+
+            <View
+                android:layout_width="40dp"
+                android:layout_height="4dp"
+                android:layout_marginTop="@dimen/space_24"
+                android:background="@color/primary_light" />
 
             <TextView
                 android:id="@+id/tvTapHint"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_16"
-                android:text="Tap to flip card 👆"
-                android:textColor="@color/primary"
-                android:textSize="15sp"
-                android:textStyle="bold" />
+                android:layout_marginTop="@dimen/space_24"
+                android:text="@string/flashcard_tap_to_reveal"
+                android:textColor="@color/text_hint"
+                android:textSize="@dimen/text_caption" />
 
             <TextView
                 android:id="@+id/tvThinkPrompt"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_8"
+                android:layout_marginTop="@dimen/space_16"
                 android:gravity="center"
-                android:text="🧠 Try to answer before revealing"
+                android:text="@string/flashcard_think_prompt"
                 android:textColor="@color/text_secondary"
-                android:textSize="14sp"
+                android:textSize="@dimen/text_body"
                 android:visibility="gone" />
 
             <com.google.android.material.button.MaterialButton
@@ -69,29 +78,30 @@
                 style="@style/Widget.AIStudyAssistance.Button.Secondary"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_16"
-                android:text="Show Answer"
+                android:layout_marginTop="@dimen/space_12"
+                android:text="@string/flashcard_show_answer"
                 android:visibility="gone" />
 
             <TextView
                 android:id="@+id/tvAnswer"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_16"
+                android:layout_marginTop="@dimen/space_24"
                 android:gravity="center"
-                android:text="Flashcard answer"
                 android:textColor="@color/text_main"
-                android:lineSpacingExtra="3dp"
-                android:textSize="16sp"
-                android:visibility="gone" />
+                android:lineSpacingExtra="4dp"
+                android:textSize="@dimen/text_section"
+                android:visibility="gone"
+                tools:text="O(log n) because the search space is halved in each step." />
         </LinearLayout>
     </androidx.cardview.widget.CardView>
 
+    <!-- Rating actions shown after flip -->
     <LinearLayout
         android:id="@+id/layoutDifficulty"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/space_16"
+        android:layout_marginTop="@dimen/space_24"
         android:gravity="center"
         android:orientation="horizontal"
         android:visibility="gone">
@@ -101,9 +111,9 @@
             style="@style/Widget.AIStudyAssistance.Button.Secondary"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="@dimen/space_8"
+            android:layout_marginEnd="@dimen/space_4"
             android:layout_weight="1"
-            android:text="I knew"
+            android:text="@string/flashcard_difficulty_easy"
             android:textColor="@color/ds_success"
             app:strokeColor="@color/ds_success" />
 
@@ -112,9 +122,9 @@
             style="@style/Widget.AIStudyAssistance.Button.Secondary"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginHorizontal="@dimen/space_8"
-            android:layout_weight="1"
-            android:text="Almost"
+            android:layout_marginHorizontal="@dimen/space_4"
+            android:layout_weight="1.2"
+            android:text="@string/flashcard_difficulty_medium"
             android:textColor="@color/ds_warning"
             app:strokeColor="@color/ds_warning" />
 
@@ -123,14 +133,11 @@
             style="@style/Widget.AIStudyAssistance.Button.Secondary"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="@dimen/space_8"
+            android:layout_marginStart="@dimen/space_4"
             android:layout_weight="1"
-            android:text="Didn't know"
+            android:text="@string/flashcard_difficulty_hard"
             android:textColor="@color/ds_error"
             app:strokeColor="@color/ds_error" />
     </LinearLayout>
 
 </LinearLayout>
-
-
-

@@ -1,4 +1,4 @@
-package com.example.aistudyassistance
+﻿package com.example.aistudyassistance.ui.flashcard
 
 import android.animation.Animator
 import android.animation.AnimatorSet
@@ -14,6 +14,8 @@ import android.widget.TextView
 import androidx.cardview.widget.CardView
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
+import com.example.aistudyassistance.R
+import com.example.aistudyassistance.data.model.Flashcard
 import com.google.android.material.button.MaterialButton
 
 class FlashcardPagerAdapter(
@@ -146,15 +148,15 @@ class FlashcardPagerAdapter(
     private fun resolveCardBackgroundColor(holder: FlashcardViewHolder, isFlipped: Boolean, studyMode: StudyMode): Int {
         val colorRes = when (studyMode) {
             StudyMode.QUICK_REVIEW -> if (isFlipped) {
-                R.color.flashcard_quick_answer_bg
+                R.color.primary_light
             } else {
-                R.color.flashcard_quick_question_bg
+                R.color.card_bg
             }
 
             StudyMode.ACTIVE_RECALL -> if (isFlipped) {
-                R.color.flashcard_active_answer_bg
+                R.color.input_bg
             } else {
-                R.color.flashcard_active_question_bg
+                R.color.card_bg
             }
         }
         return ContextCompat.getColor(holder.itemView.context, colorRes)
@@ -452,5 +454,6 @@ class FlashcardPagerAdapter(
         private const val PAYLOAD_SHOW_ANSWER = "payload_show_answer"
     }
 }
+
 
 

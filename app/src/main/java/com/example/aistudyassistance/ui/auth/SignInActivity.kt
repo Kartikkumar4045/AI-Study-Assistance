@@ -1,22 +1,19 @@
-package com.example.aistudyassistance.Activity
+﻿package com.example.aistudyassistance.ui.auth
 
 import android.content.Intent
 import android.os.Bundle
-import android.text.method.HideReturnsTransformationMethod
-import android.text.method.PasswordTransformationMethod
 import android.util.Patterns
 import android.widget.EditText
-import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import com.example.aistudyassistance.Authentication.AuthManager
+import com.example.aistudyassistance.data.repository.AuthManager
 import com.example.aistudyassistance.R
 import com.google.android.material.button.MaterialButton
 import com.google.firebase.auth.FirebaseAuth
-import com.example.aistudyassistance.Authentication.AuthResult
-import com.example.aistudyassistance.MainActivity
+import com.example.aistudyassistance.data.model.AuthResult
+import com.example.aistudyassistance.ui.home.MainActivity
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.firebase.database.FirebaseDatabase
 
@@ -25,16 +22,12 @@ class SignInActivity : AppCompatActivity() {
     private lateinit var auth: FirebaseAuth
     private lateinit var authManager: AuthManager
     private lateinit var btnGoogle: MaterialButton
-    private lateinit var btnGoogleCircle: MaterialButton
     private lateinit var btnGithub: MaterialButton
-    private lateinit var btnGithubCircle: MaterialButton
     private lateinit var etEmail: EditText
     private lateinit var etPassword: EditText
     private lateinit var btnSignIn: MaterialButton
-    private lateinit var ivTogglePassword: ImageView
     private lateinit var tvForgotPassword: TextView
     private lateinit var tvSignUp: TextView
-    private var isPasswordVisible = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -70,13 +63,10 @@ class SignInActivity : AppCompatActivity() {
         etEmail = findViewById(R.id.etEmail)
         etPassword = findViewById(R.id.etPassword)
         btnSignIn = findViewById(R.id.btnSignIn)
-        ivTogglePassword = findViewById(R.id.ivTogglePassword)
         tvForgotPassword = findViewById(R.id.tvForgotPassword)
         tvSignUp = findViewById(R.id.tvSignUp)
         btnGoogle = findViewById(R.id.btnGoogle)
-        btnGoogleCircle = findViewById(R.id.btnGoogleCircle)
         btnGithub = findViewById(R.id.btnGithub)
-        btnGithubCircle = findViewById(R.id.btnGithubCircle)
     }
 
     private fun setupClickListeners() {
@@ -101,22 +91,7 @@ class SignInActivity : AppCompatActivity() {
         }
 
         btnGoogle.setOnClickListener { handleGoogleLogin() }
-        btnGoogleCircle.setOnClickListener { handleGoogleLogin() }
-
         btnGithub.setOnClickListener { handleGithubLogin() }
-        btnGithubCircle.setOnClickListener { handleGithubLogin() }
-
-        ivTogglePassword.setOnClickListener {
-            isPasswordVisible = !isPasswordVisible
-            if (isPasswordVisible) {
-                etPassword.transformationMethod = HideReturnsTransformationMethod.getInstance()
-                ivTogglePassword.setImageResource(R.drawable.visibilityon45)
-            } else {
-                etPassword.transformationMethod = PasswordTransformationMethod.getInstance()
-                ivTogglePassword.setImageResource(R.drawable.visisbilityoff45)
-            }
-            etPassword.setSelection(etPassword.text.length)
-        }
 
         tvForgotPassword.setOnClickListener {
             showForgotPasswordBottomSheet()
@@ -268,9 +243,7 @@ class SignInActivity : AppCompatActivity() {
     private fun disableButtons() {
         btnSignIn.isEnabled = false
         btnGoogle.isEnabled = false
-        btnGoogleCircle.isEnabled = false
         btnGithub.isEnabled = false
-        btnGithubCircle.isEnabled = false
         btnSignIn.text = "Please wait..."
     }
 
@@ -278,8 +251,7 @@ class SignInActivity : AppCompatActivity() {
         btnSignIn.isEnabled = true
         btnSignIn.text = "Sign In"
         btnGoogle.isEnabled = true
-        btnGoogleCircle.isEnabled = true
         btnGithub.isEnabled = true
-        btnGithubCircle.isEnabled = true
     }
 }
+

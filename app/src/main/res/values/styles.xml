@@ -18,7 +18,7 @@
     </style>
 
     <style name="TextAppearance.AIStudyAssistance.Small" parent="TextAppearance.Material3.BodySmall">
-        <item name="android:textSize">@dimen/text_small</item>
+        <item name="android:textSize">@dimen/text_caption</item>
         <item name="android:textColor">@color/text_secondary</item>
     </style>
 
@@ -62,6 +62,3 @@
         <item name="android:textColor">@color/primary</item>
     </style>
 </resources>
-
-
-

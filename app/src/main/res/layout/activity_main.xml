@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
@@ -7,11 +7,12 @@
     android:layout_height="match_parent"
     android:fitsSystemWindows="true"
     android:background="@color/background"
-    tools:context=".MainActivity">
+    tools:context=".ui.home.MainActivity">
 
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
+        android:fillViewport="true"
         app:layout_constraintBottom_toTopOf="@id/bottomNavigation"
         app:layout_constraintTop_toTopOf="parent">
 
@@ -19,12 +20,13 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="@dimen/space_16">
+            android:padding="@dimen/space_20">
 
             <!-- HEADER SECTION -->
             <RelativeLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content">
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/space_24">
 
                 <LinearLayout
                     android:layout_width="wrap_content"
@@ -37,25 +39,27 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Hello, Student 👋"
-                        android:textSize="22sp" />
+                        android:textSize="@dimen/text_title"
+                        android:textColor="@color/text_main"
+                        android:textStyle="bold" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/space_8"
+                        android:layout_marginTop="@dimen/space_4"
                         android:text="What would you like to study today?"
                         android:textColor="@color/text_secondary"
-                        android:textSize="14sp" />
+                        android:textSize="@dimen/text_body" />
                 </LinearLayout>
 
                 <androidx.cardview.widget.CardView
                     android:id="@+id/cvProfile"
-                            android:layout_width="48dp"
-                            android:layout_height="48dp"
+                    android:layout_width="@dimen/profile_image_size"
+                    android:layout_height="@dimen/profile_image_size"
                     android:layout_alignParentEnd="true"
                     android:layout_centerVertical="true"
                     app:cardCornerRadius="24dp"
-                    app:cardElevation="2dp">
+                    app:cardElevation="4dp">
 
                     <ImageView
                         android:layout_width="match_parent"
@@ -66,26 +70,26 @@
                 </androidx.cardview.widget.CardView>
             </RelativeLayout>
 
-            <!-- ASK AI SECTION -->
+            <!-- ASK AI SEARCH BAR -->
             <androidx.cardview.widget.CardView
                 android:id="@+id/cvAskAi"
                 android:layout_width="match_parent"
                 android:layout_height="56dp"
-                android:layout_marginTop="@dimen/space_24"
-                app:cardCornerRadius="24dp"
-                app:cardElevation="2dp">
+                android:layout_marginBottom="@dimen/space_24"
+                app:cardCornerRadius="@dimen/radius_xl"
+                app:cardElevation="2dp"
+                app:cardBackgroundColor="@color/card_bg">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
-                    android:paddingStart="@dimen/space_16"
-                    android:paddingEnd="16dp">
+                    android:paddingHorizontal="@dimen/space_20">
 
                     <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
+                        android:layout_width="@dimen/icon_size_m"
+                        android:layout_height="@dimen/icon_size_m"
                         android:src="@android:drawable/ic_menu_help"
                         app:tint="@color/primary" />
 
@@ -94,13 +98,13 @@
                         android:layout_height="wrap_content"
                         android:layout_marginStart="@dimen/space_16"
                         android:layout_weight="1"
-                        android:text="Ask AI anything about your studies..."
-                        android:textColor="@color/text_secondary"
-                        android:textSize="14sp" />
+                        android:text="Ask AI anything..."
+                        android:textColor="@color/text_hint"
+                        android:textSize="@dimen/text_body" />
 
                     <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
+                        android:layout_width="@dimen/icon_size_m"
+                        android:layout_height="@dimen/icon_size_m"
                         android:src="@android:drawable/ic_menu_send"
                         app:tint="@color/primary" />
                 </LinearLayout>
@@ -111,7 +115,7 @@
                 android:id="@+id/layoutContinueLearningSection"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_24"
+                android:layout_marginBottom="@dimen/space_24"
                 android:orientation="vertical"
                 android:visibility="gone">
 
@@ -120,12 +124,14 @@
                     style="@style/TextAppearance.AIStudyAssistance.Section"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Continue Learning" />
+                    android:text="Continue Learning"
+                    android:textColor="@color/text_main"
+                    android:textStyle="bold" />
 
                 <androidx.cardview.widget.CardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/space_16"
+                    android:layout_marginTop="@dimen/space_12"
                     app:cardCornerRadius="@dimen/radius_m"
                     app:cardElevation="2dp"
                     app:cardBackgroundColor="@color/primary_light">
@@ -133,8 +139,7 @@
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="@dimen/space_8">
+                        android:orientation="vertical">
 
                         <LinearLayout
                             android:id="@+id/itemContinueFlashcard"
@@ -143,7 +148,6 @@
                             android:background="?attr/selectableItemBackground"
                             android:clickable="true"
                             android:focusable="true"
-                            android:foreground="?attr/selectableItemBackground"
                             android:gravity="center_vertical"
                             android:padding="@dimen/space_16"
                             android:visibility="gone">
@@ -166,7 +170,7 @@
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:textColor="@color/text_main"
-                                    android:textSize="16sp"
+                                    android:textSize="@dimen/text_section"
                                     android:textStyle="bold"
                                     tools:text="Flashcards: Binary Trees" />
 
@@ -175,7 +179,7 @@
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:textColor="@color/text_secondary"
-                                    android:textSize="13sp"
+                                    android:textSize="@dimen/text_caption"
                                     tools:text="Resume your last session" />
                             </LinearLayout>
                         </LinearLayout>
@@ -195,7 +199,6 @@
                             android:background="?attr/selectableItemBackground"
                             android:clickable="true"
                             android:focusable="true"
-                            android:foreground="?attr/selectableItemBackground"
                             android:gravity="center_vertical"
                             android:padding="@dimen/space_16"
                             android:visibility="gone">
@@ -218,7 +221,7 @@
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:textColor="@color/text_main"
-                                    android:textSize="16sp"
+                                    android:textSize="@dimen/text_section"
                                     android:textStyle="bold"
                                     tools:text="Quiz: Data Structures" />
 
@@ -227,7 +230,7 @@
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:textColor="@color/text_secondary"
-                                    android:textSize="13sp"
+                                    android:textSize="@dimen/text_caption"
                                     tools:text="Resume your last session" />
                             </LinearLayout>
                         </LinearLayout>
@@ -240,16 +243,16 @@
                 style="@style/TextAppearance.AIStudyAssistance.Section"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_24"
                 android:text="Quick Actions"
-                android:textColor="@color/text_main" />
+                android:textColor="@color/text_main"
+                android:textStyle="bold" />
 
             <GridLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_16"
+                android:layout_marginTop="@dimen/space_12"
                 android:columnCount="2"
-                android:useDefaultMargins="true">
+                android:useDefaultMargins="false">
 
                 <!-- AI Study Chat -->
                 <androidx.cardview.widget.CardView
@@ -258,37 +261,38 @@
                     android:layout_height="wrap_content"
                     android:layout_columnWeight="1"
                     android:layout_margin="@dimen/space_8"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="2dp">
+                    app:cardCornerRadius="@dimen/radius_m"
+                    app:cardElevation="3dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:padding="16dp">
+                        android:padding="@dimen/space_20"
+                        android:background="?attr/selectableItemBackground">
 
                         <ImageView
-                            android:layout_width="32dp"
-                            android:layout_height="32dp"
+                            android:layout_width="@dimen/icon_size_l"
+                            android:layout_height="@dimen/icon_size_l"
                             android:src="@android:drawable/ic_menu_send"
                             app:tint="@color/accent_purple" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="@dimen/space_16"
+                            android:layout_marginTop="@dimen/space_12"
                             android:text="AI Chat"
                             android:textColor="@color/text_main"
-                            android:textSize="15sp"
+                            android:textSize="@dimen/text_section"
                             android:textStyle="bold" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="@dimen/space_8"
-                            android:text="Ask AI to explain topics"
+                            android:layout_marginTop="@dimen/space_4"
+                            android:text="Explain topics"
                             android:textColor="@color/text_secondary"
-                            android:textSize="12sp" />
+                            android:textSize="@dimen/text_caption" />
                     </LinearLayout>
                 </androidx.cardview.widget.CardView>
 
@@ -299,37 +303,38 @@
                     android:layout_height="wrap_content"
                     android:layout_columnWeight="1"
                     android:layout_margin="@dimen/space_8"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="2dp">
+                    app:cardCornerRadius="@dimen/radius_m"
+                    app:cardElevation="3dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:padding="16dp">
+                        android:padding="@dimen/space_20"
+                        android:background="?attr/selectableItemBackground">
 
                         <ImageView
-                            android:layout_width="32dp"
-                            android:layout_height="32dp"
+                            android:layout_width="@dimen/icon_size_l"
+                            android:layout_height="@dimen/icon_size_l"
                             android:src="@android:drawable/ic_menu_add"
                             app:tint="@color/primary" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="@dimen/space_16"
-                            android:text="Upload Notes"
+                            android:layout_marginTop="@dimen/space_12"
+                            android:text="Upload"
                             android:textColor="@color/text_main"
-                            android:textSize="15sp"
+                            android:textSize="@dimen/text_section"
                             android:textStyle="bold" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="@dimen/space_8"
-                            android:text="Analyze PDFs or images"
+                            android:layout_marginTop="@dimen/space_4"
+                            android:text="Analyze PDFs"
                             android:textColor="@color/text_secondary"
-                            android:textSize="12sp" />
+                            android:textSize="@dimen/text_caption" />
                     </LinearLayout>
                 </androidx.cardview.widget.CardView>
 
@@ -340,37 +345,38 @@
                     android:layout_height="wrap_content"
                     android:layout_columnWeight="1"
                     android:layout_margin="@dimen/space_8"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="2dp">
+                    app:cardCornerRadius="@dimen/radius_m"
+                    app:cardElevation="3dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:padding="16dp">
+                        android:padding="@dimen/space_20"
+                        android:background="?attr/selectableItemBackground">
 
                         <ImageView
-                            android:layout_width="32dp"
-                            android:layout_height="32dp"
+                            android:layout_width="@dimen/icon_size_l"
+                            android:layout_height="@dimen/icon_size_l"
                             android:src="@android:drawable/ic_menu_edit"
                             app:tint="@color/accent_orange" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="@dimen/space_16"
-                            android:text="Generate Quiz"
+                            android:layout_marginTop="@dimen/space_12"
+                            android:text="Quiz"
                             android:textColor="@color/text_main"
-                            android:textSize="15sp"
+                            android:textSize="@dimen/text_section"
                             android:textStyle="bold" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="@dimen/space_8"
-                            android:text="Practice questions"
+                            android:layout_marginTop="@dimen/space_4"
+                            android:text="Test yourself"
                             android:textColor="@color/text_secondary"
-                            android:textSize="12sp" />
+                            android:textSize="@dimen/text_caption" />
                     </LinearLayout>
                 </androidx.cardview.widget.CardView>
 
@@ -381,37 +387,38 @@
                     android:layout_height="wrap_content"
                     android:layout_columnWeight="1"
                     android:layout_margin="@dimen/space_8"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="2dp">
+                    app:cardCornerRadius="@dimen/radius_m"
+                    app:cardElevation="3dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:padding="16dp">
+                        android:padding="@dimen/space_20"
+                        android:background="?attr/selectableItemBackground">
 
                         <ImageView
-                            android:layout_width="32dp"
-                            android:layout_height="32dp"
+                            android:layout_width="@dimen/icon_size_l"
+                            android:layout_height="@dimen/icon_size_l"
                             android:src="@android:drawable/ic_menu_gallery"
                             app:tint="@color/accent_green" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="@dimen/space_16"
+                            android:layout_marginTop="@dimen/space_12"
                             android:text="Flashcards"
                             android:textColor="@color/text_main"
-                            android:textSize="15sp"
+                            android:textSize="@dimen/text_section"
                             android:textStyle="bold" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="@dimen/space_8"
-                            android:text="Revise your notes"
+                            android:layout_marginTop="@dimen/space_4"
+                            android:text="Revise notes"
                             android:textColor="@color/text_secondary"
-                            android:textSize="12sp" />
+                            android:textSize="@dimen/text_caption" />
                     </LinearLayout>
                 </androidx.cardview.widget.CardView>
             </GridLayout>
@@ -420,17 +427,17 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:text="Recent Study Activity"
+                android:layout_marginTop="@dimen/space_24"
+                android:text="Recent Activity"
                 android:textColor="@color/text_main"
-                android:textSize="18sp"
+                android:textSize="@dimen/text_subtitle"
                 android:textStyle="bold" />
 
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                app:cardCornerRadius="16dp"
+                android:layout_marginTop="@dimen/space_12"
+                app:cardCornerRadius="@dimen/radius_m"
                 app:cardElevation="1dp">
 
                 <LinearLayout
@@ -438,14 +445,15 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="8dp">
+                    android:padding="@dimen/space_8">
 
                     <!-- Sample Item 1 -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:gravity="center_vertical"
-                        android:padding="10dp">
+                        android:padding="@dimen/space_12"
+                        android:background="?attr/selectableItemBackground">
 
                         <ImageView
                             android:layout_width="24dp"
@@ -456,7 +464,7 @@
                         <LinearLayout
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="12dp"
+                            android:layout_marginStart="@dimen/space_12"
                             android:layout_weight="1"
                             android:orientation="vertical">
 
@@ -465,7 +473,7 @@
                                 android:layout_height="wrap_content"
                                 android:text="AI Chat - Operating System"
                                 android:textColor="@color/text_main"
-                                android:textSize="14sp"
+                                android:textSize="@dimen/text_body"
                                 android:textStyle="bold" />
 
                             <TextView
@@ -473,14 +481,14 @@
                                 android:layout_height="wrap_content"
                                 android:text="2 hours ago"
                                 android:textColor="@color/text_secondary"
-                                android:textSize="11sp" />
+                                android:textSize="@dimen/text_overline" />
                         </LinearLayout>
                     </LinearLayout>
 
                     <View
                         android:layout_width="match_parent"
                         android:layout_height="1dp"
-                        android:layout_marginHorizontal="12dp"
+                        android:layout_marginHorizontal="@dimen/space_12"
                         android:background="@color/divider" />
 
                     <!-- Sample Item 2 -->
@@ -488,7 +496,8 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:gravity="center_vertical"
-                        android:padding="10dp">
+                        android:padding="@dimen/space_12"
+                        android:background="?attr/selectableItemBackground">
 
                         <ImageView
                             android:layout_width="24dp"
@@ -499,7 +508,7 @@
                         <LinearLayout
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="12dp"
+                            android:layout_marginStart="@dimen/space_12"
                             android:layout_weight="1"
                             android:orientation="vertical">
 
@@ -508,7 +517,7 @@
                                 android:layout_height="wrap_content"
                                 android:text="Quiz - Data Structures"
                                 android:textColor="@color/text_main"
-                                android:textSize="14sp"
+                                android:textSize="@dimen/text_body"
                                 android:textStyle="bold" />
 
                             <TextView
@@ -516,7 +525,7 @@
                                 android:layout_height="wrap_content"
                                 android:text="Yesterday"
                                 android:textColor="@color/text_secondary"
-                                android:textSize="11sp" />
+                                android:textSize="@dimen/text_overline" />
                         </LinearLayout>
                     </LinearLayout>
 
@@ -527,26 +536,26 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
+                android:layout_marginTop="@dimen/space_24"
                 android:text="Your Progress"
                 android:textColor="@color/text_main"
-                android:textSize="18sp"
+                android:textSize="@dimen/text_subtitle"
                 android:textStyle="bold" />
 
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:layout_marginBottom="24dp"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="2dp"
+                android:layout_marginTop="@dimen/space_12"
+                android:layout_marginBottom="@dimen/space_24"
+                app:cardCornerRadius="@dimen/radius_m"
+                app:cardElevation="4dp"
                 app:cardBackgroundColor="@color/primary">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
-                    android:padding="20dp"
+                    android:padding="@dimen/space_20"
                     android:weightSum="3">
 
                     <LinearLayout
@@ -561,7 +570,7 @@
                             android:layout_height="wrap_content"
                             android:text="🔥 5"
                             android:textColor="@color/white"
-                            android:textSize="18sp"
+                            android:textSize="@dimen/text_subtitle"
                             android:textStyle="bold" />
 
                         <TextView
@@ -569,7 +578,7 @@
                             android:layout_height="wrap_content"
                             android:text="Day Streak"
                             android:textColor="#E0E0E0"
-                            android:textSize="11sp" />
+                            android:textSize="@dimen/text_overline" />
                     </LinearLayout>
 
                     <LinearLayout
@@ -582,9 +591,9 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="📝 12"
+                            android:text="🧠 12"
                             android:textColor="@color/white"
-                            android:textSize="18sp"
+                            android:textSize="@dimen/text_subtitle"
                             android:textStyle="bold" />
 
                         <TextView
@@ -592,7 +601,7 @@
                             android:layout_height="wrap_content"
                             android:text="Quizzes"
                             android:textColor="#E0E0E0"
-                            android:textSize="11sp" />
+                            android:textSize="@dimen/text_overline" />
                     </LinearLayout>
 
                     <LinearLayout
@@ -607,7 +616,7 @@
                             android:layout_height="wrap_content"
                             android:text="📚 8"
                             android:textColor="@color/white"
-                            android:textSize="18sp"
+                            android:textSize="@dimen/text_subtitle"
                             android:textStyle="bold" />
 
                         <TextView
@@ -615,7 +624,7 @@
                             android:layout_height="wrap_content"
                             android:text="Topics"
                             android:textColor="#E0E0E0"
-                            android:textSize="11sp" />
+                            android:textSize="@dimen/text_overline" />
                     </LinearLayout>
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
@@ -628,7 +637,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@color/card_bg"
-        app:elevation="8dp"
+        app:elevation="16dp"
         app:itemIconTint="@color/bottom_nav_tint"
         app:itemTextColor="@color/bottom_nav_tint"
         app:layout_constraintBottom_toBottomOf="parent"

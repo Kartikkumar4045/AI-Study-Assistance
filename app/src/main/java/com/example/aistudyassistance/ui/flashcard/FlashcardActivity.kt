@@ -1,4 +1,4 @@
-package com.example.aistudyassistance.Activity
+﻿package com.example.aistudyassistance.ui.flashcard
 
 import android.content.Intent
 import android.os.Handler
@@ -14,15 +14,13 @@ import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.viewpager2.widget.ViewPager2
-import com.example.aistudyassistance.ContinueLearningPrefs
-import com.example.aistudyassistance.Flashcard
-import com.example.aistudyassistance.FlashcardPagerAdapter
-import com.example.aistudyassistance.MainActivity
+import com.example.aistudyassistance.data.local.ContinueLearningPrefs
+import com.example.aistudyassistance.data.model.Flashcard
 import com.example.aistudyassistance.R
+import com.example.aistudyassistance.ui.home.MainActivity
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.button.MaterialButtonToggleGroup
 import com.google.android.material.progressindicator.LinearProgressIndicator
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -176,12 +174,8 @@ class FlashcardActivity : AppCompatActivity() {
         btnModeQuickReview = findViewById(R.id.btnModeQuickReview)
         btnModeActiveRecall = findViewById(R.id.btnModeActiveRecall)
 
-        val titleName = if (source == FlashcardSetupActivity.SOURCE_TOPIC) {
-            topicText.ifBlank { "General Study" }
-        } else {
-            selectedNote.ifBlank { "My Notes" }
-        }
-        tvFlashcardTitle.text = "Flashcards: $titleName"
+        val titleName = resolveDisplayTopic()
+        tvFlashcardTitle.text = getString(R.string.flashcard_title_with_topic, titleName)
         updateStudyModeSelection()
 
         findViewById<ImageView>(R.id.ivBack).setOnClickListener {
@@ -414,7 +408,7 @@ class FlashcardActivity : AppCompatActivity() {
     private fun updateProgress(position: Int) {
         val total = flashcards.size.coerceAtLeast(1)
         val current = position + 1
-        tvProgress.text = "Card $current / $total"
+        tvProgress.text = getString(R.string.flashcard_progress_format, current, total)
 
         val progress = (current / total.toFloat())
         val percentage = (progress * 100).toInt()
@@ -507,20 +501,23 @@ class FlashcardActivity : AppCompatActivity() {
 
     private fun updateTimerText(index: Int) {
         val seconds = (getElapsedMsForCard(index) / 1000L).coerceAtLeast(0L)
-        tvCardTimer.text = "⏱ ${seconds}s"
+        tvCardTimer.text = getString(R.string.flashcard_timer_format, seconds)
     }
 
     private fun showSwipeHintOnce() {
         if (swipeHintShown) return
-        Toast.makeText(this, "Swipe left or right to navigate cards →", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, getString(R.string.flashcard_swipe_hint), Toast.LENGTH_SHORT).show()
         swipeHintShown = true
     }
 
     private fun showCompletionView() {
         stopTimerForCard(currentCardIndex)
         isDeckCompleted = true
-        val summaryTopic = if (source == FlashcardSetupActivity.SOURCE_TOPIC) topicText else selectedNote
-        ContinueLearningPrefs.saveFlashcardActivity(this, summaryTopic.ifBlank { "General Study" }, flashcards.size)
+        ContinueLearningPrefs.saveFlashcardActivity(
+            this,
+            resolveDisplayTopic(),
+            flashcards.size
+        )
         ContinueLearningPrefs.markFlashcardCompleted(this)
         tvStudyModeLabel.visibility = View.GONE
         toggleStudyMode.visibility = View.GONE
@@ -533,10 +530,15 @@ class FlashcardActivity : AppCompatActivity() {
         val unattemptedCount = answerRevealedStates.count { !it }
         val avgSeconds = if (timeSpentMs.isEmpty()) 0 else (timeSpentMs.sum() / timeSpentMs.size) / 1000L
 
-        tvCompletedCount.text = "Total Cards: ${flashcards.size}"
-        tvCompletedDifficulty.text = "Easy: $easyCount | Medium: $mediumCount | Hard: $hardCount"
-        tvCompletedAvgTime.text = "Avg Time: $avgSeconds sec"
-        tvCompletedUnattempted.text = "Unattempted Cards: $unattemptedCount"
+        tvCompletedCount.text = getString(R.string.flashcard_completed_total_cards, flashcards.size)
+        tvCompletedDifficulty.text = getString(
+            R.string.flashcard_completed_difficulty_breakdown,
+            easyCount,
+            mediumCount,
+            hardCount
+        )
+        tvCompletedAvgTime.text = getString(R.string.flashcard_completed_avg_time, avgSeconds)
+        tvCompletedUnattempted.text = getString(R.string.flashcard_completed_unattempted, unattemptedCount)
         updateFlipButtonState()
     }
 
@@ -646,6 +648,7 @@ class FlashcardActivity : AppCompatActivity() {
 
     private fun persistFlashcardProgress() {
         if (isDeckCompleted || flashcards.isEmpty()) return
+        val progressTopic = resolveDisplayTopic()
         val safeIndex = if (::viewPager.isInitialized) {
             viewPager.currentItem.coerceIn(0, flashcards.lastIndex)
         } else {
@@ -660,7 +663,7 @@ class FlashcardActivity : AppCompatActivity() {
 
         ContinueLearningPrefs.saveFlashcardProgress(
             context = this,
-            topic = topicText,
+            topic = progressTopic,
             source = source,
             selectedNote = selectedNote,
             totalCards = flashcards.size,
@@ -671,6 +674,14 @@ class FlashcardActivity : AppCompatActivity() {
             flashcardsJson = flashcardsJson,
             inProgress = true
         )
+    }
+
+    private fun resolveDisplayTopic(): String {
+        return if (source == FlashcardSetupActivity.SOURCE_NOTES) {
+            selectedNote.ifBlank { getString(R.string.flashcard_my_notes) }
+        } else {
+            topicText.ifBlank { getString(R.string.flashcard_general_study) }
+        }
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -709,5 +720,7 @@ class FlashcardActivity : AppCompatActivity() {
         private const val KEY_ACTIVE_RECALL = "active_recall"
     }
 }
+
+
 
 

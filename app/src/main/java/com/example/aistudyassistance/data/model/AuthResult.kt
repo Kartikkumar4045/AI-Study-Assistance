@@ -1,4 +1,4 @@
-package com.example.aistudyassistance.Authentication
+﻿package com.example.aistudyassistance.data.model
 
 sealed class AuthResult {
     data class Success(val isNewUser: Boolean) : AuthResult()

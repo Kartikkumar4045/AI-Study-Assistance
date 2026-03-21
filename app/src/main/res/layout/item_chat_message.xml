@@ -1,108 +1,102 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="@dimen/space_8">
+    android:paddingHorizontal="@dimen/space_16"
+    android:paddingVertical="@dimen/space_8">
 
-    <androidx.cardview.widget.CardView
-        android:id="@+id/cardMessage"
-        android:layout_width="wrap_content"
+    <!-- Container for alignment -->
+    <LinearLayout
+        android:id="@+id/layoutMessageContainer"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        app:cardBackgroundColor="@color/card_bg"
-        app:cardCornerRadius="@dimen/radius_m"
-        app:cardElevation="2dp">
+        android:orientation="vertical">
 
-        <LinearLayout
+        <androidx.cardview.widget.CardView
+            android:id="@+id/cardMessage"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
+            app:cardCornerRadius="@dimen/radius_m"
+            app:cardElevation="1dp"
+            app:cardBackgroundColor="@color/card_bg">
 
-            <TextView
-                android:id="@+id/tvMessage"
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:padding="@dimen/space_16"
-                android:textColor="@color/text_main"
-                android:textSize="14sp" />
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tvMessage"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:paddingHorizontal="@dimen/space_16"
+                    android:paddingVertical="@dimen/space_12"
+                    android:textColor="@color/text_main"
+                    android:textSize="@dimen/text_body"
+                    android:lineSpacingExtra="2dp"
+                    tools:text="Hello! How can I help you study today?" />
+
+                <TextView
+                    android:id="@+id/tvShowMore"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="@dimen/space_16"
+                    android:layout_marginBottom="@dimen/space_12"
+                    android:text="Show More"
+                    android:textColor="@color/primary"
+                    android:textSize="@dimen/text_caption"
+                    android:textStyle="bold"
+                    android:visibility="gone" />
+
+            </LinearLayout>
+
+        </androidx.cardview.widget.CardView>
+
+        <!-- Action Toolbar for AI responses -->
+        <LinearLayout
+            android:id="@+id/layoutActionToolbar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_4"
+            android:orientation="horizontal"
+            android:visibility="gone">
 
             <TextView
-                android:id="@+id/tvShowMore"
+                android:id="@+id/btnCopy"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="@dimen/space_16"
-                android:layout_marginBottom="8dp"
-                android:text="Show More"
-                android:textColor="@color/primary"
-                android:textSize="12sp"
-                android:textStyle="bold"
-                android:visibility="gone" />
+                android:background="?android:attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:padding="@dimen/space_8"
+                android:text="Copy"
+                android:textColor="@color/text_secondary"
+                android:textSize="@dimen/text_overline" />
+
+            <TextView
+                android:id="@+id/btnRegenerate"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="?android:attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:padding="@dimen/space_8"
+                android:text="Regenerate"
+                android:textColor="@color/text_secondary"
+                android:textSize="@dimen/text_overline" />
+
+            <ImageView
+                android:id="@+id/btnHelpful"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:padding="8dp"
+                android:src="@android:drawable/btn_star_big_off"
+                app:tint="@color/text_secondary" />
 
         </LinearLayout>
-
-    </androidx.cardview.widget.CardView>
-
-    <!-- Action Toolbar correctly placed outside for dark theme visibility -->
-    <LinearLayout
-        android:id="@+id/layoutActionToolbar"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/space_8"
-        android:orientation="horizontal"
-        android:visibility="gone">
-
-        <TextView
-            android:id="@+id/btnCopy"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="?android:attr/selectableItemBackground"
-            android:clickable="true"
-            android:focusable="true"
-            android:padding="8dp"
-            android:text="Copy"
-            android:textColor="@color/primary"
-            android:textSize="12sp" />
-
-        <TextView
-            android:id="@+id/btnRegenerate"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="@dimen/space_16"
-            android:background="?android:attr/selectableItemBackground"
-            android:clickable="true"
-            android:focusable="true"
-            android:padding="8dp"
-            android:text="Regenerate"
-            android:textColor="@color/primary"
-            android:textSize="12sp" />
-
-        <TextView
-            android:id="@+id/btnHelpful"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="@dimen/space_16"
-            android:background="?android:attr/selectableItemBackground"
-            android:clickable="true"
-            android:focusable="true"
-            android:padding="8dp"
-            android:text="Helpful"
-            android:textColor="@color/primary"
-            android:textSize="12sp" />
-
-        <TextView
-            android:id="@+id/btnNotHelpful"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="@dimen/space_16"
-            android:background="?android:attr/selectableItemBackground"
-            android:clickable="true"
-            android:focusable="true"
-            android:padding="8dp"
-            android:text="Not Helpful"
-            android:textColor="@color/primary"
-            android:textSize="12sp" />
-
     </LinearLayout>
 
     <com.google.android.material.chip.ChipGroup
@@ -111,8 +105,6 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/space_8"
         android:visibility="gone"
-        app:chipSpacing="@dimen/space_8"
-        app:singleLine="false"
-        android:background="@color/card_bg"/>
+        app:chipSpacing="@dimen/space_8" />
 
 </LinearLayout>

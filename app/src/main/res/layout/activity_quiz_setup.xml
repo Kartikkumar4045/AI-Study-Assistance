@@ -1,205 +1,236 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fitsSystemWindows="true"
-    android:fillViewport="true"
-    android:background="@color/background">
+    android:background="@color/background"
+    android:fitsSystemWindows="true">
 
-    <LinearLayout
+    <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="@dimen/space_16">
+        android:background="@color/card_bg">
 
-        <!-- Back Button and Title -->
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            app:navigationIcon="@drawable/ic_back"
+            app:navigationIconTint="@color/text_main"
+            app:title="Configure Quiz"
+            app:titleCentered="true"
+            app:titleTextStyle="@style/TextAppearance.AIStudyAssistance.Title" />
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="@dimen/space_24">
+            android:orientation="vertical"
+            android:padding="@dimen/space_20">
 
-            <ImageView
-                android:id="@+id/ivBack"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:src="@drawable/ic_back"
-                android:layout_gravity="center_vertical"
-                android:layout_marginEnd="@dimen/space_16" />
+            <!-- Quiz Source Section -->
+            <TextView
+                style="@style/TextAppearance.AIStudyAssistance.Section"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Quiz Source"
+                android:layout_marginBottom="@dimen/space_16" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="@dimen/space_24">
+
+                <androidx.cardview.widget.CardView
+                    android:id="@+id/cardTopicQuiz"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="@dimen/space_8"
+                    app:cardCornerRadius="@dimen/radius_m"
+                    app:cardElevation="2dp"
+                    app:cardBackgroundColor="@color/card_bg">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="@dimen/space_16"
+                        android:gravity="center">
+
+                        <ImageView
+                            android:layout_width="32dp"
+                            android:layout_height="32dp"
+                            android:src="@android:drawable/ic_menu_search"
+                            app:tint="@color/primary"
+                            android:layout_marginBottom="@dimen/space_8"/>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Any Topic"
+                            android:textSize="@dimen/text_body"
+                            android:textStyle="bold"
+                            android:textColor="@color/text_main" />
+                    </LinearLayout>
+                </androidx.cardview.widget.CardView>
+
+                <androidx.cardview.widget.CardView
+                    android:id="@+id/cardMyNotes"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="@dimen/space_8"
+                    app:cardCornerRadius="@dimen/radius_m"
+                    app:cardElevation="2dp"
+                    app:cardBackgroundColor="@color/card_bg">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="@dimen/space_16"
+                        android:gravity="center">
+
+                        <ImageView
+                            android:layout_width="32dp"
+                            android:layout_height="32dp"
+                            android:src="@android:drawable/ic_menu_agenda"
+                            app:tint="@color/accent_orange"
+                            android:layout_marginBottom="@dimen/space_8"/>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="My Notes"
+                            android:textSize="@dimen/text_body"
+                            android:textStyle="bold"
+                            android:textColor="@color/text_main" />
+                    </LinearLayout>
+                </androidx.cardview.widget.CardView>
+            </LinearLayout>
+
+            <!-- Input Section -->
+            <TextView
+                style="@style/TextAppearance.AIStudyAssistance.Section"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Target Content"
+                android:layout_marginBottom="@dimen/space_12" />
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/tilTopic"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/space_24"
+                app:boxCornerRadiusBottomEnd="@dimen/radius_m"
+                app:boxCornerRadiusBottomStart="@dimen/radius_m"
+                app:boxCornerRadiusTopEnd="@dimen/radius_m"
+                app:boxCornerRadiusTopStart="@dimen/radius_m"
+                android:hint="e.g. Quantum Physics, Java Loops">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etTopic"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="text" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <Spinner
+                android:id="@+id/spinnerNotes"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/button_height"
+                android:layout_marginBottom="@dimen/space_8"
+                android:visibility="gone"
+                android:background="@drawable/bg_input_field"
+                android:paddingHorizontal="@dimen/space_16" />
 
             <TextView
-                android:layout_width="0dp"
+                android:id="@+id/tvSelectedNotePreview"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Generate Quiz"
-                android:textSize="22sp"
+                android:text="Note: Physics_Chapter_1.pdf"
+                android:textSize="@dimen/text_caption"
+                android:textColor="@color/primary"
                 android:textStyle="bold"
-                android:textColor="@color/text_main" />
+                android:layout_marginBottom="@dimen/space_24"
+                android:visibility="gone" />
 
-        </LinearLayout>
-
-        <!-- Quiz Source Section -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Quiz Source"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            android:textColor="@color/text_main"
-            android:layout_marginBottom="@dimen/space_16" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="@dimen/space_24">
+            <!-- Configuration Section -->
+            <TextView
+                style="@style/TextAppearance.AIStudyAssistance.Section"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Quiz Length"
+                android:layout_marginBottom="@dimen/space_16" />
 
             <androidx.cardview.widget.CardView
-                android:id="@+id/cardTopicQuiz"
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginEnd="@dimen/space_8"
+                android:layout_marginBottom="@dimen/space_32"
                 app:cardCornerRadius="@dimen/radius_m"
-                app:cardElevation="2dp"
+                app:cardElevation="0dp"
                 app:cardBackgroundColor="@color/card_bg">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="@dimen/space_16">
+                    android:padding="@dimen/space_20">
 
-                    <TextView
+                    <RelativeLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Topic Quiz"
-                        android:textSize="16sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/text_main"
-                        android:layout_marginBottom="@dimen/space_8" />
+                        android:layout_marginBottom="@dimen/space_12">
 
-                    <TextView
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Number of Questions"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="@dimen/text_body" />
+
+                        <TextView
+                            android:id="@+id/tvQuestionCount"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_alignParentEnd="true"
+                            android:text="5"
+                            android:textColor="@color/primary"
+                            android:textSize="@dimen/text_body"
+                            android:textStyle="bold" />
+                    </RelativeLayout>
+
+                    <com.google.android.material.slider.Slider
+                        android:id="@+id/sliderQuestions"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Generate quiz from a topic"
-                        android:textSize="14sp"
-                        android:textColor="@color/text_secondary" />
-
+                        android:valueFrom="1.0"
+                        android:valueTo="15.0"
+                        android:stepSize="1.0"
+                        android:value="5.0" />
                 </LinearLayout>
-
             </androidx.cardview.widget.CardView>
 
-            <androidx.cardview.widget.CardView
-                android:id="@+id/cardMyNotes"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="@dimen/space_8"
-                app:cardCornerRadius="@dimen/radius_m"
-                app:cardElevation="2dp"
-                app:cardBackgroundColor="@color/card_bg">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="@dimen/space_16">
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="My Notes"
-                        android:textSize="16sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/text_main"
-                        android:layout_marginBottom="@dimen/space_8" />
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="Generate quiz from uploaded study materials"
-                        android:textSize="14sp"
-                        android:textColor="@color/text_secondary" />
-
-                </LinearLayout>
-
-            </androidx.cardview.widget.CardView>
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnGenerateQuiz"
+                style="@style/Widget.AIStudyAssistance.Button.Primary"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/button_height"
+                android:text="Generate Quiz"
+                app:icon="@android:drawable/ic_menu_send"
+                app:iconGravity="textStart" />
 
         </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
 
-        <!-- Topic Input -->
-        <EditText
-            android:id="@+id/etTopic"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Enter Topic"
-            android:inputType="text"
-            android:layout_marginBottom="@dimen/space_24"
-            android:background="@drawable/edit_text_background"
-            android:padding="@dimen/space_16"
-            android:textSize="16sp" />
-
-        <!-- Notes Spinner -->
-        <Spinner
-            android:id="@+id/spinnerNotes"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="@dimen/space_8"
-            android:visibility="gone"
-            android:background="@drawable/edit_text_background"
-            android:padding="@dimen/space_16" />
-
-        <!-- Selected Note Preview -->
-        <TextView
-            android:id="@+id/tvSelectedNotePreview"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Selected Note:-"
-            android:textSize="14sp"
-            android:textColor="@color/text_secondary"
-            android:layout_marginBottom="@dimen/space_24"
-            android:visibility="gone" />
-
-        <!-- Number of Questions Section -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Number of Questions"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            android:textColor="@color/text_main"
-            android:layout_marginBottom="@dimen/space_16" />
-
-        <SeekBar
-            android:id="@+id/seekBarQuestions"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="@dimen/space_8"
-            android:progress="5"
-            android:max="10"
-            android:min="1" />
-
-        <TextView
-            android:id="@+id/tvQuestionCount"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Questions: 5"
-            android:textSize="16sp"
-            android:textColor="@color/text_main"
-            android:layout_marginBottom="@dimen/space_24" />
-
-        <!-- Generate Quiz Button -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnGenerateQuiz"
-            style="@style/Widget.AIStudyAssistance.Button.Primary"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Generate Quiz"
-            android:layout_marginBottom="@dimen/space_16" />
-
-    </LinearLayout>
-
-</ScrollView>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

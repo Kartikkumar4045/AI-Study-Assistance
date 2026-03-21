@@ -1,4 +1,4 @@
-package com.example.aistudyassistance
+﻿package com.example.aistudyassistance.data.local
 
 import android.content.Context
 import kotlinx.serialization.decodeFromString
@@ -338,6 +338,7 @@ object ContinueLearningPrefs {
         }
     }
 }
+
 
 
 

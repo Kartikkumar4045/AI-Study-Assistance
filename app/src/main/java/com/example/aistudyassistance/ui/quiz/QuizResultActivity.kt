@@ -1,4 +1,4 @@
-package com.example.aistudyassistance.Activity
+﻿package com.example.aistudyassistance.ui.quiz
 
 import android.content.Intent
 import android.os.Bundle
@@ -10,8 +10,9 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.example.aistudyassistance.MainActivity
 import com.example.aistudyassistance.R
+import com.example.aistudyassistance.ui.home.MainActivity
+import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
 
 class QuizResultActivity : AppCompatActivity() {
@@ -22,6 +23,7 @@ class QuizResultActivity : AppCompatActivity() {
     private lateinit var btnRetryQuiz: MaterialButton
     private lateinit var btnBackToHome: MaterialButton
     private lateinit var rvReview: RecyclerView
+    private lateinit var toolbar: MaterialToolbar
 
     private var score = 0
     private var total = 0
@@ -62,6 +64,7 @@ class QuizResultActivity : AppCompatActivity() {
         btnRetryQuiz = findViewById(R.id.btnRetryQuiz)
         btnBackToHome = findViewById(R.id.btnBackToHome)
         rvReview = findViewById(R.id.rvReview)
+        toolbar = findViewById(R.id.toolbar)
 
         rvReview.layoutManager = LinearLayoutManager(this)
         rvReview.adapter = ReviewAdapter()
@@ -73,6 +76,14 @@ class QuizResultActivity : AppCompatActivity() {
         btnRetryQuiz.setOnClickListener {
             // Go back to set up with same parameters
             val intent = Intent(this, QuizSetupActivity::class.java)
+            intent.putExtra(QuizSetupActivity.EXTRA_PREFILL_SOURCE, quizSource)
+            if (quizSource == "notes") {
+                if (selectedNoteId.isNotBlank()) {
+                    intent.putExtra(QuizSetupActivity.EXTRA_PREFILL_NOTE_NAME, selectedNoteId)
+                }
+            } else if (topicText.isNotBlank()) {
+                intent.putExtra(QuizSetupActivity.EXTRA_PREFILL_TOPIC, topicText)
+            }
             startActivity(intent)
             finish()
         }
@@ -84,20 +95,18 @@ class QuizResultActivity : AppCompatActivity() {
             finish()
         }
 
-        findViewById<ImageView>(R.id.ivBack).setOnClickListener {
-            finish()
-        }
+        toolbar.setNavigationOnClickListener { finish() }
     }
 
     private fun displayResults() {
         tvScore.text = "$score / $total"
 
-        val percentage = (score.toFloat() / total.toFloat()) * 100
+        val percentage = if (total > 0) (score.toFloat() / total.toFloat()) * 100 else 0f
         tvMessage.text = when {
-            percentage >= 80 -> "Excellent work! 🎉"
+            percentage >= 80 -> "Excellent work!"
             percentage >= 60 -> "Great job!"
             percentage >= 40 -> "Good effort!"
-            else -> "Keep practicing! 📚"
+            else -> "Keep practicing!"
         }
     }
 
@@ -144,6 +153,8 @@ class QuizResultActivity : AppCompatActivity() {
             }
         }
 
-        override fun getItemCount() = minOf(questions.size, userAnswers.size, correctAnswers.size)
+        override fun getItemCount() = questions.size
     }
 }
+
+

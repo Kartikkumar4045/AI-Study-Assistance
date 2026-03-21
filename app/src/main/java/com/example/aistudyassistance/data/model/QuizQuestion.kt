@@ -1,4 +1,4 @@
-package com.example.aistudyassistance
+﻿package com.example.aistudyassistance.data.model
 
 import kotlinx.serialization.Serializable
 
@@ -9,3 +9,4 @@ data class QuizQuestion(
     val correctAnswer: Int,
     val explanation: String
 )
+

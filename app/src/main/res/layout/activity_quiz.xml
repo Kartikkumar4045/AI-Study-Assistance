@@ -1,140 +1,176 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/background"
-    android:fitsSystemWindows="true"
-    android:orientation="vertical"
-    android:padding="@dimen/space_16">
+    android:fitsSystemWindows="true">
 
-    <LinearLayout
+    <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="@dimen/space_16"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
+        android:background="@color/card_bg">
 
-        <ImageView
-            android:id="@+id/ivBack"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:layout_marginEnd="@dimen/space_16"
-            android:padding="@dimen/space_8"
-            android:src="@drawable/ic_back"
-            app:tint="@color/text_main" />
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            app:navigationIcon="@drawable/ic_back"
+            app:navigationIconTint="@color/text_main"
+            app:title="Quiz Session"
+            app:titleCentered="true"
+            app:titleTextStyle="@style/TextAppearance.AIStudyAssistance.Title" />
 
-        <TextView
-            android:id="@+id/tvQuizTitle"
-            style="@style/TextAppearance.AIStudyAssistance.Title"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Quiz: Binary Search"
-            android:textSize="20sp" />
-    </LinearLayout>
+        <com.google.android.material.progressindicator.LinearProgressIndicator
+            android:id="@+id/progressBar"
+            android:layout_width="match_parent"
+            android:layout_height="4dp"
+            android:progress="20"
+            app:indicatorColor="@color/primary"
+            app:trackColor="@color/divider" />
+    </com.google.android.material.appbar.AppBarLayout>
 
-    <TextView
-        android:id="@+id/tvProgress"
-        style="@style/TextAppearance.AIStudyAssistance.Body"
+    <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="@dimen/space_8"
-        android:text="Question 1 / 5"
-        android:textColor="@color/text_secondary" />
+        android:layout_height="match_parent"
+        android:fillViewport="true"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
-    <com.google.android.material.progressindicator.LinearProgressIndicator
-        android:id="@+id/progressBar"
-        android:layout_width="match_parent"
-        android:layout_height="4dp"
-        android:layout_marginBottom="@dimen/space_24"
-        android:progress="20"
-        app:indicatorColor="@color/primary"
-        app:trackColor="@color/divider" />
-
-    <TextView
-        android:id="@+id/tvQuestion"
-        style="@style/TextAppearance.AIStudyAssistance.Section"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="@dimen/space_16"
-        android:lineSpacingExtra="4dp"
-        android:text="What is the time complexity of binary search?" />
-
-    <RadioGroup
-        android:id="@+id/radioGroup"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1">
-
-        <RadioButton
-            android:id="@+id/rbOptionA"
-            style="@style/TextAppearance.AIStudyAssistance.Body"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="@dimen/space_8"
-            android:background="@drawable/radio_button_background"
-            android:button="@null"
-            android:padding="@dimen/space_16"
-            android:text="A. O(n)" />
+            android:orientation="vertical"
+            android:padding="@dimen/space_20">
 
-        <RadioButton
-            android:id="@+id/rbOptionB"
-            style="@style/TextAppearance.AIStudyAssistance.Body"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="@dimen/space_8"
-            android:background="@drawable/radio_button_background"
-            android:button="@null"
-            android:padding="@dimen/space_16"
-            android:text="B. O(log n)" />
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/space_24">
 
-        <RadioButton
-            android:id="@+id/rbOptionC"
-            style="@style/TextAppearance.AIStudyAssistance.Body"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="@dimen/space_8"
-            android:background="@drawable/radio_button_background"
-            android:button="@null"
-            android:padding="@dimen/space_16"
-            android:text="C. O(n log n)" />
+                <TextView
+                    android:id="@+id/tvProgress"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Question 1 of 5"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="@dimen/text_caption"
+                    android:textStyle="bold" />
 
-        <RadioButton
-            android:id="@+id/rbOptionD"
-            style="@style/TextAppearance.AIStudyAssistance.Body"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="@drawable/radio_button_background"
-            android:button="@null"
-            android:padding="@dimen/space_16"
-            android:text="D. O(n²)" />
-    </RadioGroup>
+                <TextView
+                    android:id="@+id/tvQuizTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_below="@id/tvProgress"
+                    android:layout_marginTop="@dimen/space_4"
+                    android:textColor="@color/primary"
+                    android:textSize="@dimen/text_body"
+                    android:textStyle="bold"
+                    tools:text="Binary Search Trees" />
+            </RelativeLayout>
 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/space_16"
-        android:orientation="horizontal">
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/space_32"
+                app:cardCornerRadius="@dimen/radius_m"
+                app:cardElevation="2dp"
+                app:cardBackgroundColor="@color/card_bg">
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnPrevious"
-            style="@style/Widget.AIStudyAssistance.Button.Secondary"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="@dimen/space_8"
-            android:layout_weight="1"
-            android:enabled="false"
-            android:text="Previous" />
+                <TextView
+                    android:id="@+id/tvQuestion"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:padding="@dimen/space_24"
+                    android:lineSpacingExtra="6dp"
+                    android:textColor="@color/text_main"
+                    android:textSize="@dimen/text_subtitle"
+                    android:textStyle="bold"
+                    tools:text="What is the worst-case time complexity of searching in a Balanced Binary Search Tree?" />
+            </androidx.cardview.widget.CardView>
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnNext"
-            style="@style/Widget.AIStudyAssistance.Button.Primary"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="@dimen/space_8"
-            android:layout_weight="1"
-            android:text="Next" />
-    </LinearLayout>
+            <RadioGroup
+                android:id="@+id/radioGroup"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:paddingBottom="@dimen/space_24">
 
-</LinearLayout>
+                <RadioButton
+                    android:id="@+id/rbOptionA"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="@dimen/space_12"
+                    android:background="@drawable/radio_button_background"
+                    android:button="@null"
+                    android:padding="@dimen/space_20"
+                    android:textColor="@color/text_main"
+                    android:textSize="@dimen/text_body"
+                    tools:text="O(n)" />
+
+                <RadioButton
+                    android:id="@+id/rbOptionB"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="@dimen/space_12"
+                    android:background="@drawable/radio_button_background"
+                    android:button="@null"
+                    android:padding="@dimen/space_20"
+                    android:textColor="@color/text_main"
+                    android:textSize="@dimen/text_body"
+                    tools:text="O(log n)" />
+
+                <RadioButton
+                    android:id="@+id/rbOptionC"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="@dimen/space_12"
+                    android:background="@drawable/radio_button_background"
+                    android:button="@null"
+                    android:padding="@dimen/space_20"
+                    android:textColor="@color/text_main"
+                    android:textSize="@dimen/text_body"
+                    tools:text="O(n log n)" />
+
+                <RadioButton
+                    android:id="@+id/rbOptionD"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/radio_button_background"
+                    android:button="@null"
+                    android:padding="@dimen/space_20"
+                    android:textColor="@color/text_main"
+                    android:textSize="@dimen/text_body"
+                    tools:text="O(1)" />
+            </RadioGroup>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:paddingBottom="@dimen/space_16">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnPrevious"
+                    style="@style/Widget.AIStudyAssistance.Button.Secondary"
+                    android:layout_width="0dp"
+                    android:layout_height="@dimen/button_height"
+                    android:layout_marginEnd="@dimen/space_8"
+                    android:layout_weight="1"
+                    android:enabled="false"
+                    android:text="Back" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnNext"
+                    style="@style/Widget.AIStudyAssistance.Button.Primary"
+                    android:layout_width="0dp"
+                    android:layout_height="@dimen/button_height"
+                    android:layout_marginStart="@dimen/space_8"
+                    android:layout_weight="1"
+                    android:text="Next Question" />
+            </LinearLayout>
+
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

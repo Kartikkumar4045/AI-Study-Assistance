@@ -1,363 +1,195 @@
+<?xml version="1.0" encoding="utf-8"?>
 <ScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/background"
-    android:fillViewport="true">
+    android:fillViewport="true"
+    android:fitsSystemWindows="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:gravity="center_horizontal"
         android:padding="@dimen/space_24">
 
-        <!-- Graduation Cap Icon -->
-        <ImageView
-            android:layout_width="64dp"
-            android:layout_height="64dp"
-            android:layout_marginTop="@dimen/space_24"
-            android:src="@drawable/graduationcap201"
-            android:contentDescription="Graduation Cap"
-            app:tint="@color/primary" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_marginTop="@dimen/space_32"
+            android:layout_marginBottom="@dimen/space_48">
 
-        <!-- Welcome Back Title -->
+            <ImageView
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:src="@drawable/graduationcap201"
+                app:tint="@color/primary" />
+
+            <TextView
+                style="@style/TextAppearance.AIStudyAssistance.Title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_16"
+                android:text="Welcome Back"
+                android:textSize="28sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_8"
+                android:text="Sign in to your study space"
+                android:textColor="@color/text_secondary"
+                android:textSize="@dimen/text_body" />
+        </LinearLayout>
+
+        <!-- Login Form -->
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilEmail"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/space_16"
+            app:boxCornerRadiusBottomEnd="@dimen/radius_m"
+            app:boxCornerRadiusBottomStart="@dimen/radius_m"
+            app:boxCornerRadiusTopEnd="@dimen/radius_m"
+            app:boxCornerRadiusTopStart="@dimen/radius_m"
+            app:startIconDrawable="@drawable/email24"
+            app:startIconTint="@color/primary"
+            android:hint="Email Address">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etEmail"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textEmailAddress" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilPassword"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/space_8"
+            app:boxCornerRadiusBottomEnd="@dimen/radius_m"
+            app:boxCornerRadiusBottomStart="@dimen/radius_m"
+            app:boxCornerRadiusTopEnd="@dimen/radius_m"
+            app:boxCornerRadiusTopStart="@dimen/radius_m"
+            app:startIconDrawable="@drawable/authorization30"
+            app:startIconTint="@color/primary"
+            app:passwordToggleEnabled="true"
+            app:passwordToggleTint="@color/icon_secondary"
+            android:hint="Password">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etPassword"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textPassword" />
+        </com.google.android.material.textfield.TextInputLayout>
+
         <TextView
+            android:id="@+id/tvForgotPassword"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_16"
-            android:text="Welcome Back 👋"
-            android:textSize="22sp"
+            android:layout_gravity="end"
+            android:layout_marginBottom="@dimen/space_32"
+            android:text="Forgot Password?"
+            android:textColor="@color/primary"
             android:textStyle="bold"
-            android:textColor="@color/text_main" />
+            android:textSize="@dimen/text_caption" />
 
-        <!-- Subtitle -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_8"
-            android:text="Sign in to continue"
-            android:textSize="15sp"
-            android:textColor="@color/text_secondary" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSignIn"
+            style="@style/Widget.AIStudyAssistance.Button.Primary"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/button_height"
+            android:text="Sign In" />
 
-        <!-- ===== Main Card (includes form + or continue with + social buttons) ===== -->
-        <androidx.cardview.widget.CardView
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_24"
-            app:cardCornerRadius="@dimen/radius_m"
-            app:cardElevation="3dp"
-            app:cardBackgroundColor="@color/card_bg">
+            android:layout_marginTop="@dimen/space_32"
+            android:layout_marginBottom="@dimen/space_32"
+            android:gravity="center"
+            android:orientation="horizontal">
 
-            <LinearLayout
-                android:layout_width="match_parent"
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1"
+                android:background="@color/divider" />
+
+            <TextView
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="20dp">
+                android:paddingHorizontal="@dimen/space_16"
+                android:text="or continue with"
+                android:textColor="@color/text_hint"
+                android:textSize="@dimen/text_overline" />
 
-                <!-- Email or Phone Label -->
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Email or Phone"
-                    android:textSize="14sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/text_main" />
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1"
+                android:background="@color/divider" />
+        </LinearLayout>
 
-                <!-- Email Input Field -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="50dp"
-                    android:layout_marginTop="@dimen/space_8"
-                    android:background="@drawable/bg_input_field"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:paddingStart="@dimen/space_16"
-                    android:paddingEnd="@dimen/space_16">
-
-                    <ImageView
-                        android:layout_width="22dp"
-                        android:layout_height="22dp"
-                        android:src="@drawable/email24"
-                        app:tint="@color/icon_secondary"
-                        android:contentDescription="Email Icon" />
-
-                    <EditText
-                        android:id="@+id/etEmail"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:background="@null"
-                        android:hint="Enter your email or phone"
-                        android:textColorHint="@color/text_hint"
-                        android:textSize="14sp"
-                        android:textColor="@color/text_main"
-                        android:paddingStart="10dp"
-                        android:inputType="textEmailAddress"
-                        android:maxLines="1" />
-                </LinearLayout>
-
-                <!-- Password Label Row -->
-                <RelativeLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/space_16">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Password"
-                        android:textSize="14sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/text_main"
-                        android:layout_alignParentStart="true"
-                        android:layout_centerVertical="true" />
-
-                    <TextView
-                        android:id="@+id/tvForgotPassword"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Forgot Password?"
-                        android:textSize="13sp"
-                        android:textColor="@color/primary"
-                        android:layout_alignParentEnd="true"
-                        android:layout_centerVertical="true" />
-                </RelativeLayout>
-
-                <!-- Password Input Field -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="50dp"
-                    android:layout_marginTop="@dimen/space_8"
-                    android:background="@drawable/bg_input_field"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:paddingStart="@dimen/space_16"
-                    android:paddingEnd="@dimen/space_16">
-
-                    <ImageView
-                        android:layout_width="22dp"
-                        android:layout_height="22dp"
-                        android:src="@drawable/authorization30"
-                        app:tint="@color/icon_secondary"
-                        android:contentDescription="Lock Icon" />
-
-                    <EditText
-                        android:id="@+id/etPassword"
-                        android:layout_width="0dp"
-                        android:layout_height="match_parent"
-                        android:layout_weight="1"
-                        android:background="@null"
-                        android:hint="Enter your password"
-                        android:textColorHint="@color/text_hint"
-                        android:textSize="14sp"
-                        android:textColor="@color/text_main"
-                        android:paddingStart="10dp"
-                        android:inputType="textPassword"
-                        android:maxLines="1" />
-
-                    <ImageView
-                        android:id="@+id/ivTogglePassword"
-                        android:layout_width="22dp"
-                        android:layout_height="22dp"
-                        android:src="@drawable/visisbilityoff45"
-                        app:tint="@color/icon_secondary"
-                        android:contentDescription="Toggle Password" />
-                </LinearLayout>
-
-                <!-- Sign In Button -->
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnSignIn"
-                    style="@style/Widget.AIStudyAssistance.Button.Primary"
-                    android:layout_width="match_parent"
-                    android:layout_height="52dp"
-                    android:layout_marginTop="@dimen/space_16"
-                    android:text="Sign In"
-                    android:textSize="16sp" />
-
-                <!-- Divider with "or continue with" -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/space_16"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
-
-                    <View
-                        android:layout_width="0dp"
-                        android:layout_height="1dp"
-                        android:layout_weight="1"
-                        android:background="@color/divider" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:paddingStart="12dp"
-                        android:paddingEnd="12dp"
-                        android:text="or continue with"
-                        android:textSize="13sp"
-                        android:textColor="@color/text_hint" />
-
-                    <View
-                        android:layout_width="0dp"
-                        android:layout_height="1dp"
-                        android:layout_weight="1"
-                        android:background="@color/divider" />
-                </LinearLayout>
-
-                <!-- Social Buttons Row -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/space_16"
-                    android:orientation="horizontal"
-                    android:gravity="center">
-
-                    <!-- Google Button -->
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnGoogle"
-                        style="@style/Widget.AIStudyAssistance.Button.Secondary"
-                        android:layout_width="0dp"
-                        android:layout_height="50dp"
-                        android:layout_weight="1"
-                        android:layout_marginEnd="8dp"
-                        android:text="Google"
-                        android:textAllCaps="false"
-                        android:textColor="@color/text_main"
-                        android:textSize="14sp"
-                        android:textStyle="bold"
-                        app:icon="@drawable/google36"
-                        app:iconGravity="textStart"
-                        app:iconPadding="8dp"
-                        app:iconSize="20dp"
-                        app:iconTint="@null"
-                        app:backgroundTint="@color/card_bg" />
-
-                    <!-- Github Button -->
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnGithub"
-                        style="@style/Widget.AIStudyAssistance.Button.Secondary"
-                        android:layout_width="0dp"
-                        android:layout_height="50dp"
-                        android:layout_weight="1"
-                        android:layout_marginStart="8dp"
-                        android:text="Github"
-                        android:textAllCaps="false"
-                        android:textColor="@color/text_main"
-                        android:textSize="14sp"
-                        android:textStyle="bold"
-                        app:icon="@drawable/github60"
-                        app:iconGravity="textStart"
-                        app:iconPadding="8dp"
-                        app:iconSize="20dp"
-                        app:iconTint="@null"
-                        app:backgroundTint="@color/card_bg" />
-                </LinearLayout>
-
-            </LinearLayout>
-        </androidx.cardview.widget.CardView>
-
-        <!-- Spacer -->
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1" />
-
-        <!-- Bottom Card -->
-        <androidx.cardview.widget.CardView
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_24"
-            app:cardCornerRadius="@dimen/radius_m"
-            app:cardElevation="3dp"
-            app:cardBackgroundColor="@color/card_bg">
+            android:orientation="horizontal">
 
-            <LinearLayout
-                android:layout_width="match_parent"
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnGoogle"
+                style="@style/Widget.AIStudyAssistance.Button.Secondary"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/button_height"
+                android:layout_weight="1"
+                android:layout_marginEnd="@dimen/space_8"
+                android:text="Google"
+                app:icon="@drawable/google36"
+                app:iconTint="@null"
+                app:iconGravity="textStart" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnGithub"
+                style="@style/Widget.AIStudyAssistance.Button.Secondary"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/button_height"
+                android:layout_weight="1"
+                android:layout_marginStart="@dimen/space_8"
+                android:text="GitHub"
+                app:icon="@drawable/github60"
+                app:iconTint="@null"
+                app:iconGravity="textStart" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_48"
+            android:layout_marginBottom="@dimen/space_16"
+            android:gravity="center"
+            android:paddingTop="@dimen/space_32"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:gravity="center"
-                    android:padding="@dimen/space_16">
+                android:text="New to StudyAI? "
+                android:textColor="@color/text_secondary" />
 
-                <!-- Sign Up Text -->
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Don't have an account? "
-                        android:textSize="14sp"
-                        android:textColor="@color/text_hint" />
-
-                    <TextView
-                        android:id="@+id/tvSignUp"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Sign Up"
-                        android:textSize="14sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/primary" />
-                </LinearLayout>
-
-                <!-- Bottom Social Icons -->
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/space_16"
-                    android:orientation="horizontal"
-                    android:gravity="center">
-
-                    <!-- Google Circle -->
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnGoogleCircle"
-                        style="@style/Widget.MaterialComponents.Button.OutlinedButton.Icon"
-                        android:layout_width="56dp"
-                        android:layout_height="56dp"
-                        android:layout_marginEnd="16dp"
-                        android:insetTop="0dp"
-                        android:insetBottom="0dp"
-                        android:padding="0dp"
-                        app:icon="@drawable/google96"
-                        app:iconGravity="textStart"
-                        app:iconSize="24dp"
-                        app:iconTint="@null"
-                        app:iconPadding="0dp"
-                        app:cornerRadius="28dp"
-                        app:strokeColor="@color/divider"
-                        app:strokeWidth="1dp"
-                        app:backgroundTint="@color/input_bg" />
-
-                    <!-- Github Circle -->
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnGithubCircle"
-                        style="@style/Widget.MaterialComponents.Button.OutlinedButton.Icon"
-                        android:layout_width="56dp"
-                        android:layout_height="56dp"
-                        android:layout_marginStart="16dp"
-                        android:insetTop="0dp"
-                        android:insetBottom="0dp"
-                        android:padding="0dp"
-                        app:icon="@drawable/github120"
-                        app:iconGravity="textStart"
-                        app:iconSize="24dp"
-                        app:iconTint="@null"
-                        app:iconPadding="0dp"
-                        app:cornerRadius="28dp"
-                        app:strokeColor="@color/divider"
-                        app:strokeWidth="1dp"
-                        app:backgroundTint="@color/input_bg" />
-                </LinearLayout>
-
-            </LinearLayout>
-        </androidx.cardview.widget.CardView>
-
-        <View
-            android:layout_width="1dp"
-            android:layout_height="16dp" />
+            <TextView
+                android:id="@+id/tvSignUp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Create Account"
+                android:textColor="@color/primary"
+                android:textStyle="bold" />
+        </LinearLayout>
 
     </LinearLayout>
 </ScrollView>

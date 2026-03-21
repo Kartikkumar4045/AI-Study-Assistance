@@ -1,4 +1,4 @@
-package com.example.aistudyassistance
+﻿package com.example.aistudyassistance.ui.home
 
 import android.content.Intent
 import android.os.Bundle
@@ -10,12 +10,15 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
-import com.example.aistudyassistance.Activity.ChatActivity
-import com.example.aistudyassistance.Activity.FlashcardActivity
-import com.example.aistudyassistance.Activity.FlashcardSetupActivity
-import com.example.aistudyassistance.Activity.UploadActivity
-import com.example.aistudyassistance.Activity.QuizActivity
-import com.example.aistudyassistance.Activity.QuizSetupActivity
+import com.example.aistudyassistance.R
+import com.example.aistudyassistance.data.local.ContinueLearningPrefs
+import com.example.aistudyassistance.data.local.SessionType
+import com.example.aistudyassistance.ui.chat.ChatActivity
+import com.example.aistudyassistance.ui.flashcard.FlashcardActivity
+import com.example.aistudyassistance.ui.flashcard.FlashcardSetupActivity
+import com.example.aistudyassistance.ui.upload.UploadActivity
+import com.example.aistudyassistance.ui.quiz.QuizActivity
+import com.example.aistudyassistance.ui.quiz.QuizSetupActivity
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
@@ -244,3 +247,4 @@ class MainActivity : AppCompatActivity() {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
 }
+

@@ -1,4 +1,4 @@
-package com.example.aistudyassistance.Activity
+﻿package com.example.aistudyassistance.ui.upload
 
 import android.content.Intent
 import android.net.Uri
@@ -19,6 +19,8 @@ import androidx.cardview.widget.CardView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.aistudyassistance.R
+import com.example.aistudyassistance.ui.chat.ChatActivity
+import com.google.android.material.appbar.MaterialToolbar
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
@@ -53,7 +55,7 @@ class UploadActivity : AppCompatActivity() {
         layoutProgress = findViewById(R.id.layoutProgress)
         tvProgressStatus = findViewById(R.id.tvProgressStatus)
 
-        findViewById<ImageView>(R.id.ivBack).setOnClickListener { finish() }
+        findViewById<MaterialToolbar>(R.id.toolbar).setNavigationOnClickListener { finish() }
 
         findViewById<CardView>(R.id.cardUploadPdf).setOnClickListener {
             pickFile("application/pdf")

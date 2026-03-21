@@ -37,10 +37,4 @@
     <color name="divider_light">@color/ds_border</color>
     <color name="button_stroke_light">@color/ds_border</color>
     <color name="input_bg_light">#F3F2FD</color>
-
-    <!-- Flashcard dynamic state colors (light) -->
-    <color name="flashcard_quick_question_bg">#F2EEFF</color>
-    <color name="flashcard_quick_answer_bg">#EDF8F1</color>
-    <color name="flashcard_active_question_bg">#ECEAF9</color>
-    <color name="flashcard_active_answer_bg">#E6EDF6</color>
 </resources>

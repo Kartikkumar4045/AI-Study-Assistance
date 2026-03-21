@@ -1,4 +1,4 @@
-package com.example.aistudyassistance.Activity
+﻿package com.example.aistudyassistance.ui.quiz
 
 import android.content.Intent
 import android.os.Bundle
@@ -7,9 +7,10 @@ import android.view.View
 import android.widget.*
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import com.example.aistudyassistance.ContinueLearningPrefs
-import com.example.aistudyassistance.QuizQuestion
+import com.example.aistudyassistance.data.local.ContinueLearningPrefs
+import com.example.aistudyassistance.data.model.QuizQuestion
 import com.example.aistudyassistance.R
+import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import kotlinx.serialization.encodeToString
@@ -28,6 +29,7 @@ class QuizActivity : AppCompatActivity() {
     private lateinit var btnPrevious: MaterialButton
     private lateinit var btnNext: MaterialButton
     private lateinit var progressBar: LinearProgressIndicator
+    private lateinit var toolbar: MaterialToolbar
 
     private var currentQuestionIndex = 0
     private var quizSource = ""
@@ -120,6 +122,7 @@ class QuizActivity : AppCompatActivity() {
         btnPrevious = findViewById(R.id.btnPrevious)
         btnNext = findViewById(R.id.btnNext)
         progressBar = findViewById(R.id.progressBar)
+        toolbar = findViewById(R.id.toolbar)
 
         // Set quiz title
         val title = if (quizSource == "topic") "Quiz: $topicText" else "Quiz: $selectedNoteId"
@@ -156,9 +159,7 @@ class QuizActivity : AppCompatActivity() {
                 }?.start()
         }
 
-        findViewById<ImageView>(R.id.ivBack).setOnClickListener {
-            finish()
-        }
+        toolbar.setNavigationOnClickListener { finish() }
     }
 
     private fun setupQuiz() {
@@ -173,10 +174,15 @@ class QuizActivity : AppCompatActivity() {
         tvProgress.text = "Question ${currentQuestionIndex + 1} / ${quizQuestions.size}"
         tvQuestion.text = question.question
 
-        rbOptionA.text = "A. ${question.options[0]}"
-        rbOptionB.text = "B. ${question.options[1]}"
-        rbOptionC.text = "C. ${question.options[2]}"
-        rbOptionD.text = "D. ${question.options[3]}"
+        // Keep the session playable even if an upstream response has fewer than 4 options.
+        val safeOptions = List(4) { index ->
+            question.options.getOrNull(index)?.takeIf { it.isNotBlank() } ?: "Option ${index + 1}"
+        }
+
+        rbOptionA.text = "A. ${safeOptions[0]}"
+        rbOptionB.text = "B. ${safeOptions[1]}"
+        rbOptionC.text = "C. ${safeOptions[2]}"
+        rbOptionD.text = "D. ${safeOptions[3]}"
 
         // Restore previous answer
         val selectedOption = userAnswers[currentQuestionIndex]
@@ -282,3 +288,5 @@ class QuizActivity : AppCompatActivity() {
         persistQuizProgress()
     }
 }
+
+

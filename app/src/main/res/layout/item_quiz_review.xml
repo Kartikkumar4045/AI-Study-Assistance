@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="@dimen/space_8"
+    android:layout_marginBottom="@dimen/space_16"
     app:cardCornerRadius="@dimen/radius_m"
     app:cardElevation="2dp"
     app:cardBackgroundColor="@color/card_bg">
@@ -12,59 +13,124 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="@dimen/space_16">
+        android:padding="@dimen/space_20">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginBottom="@dimen/space_8">
+            android:layout_marginBottom="@dimen/space_12"
+            android:gravity="top">
 
             <ImageView
                 android:id="@+id/ivStatus"
                 android:layout_width="24dp"
                 android:layout_height="24dp"
                 android:src="@drawable/ic_correct"
-                android:layout_marginEnd="@dimen/space_8" />
+                android:layout_marginEnd="@dimen/space_12"
+                app:tint="@color/ds_success" />
 
             <TextView
                 android:id="@+id/tvQuestion"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Q1: What is the time complexity of binary search?"
-                android:textSize="16sp"
+                android:textColor="@color/text_main"
+                android:textSize="@dimen/text_body"
                 android:textStyle="bold"
-                android:textColor="@color/text_main" />
+                tools:text="What is the time complexity of binary search?" />
 
         </LinearLayout>
 
-        <TextView
-            android:id="@+id/tvUserAnswer"
+        <View
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Your Answer: B. O(log n)"
-            android:textSize="14sp"
-            android:textColor="@color/text_secondary"
-                android:layout_marginBottom="@dimen/space_8" />
+            android:layout_height="1dp"
+            android:background="@color/divider"
+            android:layout_marginBottom="@dimen/space_12" />
 
-        <TextView
-            android:id="@+id/tvCorrectAnswer"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Correct Answer: B. O(log n)"
-            android:textSize="14sp"
-            android:textColor="@color/green"
-                android:layout_marginBottom="@dimen/space_8" />
+            android:orientation="vertical"
+            android:layout_marginBottom="@dimen/space_12">
 
-        <TextView
-            android:id="@+id/tvExplanation"
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="YOUR ANSWER"
+                android:textSize="@dimen/text_overline"
+                android:textColor="@color/text_hint"
+                android:textStyle="bold"
+                android:letterSpacing="0.05" />
+
+            <TextView
+                android:id="@+id/tvUserAnswer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_2"
+                android:textColor="@color/text_main"
+                android:textSize="@dimen/text_body"
+                tools:text="B. O(log n)" />
+        </LinearLayout>
+
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Binary search works by repeatedly dividing the search interval in half, resulting in O(log n) time complexity."
-            android:textSize="14sp"
-            android:textColor="@color/text_secondary"
-            android:lineSpacingExtra="4dp" />
+            android:orientation="vertical"
+            android:layout_marginBottom="@dimen/space_16">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="CORRECT ANSWER"
+                android:textSize="@dimen/text_overline"
+                android:textColor="@color/ds_success"
+                android:textStyle="bold"
+                android:letterSpacing="0.05" />
+
+            <TextView
+                android:id="@+id/tvCorrectAnswer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_2"
+                android:textColor="@color/ds_success"
+                android:textSize="@dimen/text_body"
+                android:textStyle="bold"
+                tools:text="B. O(log n)" />
+        </LinearLayout>
+
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardCornerRadius="@dimen/radius_s"
+            app:cardElevation="0dp"
+            app:cardBackgroundColor="@color/ds_background">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="@dimen/space_12">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="EXPLANATION"
+                    android:textSize="@dimen/text_overline"
+                    android:textColor="@color/primary"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvExplanation"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_4"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="@dimen/text_caption"
+                    android:lineSpacingExtra="3dp"
+                    tools:text="Binary search works by repeatedly dividing the search interval in half." />
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
 
     </LinearLayout>
 
