@@ -524,9 +524,14 @@ Keep answers concise.
     }
 
     private fun showTopicOrUploadChooser(mode: StudyMode) {
+        val (title, message) = when (mode) {
+            StudyMode.EXPLAIN -> "Create explanation" to "Choose a topic or upload a file to generate an explanation."
+            StudyMode.SHORT_NOTES -> "Create short notes" to "Choose a topic or upload a file to generate short revision notes."
+            else -> "Topic or file needed" to "Add a topic or pick a file first."
+        }
         showModeBottomSheet(
-            title = "Topic or file needed",
-            message = "Add a topic or pick a file first.",
+            title = title,
+            message = message,
             primaryText = "Enter Topic",
             secondaryText = "Upload File",
             onPrimary = {
