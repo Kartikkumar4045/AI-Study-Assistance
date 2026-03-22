@@ -6,6 +6,16 @@
     <string name="title_upload">Upload</string>
     <string name="title_quiz">Quiz</string>
     <string name="title_profile">Profile</string>
+    <string name="profile_default_name">Student</string>
+    <string name="profile_default_initial">S</string>
+    <string name="profile_label_email">Email</string>
+    <string name="profile_label_phone">Phone Number</string>
+    <string name="profile_not_available">Not available</string>
+    <string name="profile_logout">Logout</string>
+    <string name="profile_logout_confirm_title">Logout?</string>
+    <string name="profile_logout_confirm_message">You will be signed out of your account.</string>
+    <string name="profile_logout_confirm_action">Logout</string>
+    <string name="profile_logout_cancel_action">Cancel</string>
 
     <string name="common_back">Back</string>
     <string name="common_previous">Previous</string>

@@ -9,8 +9,8 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="com.example.aistudyassistance" />
-                  <option name="mobileSdkAppId" value="1:504269455991:android:680879d136da8d52e8fc72" />
+                  <option name="appId" value="com.kartik.aistudyassistant" />
+                  <option name="mobileSdkAppId" value="1:504269455991:android:7c3adc955730aa95e8fc72" />
                   <option name="projectId" value="ai-study-assistance-7619c" />
                   <option name="projectNumber" value="504269455991" />
                 </ConnectionSetting>

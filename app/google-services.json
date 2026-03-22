@@ -8,18 +8,34 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:504269455991:android:680879d136da8d52e8fc72",
+        "mobilesdk_app_id": "1:504269455991:android:7c3adc955730aa95e8fc72",
         "android_client_info": {
-          "package_name": "com.example.aistudyassistance"
+          "package_name": "com.kartik.aistudyassistant"
         }
       },
       "oauth_client": [
         {
-          "client_id": "504269455991-ekqa6uq3md9s3krcl3r4v61pgvjuoqm0.apps.googleusercontent.com",
+          "client_id": "504269455991-8o7rutmbcc1nb2rhna6b8va86ksciodv.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.example.aistudyassistance",
+            "package_name": "com.kartik.aistudyassistant",
             "certificate_hash": "455391b0c9ff595cc5664b95172048baff3a657d"
+          }
+        },
+        {
+          "client_id": "504269455991-bhc2sfn32rg0liurijqs93of92ol7jgi.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.kartik.aistudyassistant",
+            "certificate_hash": "4513ecb21bfcc105f788cff244252d56ce9c7ae3"
+          }
+        },
+        {
+          "client_id": "504269455991-otm5qg401m6kkng4rpest1ldug0ltajn.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.kartik.aistudyassistant",
+            "certificate_hash": "990b5f6a68777f6c24d3f3b71b1edce3e0cbb2bd"
           }
         },
         {

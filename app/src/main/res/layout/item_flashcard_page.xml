@@ -82,17 +82,25 @@
                 android:text="@string/flashcard_show_answer"
                 android:visibility="gone" />
 
-            <TextView
-                android:id="@+id/tvAnswer"
+            <androidx.core.widget.NestedScrollView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_24"
-                android:gravity="center"
-                android:textColor="@color/text_main"
-                android:lineSpacingExtra="4dp"
-                android:textSize="@dimen/text_section"
-                android:visibility="gone"
-                tools:text="O(log n) because the search space is halved in each step." />
+                android:maxHeight="220dp"
+                android:overScrollMode="ifContentScrolls"
+                android:scrollbars="vertical">
+
+                <TextView
+                    android:id="@+id/tvAnswer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_24"
+                    android:gravity="center"
+                    android:lineSpacingExtra="4dp"
+                    android:textColor="@color/text_main"
+                    android:textSize="@dimen/text_section"
+                    android:visibility="gone"
+                    tools:text="O(log n) because the search space is halved in each step." />
+            </androidx.core.widget.NestedScrollView>
         </LinearLayout>
     </androidx.cardview.widget.CardView>
 

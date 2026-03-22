@@ -9,11 +9,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.aistudyassistance"
+    namespace = "com.kartik.aistudyassistant"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.aistudyassistance"
+        applicationId = "com.kartik.aistudyassistant"
         minSdk = 24
         targetSdk = 35
         versionCode = 1
