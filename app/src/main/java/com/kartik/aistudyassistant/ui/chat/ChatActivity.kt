@@ -499,7 +499,7 @@ Keep answers concise.
                         sendMessage("Generate $modeLabel from the selected file.", questionOverride = "attached file")
                     },
                     onSecondary = {
-                        promptTopicForMode(mode)
+                        showTopicOrUploadChooser(mode)
                     }
                 )
             }
@@ -513,27 +513,31 @@ Keep answers concise.
                         sendModeTopicMessage(mode, currentTopic)
                     },
                     onSecondary = {
-                        promptTopicForMode(mode)
+                        showTopicOrUploadChooser(mode)
                     }
                 )
             }
             else -> {
-                showModeBottomSheet(
-                    title = "Topic or file needed",
-                    message = "Add a topic or pick a file first.",
-                    primaryText = "Enter Topic",
-                    secondaryText = "Upload File",
-                    onPrimary = {
-                        pendingGuidedGenerationMode = null
-                        promptTopicForMode(mode)
-                    },
-                    onSecondary = {
-                        pendingGuidedGenerationMode = mode
-                        showAttachmentBottomSheet()
-                    }
-                )
+                showTopicOrUploadChooser(mode)
             }
         }
+    }
+
+    private fun showTopicOrUploadChooser(mode: StudyMode) {
+        showModeBottomSheet(
+            title = "Topic or file needed",
+            message = "Add a topic or pick a file first.",
+            primaryText = "Enter Topic",
+            secondaryText = "Upload File",
+            onPrimary = {
+                pendingGuidedGenerationMode = null
+                promptTopicForMode(mode)
+            },
+            onSecondary = {
+                pendingGuidedGenerationMode = mode
+                showAttachmentBottomSheet()
+            }
+        )
     }
 
     private fun promptTopicForMode(mode: StudyMode) {
