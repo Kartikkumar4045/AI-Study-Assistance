@@ -63,6 +63,7 @@ class FlashcardSetupActivity : AppCompatActivity() {
     private var selectedNoteName = ""
     private var selectedNote: NoteItem? = null
     private var isGenerating = false
+    private var prefillNoteName = ""
     private val notesList = mutableListOf<NoteItem>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -84,7 +85,21 @@ class FlashcardSetupActivity : AppCompatActivity() {
 
         initViews()
         setupEmptyNotesSpinner()
+
+        selectedSource = intent.getStringExtra(EXTRA_SOURCE)
+            ?.takeIf { it == SOURCE_TOPIC || it == SOURCE_NOTES }
+            ?: selectedSource
+        prefillNoteName = intent.getStringExtra(EXTRA_PREFILL_NOTE_NAME).orEmpty()
+        if (selectedSource == SOURCE_TOPIC) {
+            intent.getStringExtra(EXTRA_TOPIC_TEXT)
+                ?.takeIf { it.isNotBlank() }
+                ?.let { etTopic.setText(it) }
+        }
+
         setupListeners()
+        if (selectedSource == SOURCE_NOTES) {
+            loadNotes()
+        }
         updateUI()
     }
 
@@ -231,6 +246,13 @@ class FlashcardSetupActivity : AppCompatActivity() {
                 selectedNote = null
                 selectedNoteName = ""
                 tvSelectedNotePreview.text = getString(R.string.flashcard_setup_selected_note_empty)
+
+                if (prefillNoteName.isNotBlank()) {
+                    val index = notesList.indexOfFirst { it.name.equals(prefillNoteName, ignoreCase = true) }
+                    if (index >= 0) {
+                        spinnerNotes.setSelection(index + 1)
+                    }
+                }
                 validateInputs()
             }
             .addOnFailureListener { e ->
@@ -393,6 +415,7 @@ class FlashcardSetupActivity : AppCompatActivity() {
         const val EXTRA_SOURCE = "source"
         const val EXTRA_TOPIC_TEXT = "topicText"
         const val EXTRA_SELECTED_NOTE = "selectedNote"
+        const val EXTRA_PREFILL_NOTE_NAME = "prefillNoteName"
         const val EXTRA_CARD_COUNT = "cardCount"
         const val EXTRA_FLASHCARDS_JSON = "flashcardsJson"
     }

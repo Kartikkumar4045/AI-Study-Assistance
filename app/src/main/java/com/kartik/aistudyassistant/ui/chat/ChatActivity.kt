@@ -5,6 +5,7 @@ import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
+import android.content.Intent
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
@@ -27,6 +28,8 @@ import coil.request.SuccessResult
 import com.kartik.aistudyassistant.BuildConfig
 import com.kartik.aistudyassistant.core.utils.GeminiHelper
 import com.kartik.aistudyassistant.R
+import com.kartik.aistudyassistant.ui.flashcard.FlashcardSetupActivity
+import com.kartik.aistudyassistant.ui.quiz.QuizSetupActivity
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
@@ -426,11 +429,13 @@ Keep answers concise.
             pendingGuidedGenerationMode = null
             currentMode = StudyMode.QUIZ
             pendingExamPaperGeneration = false
+            showGuidedGenerationSheet(StudyMode.QUIZ)
         }
         chipFlashcards.setOnClickListener {
             pendingGuidedGenerationMode = null
             currentMode = StudyMode.FLASHCARDS
             pendingExamPaperGeneration = false
+            showGuidedGenerationSheet(StudyMode.FLASHCARDS)
         }
     }
 
@@ -458,6 +463,14 @@ Keep answers concise.
     private fun maybeAutoGenerateGuidedModeFromAttachment() {
         val mode = pendingGuidedGenerationMode ?: return
         if (activeDocumentName.isNullOrBlank()) return
+        
+        if (mode == StudyMode.QUIZ || mode == StudyMode.FLASHCARDS) {
+            val fileName = activeDocumentName ?: "Attached File"
+            pendingGuidedGenerationMode = null
+            startModeIntent(mode, "notes", fileName)
+            return
+        }
+
         pendingGuidedGenerationMode = null
         currentMode = mode
         applySelectedModeChip()
@@ -495,8 +508,12 @@ Keep answers concise.
                     primaryText = "Yes",
                     secondaryText = "No",
                     onPrimary = {
-                        pendingGuidedGenerationMode = null
-                        sendMessage("Generate $modeLabel from the selected file.", questionOverride = "attached file")
+                        if (mode == StudyMode.QUIZ || mode == StudyMode.FLASHCARDS) {
+                            startModeIntent(mode, "notes", currentDoc)
+                        } else {
+                            pendingGuidedGenerationMode = null
+                            sendMessage("Generate $modeLabel from the selected file.", questionOverride = "attached file")
+                        }
                     },
                     onSecondary = {
                         showTopicOrUploadChooser(mode)
@@ -510,7 +527,11 @@ Keep answers concise.
                     primaryText = "Yes",
                     secondaryText = "No",
                     onPrimary = {
-                        sendModeTopicMessage(mode, currentTopic)
+                        if (mode == StudyMode.QUIZ || mode == StudyMode.FLASHCARDS) {
+                            startModeIntent(mode, "topic", currentTopic)
+                        } else {
+                            sendModeTopicMessage(mode, currentTopic)
+                        }
                     },
                     onSecondary = {
                         showTopicOrUploadChooser(mode)
@@ -556,10 +577,37 @@ Keep answers concise.
             onPrimary = { topic ->
                 pendingGuidedGenerationMode = null
                 lastTopicQuery = topic
-                sendModeTopicMessage(mode, topic)
+                if (mode == StudyMode.QUIZ || mode == StudyMode.FLASHCARDS) {
+                    startModeIntent(mode, "topic", topic)
+                } else {
+                    sendModeTopicMessage(mode, topic)
+                }
             },
             onSecondary = { }
         )
+    }
+
+    private fun startModeIntent(mode: StudyMode, source: String, value: String) {
+        val intent = when (mode) {
+            StudyMode.QUIZ -> Intent(this, QuizSetupActivity::class.java).apply {
+                putExtra(QuizSetupActivity.EXTRA_PREFILL_SOURCE, source) // "topic" or "notes"
+                if (source == "topic") {
+                    putExtra(QuizSetupActivity.EXTRA_PREFILL_TOPIC, value)
+                } else {
+                    putExtra(QuizSetupActivity.EXTRA_PREFILL_NOTE_NAME, value)
+                }
+            }
+            StudyMode.FLASHCARDS -> Intent(this, FlashcardSetupActivity::class.java).apply {
+                putExtra(FlashcardSetupActivity.EXTRA_SOURCE, source) // "topic" or "notes"
+                if (source == "topic") {
+                    putExtra(FlashcardSetupActivity.EXTRA_TOPIC_TEXT, value)
+                } else {
+                    putExtra(FlashcardSetupActivity.EXTRA_PREFILL_NOTE_NAME, value)
+                }
+            }
+            else -> return
+        }
+        startActivity(intent)
     }
 
     private fun showModeBottomSheet(
