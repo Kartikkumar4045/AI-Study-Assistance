@@ -74,6 +74,7 @@ class ChatActivity : AppCompatActivity() {
     private var activeImageSource: String? = null
     private var lastTopicQuery: String? = null
     private var pendingExamPaperGeneration: Boolean = false
+    private var pendingGuidedGenerationMode: StudyMode? = null
     private val auth = FirebaseAuth.getInstance()
     private val firestore = FirebaseFirestore.getInstance()
 
@@ -151,6 +152,7 @@ class ChatActivity : AppCompatActivity() {
         }
 
         btnAttach.setOnClickListener {
+            pendingGuidedGenerationMode = null
             showAttachmentBottomSheet()
         }
     }
@@ -216,7 +218,11 @@ class ChatActivity : AppCompatActivity() {
         }
     }
 
-    private fun sendMessage(text: String, useAttachment: Boolean = true) {
+    private fun sendMessage(
+        text: String,
+        useAttachment: Boolean = true,
+        questionOverride: String? = null
+    ) {
         if (!useAttachment) {
             // User chose topic-only generation even if a file was attached.
             activeDocumentText = null
@@ -244,7 +250,7 @@ Use bullet points.
 Avoid markdown formatting.
 Keep answers concise.
 """.trimIndent()
-            val modePrompt = getModePrompt(currentMode, text)
+            val modePrompt = getModePrompt(currentMode, questionOverride ?: text)
             if (useAttachment && activeDocumentText == null && activeImageBitmap == null && !activeImageSource.isNullOrBlank()) {
                 activeImageBitmap = loadBitmapFromSource(activeImageSource)
             }
@@ -399,25 +405,30 @@ Keep answers concise.
         applySelectedModeChip()
 
         chipExplain.setOnClickListener {
+            pendingGuidedGenerationMode = null
             currentMode = StudyMode.EXPLAIN
             pendingExamPaperGeneration = false
             showGuidedGenerationSheet(StudyMode.EXPLAIN)
         }
         chipShortNotesMode.setOnClickListener {
+            pendingGuidedGenerationMode = null
             currentMode = StudyMode.SHORT_NOTES
             pendingExamPaperGeneration = false
             showGuidedGenerationSheet(StudyMode.SHORT_NOTES)
         }
         chipExamAnswer.setOnClickListener {
+            pendingGuidedGenerationMode = null
             currentMode = StudyMode.EXAM_ANSWER
             pendingExamPaperGeneration = true
             showExamAnswerAttachmentSheet()
         }
         chipQuiz.setOnClickListener {
+            pendingGuidedGenerationMode = null
             currentMode = StudyMode.QUIZ
             pendingExamPaperGeneration = false
         }
         chipFlashcards.setOnClickListener {
+            pendingGuidedGenerationMode = null
             currentMode = StudyMode.FLASHCARDS
             pendingExamPaperGeneration = false
         }
@@ -444,6 +455,25 @@ Keep answers concise.
         sendMessage("Generate complete answers for all questions from this attached question paper.")
     }
 
+    private fun maybeAutoGenerateGuidedModeFromAttachment() {
+        val mode = pendingGuidedGenerationMode ?: return
+        if (activeDocumentName.isNullOrBlank()) return
+        pendingGuidedGenerationMode = null
+        currentMode = mode
+        applySelectedModeChip()
+        val displayText = when (mode) {
+            StudyMode.EXPLAIN -> "Explain this attached file."
+            StudyMode.SHORT_NOTES -> "Provide short revision notes from this attached file."
+            else -> "Generate content from this attached file."
+        }
+        sendMessage(displayText, questionOverride = "attached file")
+    }
+
+    private fun sendModeTopicMessage(mode: StudyMode, topic: String) {
+        val visibleText = getModePrompt(mode, topic)
+        sendMessage(visibleText, useAttachment = false, questionOverride = topic)
+    }
+
     private fun applySelectedModeChip() {
         findViewById<Chip>(R.id.chipExplain).isChecked = currentMode == StudyMode.EXPLAIN
         findViewById<Chip>(R.id.chipShortNotesMode).isChecked = currentMode == StudyMode.SHORT_NOTES
@@ -465,7 +495,8 @@ Keep answers concise.
                     primaryText = "Yes",
                     secondaryText = "No",
                     onPrimary = {
-                        sendMessage("Generate $modeLabel from the selected file.")
+                        pendingGuidedGenerationMode = null
+                        sendMessage("Generate $modeLabel from the selected file.", questionOverride = "attached file")
                     },
                     onSecondary = {
                         promptTopicForMode(mode)
@@ -479,7 +510,7 @@ Keep answers concise.
                     primaryText = "Yes",
                     secondaryText = "No",
                     onPrimary = {
-                        sendMessage(currentTopic, useAttachment = false)
+                        sendModeTopicMessage(mode, currentTopic)
                     },
                     onSecondary = {
                         promptTopicForMode(mode)
@@ -493,9 +524,11 @@ Keep answers concise.
                     primaryText = "Enter Topic",
                     secondaryText = "Upload File",
                     onPrimary = {
+                        pendingGuidedGenerationMode = null
                         promptTopicForMode(mode)
                     },
                     onSecondary = {
+                        pendingGuidedGenerationMode = mode
                         showAttachmentBottomSheet()
                     }
                 )
@@ -512,8 +545,9 @@ Keep answers concise.
             secondaryText = "Cancel",
             showTopicInput = true,
             onPrimary = { topic ->
+                pendingGuidedGenerationMode = null
                 lastTopicQuery = topic
-                sendMessage(topic, useAttachment = false)
+                sendModeTopicMessage(mode, topic)
             },
             onSecondary = { }
         )
@@ -689,6 +723,7 @@ Keep answers concise.
                 updateAttachmentBanner()
                 Toast.makeText(this@ChatActivity, "Attached: ${activeDocumentName}", Toast.LENGTH_SHORT).show()
                 onAttached?.invoke()
+                maybeAutoGenerateGuidedModeFromAttachment()
             } catch (e: Exception) {
                 Toast.makeText(this@ChatActivity, "Could not attach note: ${e.message}", Toast.LENGTH_SHORT).show()
             }
@@ -702,6 +737,7 @@ Keep answers concise.
     private val filePickerLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri == null) {
             pendingExamPaperGeneration = false
+            pendingGuidedGenerationMode = null
             return@registerForActivityResult
         }
         handleFileSelection(uri)
@@ -746,6 +782,7 @@ Keep answers concise.
             updateAttachmentBanner()
             Toast.makeText(this@ChatActivity, "Attached: $fileName", Toast.LENGTH_SHORT).show()
             maybeAutoGenerateExamAnswers()
+            maybeAutoGenerateGuidedModeFromAttachment()
         }
     }
 
