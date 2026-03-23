@@ -40,6 +40,17 @@
                 android:textSize="@dimen/text_subtitle"
                 android:textStyle="bold" />
 
+            <ImageView
+                android:id="@+id/ivChatMenu"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:padding="8dp"
+                android:src="@android:drawable/ic_menu_more"
+                app:tint="@color/text_main" />
+
         </RelativeLayout>
     </com.google.android.material.appbar.MaterialToolbar>
 

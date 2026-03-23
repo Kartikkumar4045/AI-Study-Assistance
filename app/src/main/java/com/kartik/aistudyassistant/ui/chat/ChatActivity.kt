@@ -17,6 +17,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
 import androidx.lifecycle.lifecycleScope
@@ -27,6 +28,10 @@ import coil.request.ImageRequest
 import coil.request.SuccessResult
 import com.kartik.aistudyassistant.BuildConfig
 import com.kartik.aistudyassistant.core.utils.GeminiHelper
+import com.kartik.aistudyassistant.data.local.ChatSessionPrefs
+import com.kartik.aistudyassistant.data.local.PersistedChatMessage
+import com.kartik.aistudyassistant.data.local.PersistedChatSession
+import com.kartik.aistudyassistant.data.local.PersistedChatSessionSummary
 import com.kartik.aistudyassistant.R
 import com.kartik.aistudyassistant.ui.flashcard.FlashcardSetupActivity
 import com.kartik.aistudyassistant.ui.quiz.QuizSetupActivity
@@ -48,6 +53,7 @@ import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.TimeUnit
 
 class ChatActivity : AppCompatActivity() {
 
@@ -59,12 +65,15 @@ class ChatActivity : AppCompatActivity() {
         private const val STATE_ACTIVE_IMAGE_SOURCE = "state_active_image_source"
         private const val STATE_LAST_TOPIC = "state_last_topic"
         private const val STATE_DRAFT_TEXT = "state_draft_text"
+
+        private var hasOpenedChatInCurrentProcess: Boolean = false
     }
 
     private lateinit var rvChat: RecyclerView
     private lateinit var etMessage: EditText
     private lateinit var btnSend: FloatingActionButton
     private lateinit var btnAttach: ImageButton
+    private lateinit var ivChatMenu: ImageView
     private lateinit var layoutAttachmentBanner: CardView
     private lateinit var tvAttachmentInfo: TextView
     private lateinit var chatAdapter: ChatAdapter
@@ -101,33 +110,30 @@ class ChatActivity : AppCompatActivity() {
         geminiHelper = GeminiHelper(apiKey, "gemini-2.5-flash")
 
         initViews()
-        setupChat(showGreeting = savedInstanceState == null)
+        setupChat(showGreeting = false)
         setupStudyModes()
+
+        val hasIntentPrefill = hasIntentPrefillPayload()
+        val isFirstChatOpenInProcess = !hasOpenedChatInCurrentProcess
+        hasOpenedChatInCurrentProcess = true
 
         if (savedInstanceState != null) {
             restoreChatState(savedInstanceState)
+            if (messages.isEmpty()) {
+                showInitialGreetingIfNeeded()
+            }
+        } else if (hasIntentPrefill) {
+            handlePrefilledIntentPayload()
+        } else if (isFirstChatOpenInProcess) {
+            showSessionChoiceDialogIfNeeded()
         } else {
-            // Handle file-based prompts from UploadActivity only once for a fresh Activity launch.
-            val prompt = intent.getStringExtra("PREFILLED_PROMPT")
-            val fileUrl = intent.getStringExtra("FILE_URL")
-            val fileType = intent.getStringExtra("FILE_TYPE")
-
-            if (fileUrl != null && fileType == "pdf") {
-                lifecycleScope.launch {
-                    activeDocumentText = extractTextFromPdf(fileUrl)
-                    activeDocumentName = intent.getStringExtra("FILE_NAME") ?: "Uploaded PDF"
-                    updateAttachmentBanner()
-                }
-            }
-
-            if (prompt != null) {
-                if (fileUrl != null) {
-                    processFileAndSendMessage(prompt, fileUrl, fileType ?: "")
-                } else {
-                    sendMessage(prompt)
-                }
-            }
+            restoreLastSessionOrStartFresh()
         }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        persistSessionSnapshot()
     }
 
     private fun initViews() {
@@ -137,6 +143,7 @@ class ChatActivity : AppCompatActivity() {
         btnAttach = findViewById(R.id.btnAttach)
         layoutAttachmentBanner = findViewById(R.id.layoutAttachmentBanner)
         tvAttachmentInfo = findViewById(R.id.tvAttachmentInfo)
+        ivChatMenu = findViewById(R.id.ivChatMenu)
 
         findViewById<ImageView>(R.id.ivBack).setOnClickListener {
             finish()
@@ -146,6 +153,10 @@ class ChatActivity : AppCompatActivity() {
             clearAttachment()
         }
 
+        ivChatMenu.setOnClickListener {
+            showChatActionMenu()
+        }
+
         btnSend.setOnClickListener {
             val text = etMessage.text.toString().trim()
             if (text.isNotEmpty()) {
@@ -153,6 +164,14 @@ class ChatActivity : AppCompatActivity() {
                 etMessage.text.clear()
             }
         }
+
+        etMessage.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                persistSessionSnapshot()
+            }
+            override fun afterTextChanged(s: android.text.Editable?) = Unit
+        })
 
         btnAttach.setOnClickListener {
             pendingGuidedGenerationMode = null
@@ -167,9 +186,378 @@ class ChatActivity : AppCompatActivity() {
             stackFromEnd = true
         }
 
-        if (showGreeting && !intent.hasExtra("PREFILLED_PROMPT")) {
-            addMessage(ChatMessage("Hello! I'm your AI Study Assistant. How can I help you today?", false, messageType = MessageType.SYSTEM))
+        if (showGreeting) {
+            showInitialGreetingIfNeeded()
         }
+    }
+
+    private fun hasIntentPrefillPayload(): Boolean {
+        return !intent.getStringExtra("PREFILLED_PROMPT").isNullOrBlank() ||
+            !intent.getStringExtra("FILE_URL").isNullOrBlank()
+    }
+
+    private fun handlePrefilledIntentPayload() {
+        val prompt = intent.getStringExtra("PREFILLED_PROMPT")
+        val fileUrl = intent.getStringExtra("FILE_URL")
+        val fileType = intent.getStringExtra("FILE_TYPE")
+
+        if (fileUrl != null && fileType == "pdf") {
+            lifecycleScope.launch {
+                activeDocumentText = extractTextFromPdf(fileUrl)
+                activeDocumentName = intent.getStringExtra("FILE_NAME") ?: "Uploaded PDF"
+                updateAttachmentBanner()
+                persistSessionSnapshot()
+            }
+        }
+
+        if (prompt != null) {
+            if (fileUrl != null) {
+                processFileAndSendMessage(prompt, fileUrl, fileType ?: "")
+            } else {
+                sendMessage(prompt)
+            }
+        } else {
+            showInitialGreetingIfNeeded()
+        }
+    }
+
+    private fun showInitialGreetingIfNeeded() {
+        if (messages.isEmpty()) {
+            addMessage(
+                ChatMessage(
+                    "Hello! I'm your AI Study Assistant. How can I help you today?",
+                    false,
+                    messageType = MessageType.SYSTEM
+                )
+            )
+        }
+    }
+
+    private fun showSessionChoiceDialogIfNeeded() {
+        val snapshot = ChatSessionPrefs.read(this)
+        if (snapshot == null || snapshot.messages.isEmpty()) {
+            startFreshSession(createNewSession = true)
+            return
+        }
+
+        val ageMinutes = if (snapshot.updatedAtEpochMs > 0L) {
+            TimeUnit.MILLISECONDS.toMinutes(System.currentTimeMillis() - snapshot.updatedAtEpochMs)
+                .coerceAtLeast(0L)
+        } else {
+            0L
+        }
+        val detailParts = mutableListOf<String>()
+        detailParts.add("Messages: ${snapshot.messages.size}")
+        if (snapshot.mode.isNotBlank()) {
+            detailParts.add("Mode: ${snapshot.mode}")
+        }
+        if (snapshot.activeDocumentName.isNotBlank()) {
+            detailParts.add("File: ${snapshot.activeDocumentName}")
+        }
+        if (snapshot.lastTopicQuery.isNotBlank()) {
+            detailParts.add("Topic: ${snapshot.lastTopicQuery}")
+        }
+        if (ageMinutes > 0L) {
+            detailParts.add("Updated: ${ageMinutes}m ago")
+        }
+
+        showResumeSessionBottomSheet(
+            summaryText = detailParts.joinToString("\n"),
+            onContinue = {
+                restorePersistedSession(snapshot)
+            },
+            onNewChat = {
+                startFreshSession(createNewSession = true)
+            }
+        )
+    }
+
+    private fun restoreLastSessionOrStartFresh() {
+        val snapshot = ChatSessionPrefs.read(this)
+        if (snapshot != null && snapshot.messages.isNotEmpty()) {
+            restorePersistedSession(snapshot)
+        } else {
+            startFreshSession(createNewSession = true)
+        }
+    }
+
+    private fun startFreshSession(createNewSession: Boolean) {
+        if (createNewSession) {
+            ChatSessionPrefs.createNewSession(this)
+        }
+
+        messages.clear()
+        chatAdapter.notifyDataSetChanged()
+
+        currentMode = StudyMode.EXPLAIN
+        pendingExamPaperGeneration = false
+        pendingGuidedGenerationMode = null
+        lastTopicQuery = null
+        etMessage.setText("")
+        clearAttachment()
+        applySelectedModeChip()
+        showInitialGreetingIfNeeded()
+        persistSessionSnapshot()
+    }
+
+    private fun showChatActionMenu() {
+        val candidates = ChatSessionPrefs.getRecentSessions(this, includeActive = false)
+        val dialog = BottomSheetDialog(this)
+        val view = layoutInflater.inflate(R.layout.bottom_sheet_chat_actions, null)
+        dialog.setContentView(view)
+
+        val btnNewChat = view.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnStartNewChat)
+        val btnOpenPrevious = view.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnOpenPreviousChats)
+        val tvHint = view.findViewById<TextView>(R.id.tvPreviousChatHint)
+
+        val count = candidates.size
+        tvHint.text = if (count > 0) {
+            getString(R.string.chat_actions_previous_available, count)
+        } else {
+            getString(R.string.chat_actions_previous_empty)
+        }
+        btnOpenPrevious.isEnabled = count > 0
+        btnOpenPrevious.alpha = if (count > 0) 1f else 0.5f
+
+        btnNewChat.setOnClickListener {
+            dialog.dismiss()
+            startFreshSession(createNewSession = true)
+        }
+
+        btnOpenPrevious.setOnClickListener {
+            dialog.dismiss()
+            openPreviousChatSession()
+        }
+
+        dialog.show()
+    }
+
+    private fun openPreviousChatSession(): Boolean {
+        val candidates = ChatSessionPrefs.getRecentSessions(this, includeActive = false)
+        if (candidates.isEmpty()) {
+            Toast.makeText(this, "No previous chat session found", Toast.LENGTH_SHORT).show()
+            return false
+        }
+
+        showSessionPickerBottomSheet(candidates)
+
+        return true
+    }
+
+    private fun showSessionPickerBottomSheet(candidates: List<PersistedChatSessionSummary>) {
+        val dialog = BottomSheetDialog(this)
+        val view = layoutInflater.inflate(R.layout.bottom_sheet_chat_sessions, null)
+        dialog.setContentView(view)
+
+        val rvSessions = view.findViewById<RecyclerView>(R.id.rvSessionChooser)
+        val tvEmpty = view.findViewById<TextView>(R.id.tvSessionChooserEmpty)
+        val sessionItems = candidates.toMutableList()
+
+        fun updateEmptyState() {
+            tvEmpty.visibility = if (sessionItems.isEmpty()) View.VISIBLE else View.GONE
+            rvSessions.visibility = if (sessionItems.isEmpty()) View.GONE else View.VISIBLE
+        }
+
+        rvSessions.layoutManager = LinearLayoutManager(this)
+        rvSessions.adapter = SessionChooserAdapter(
+            sessions = sessionItems,
+            onOpen = { selected ->
+                val changed = ChatSessionPrefs.setActiveSession(this, selected.id)
+                if (!changed) {
+                    Toast.makeText(this, "Could not open this session", Toast.LENGTH_SHORT).show()
+                    return@SessionChooserAdapter
+                }
+
+                val snapshot = ChatSessionPrefs.readSession(this, selected.id)
+                if (snapshot == null) {
+                    Toast.makeText(this, "Selected session is unavailable", Toast.LENGTH_SHORT).show()
+                    return@SessionChooserAdapter
+                }
+
+                dialog.dismiss()
+                restorePersistedSession(snapshot)
+            },
+            onDelete = { selected, position ->
+                AlertDialog.Builder(this)
+                    .setTitle(getString(R.string.chat_delete_session_title))
+                    .setMessage(getString(R.string.chat_delete_session_message, selected.title))
+                    .setPositiveButton(getString(R.string.chat_delete_session_confirm)) { _, _ ->
+                        val deleted = ChatSessionPrefs.deleteSession(this, selected.id)
+                        if (!deleted) {
+                            Toast.makeText(this, getString(R.string.chat_delete_session_failed), Toast.LENGTH_SHORT).show()
+                            return@setPositiveButton
+                        }
+                        sessionItems.removeAt(position)
+                        rvSessions.adapter?.notifyItemRemoved(position)
+                        updateEmptyState()
+                    }
+                    .setNegativeButton(getString(R.string.chat_delete_session_cancel), null)
+                    .show()
+            }
+        )
+
+        updateEmptyState()
+
+        dialog.show()
+    }
+
+    private fun showResumeSessionBottomSheet(
+        summaryText: String,
+        onContinue: () -> Unit,
+        onNewChat: () -> Unit
+    ) {
+        val dialog = BottomSheetDialog(this)
+        val view = layoutInflater.inflate(R.layout.bottom_sheet_chat_resume, null)
+        dialog.setContentView(view)
+        dialog.setCancelable(false)
+        dialog.setCanceledOnTouchOutside(false)
+
+        view.findViewById<TextView>(R.id.tvChatResumeSummary).text = summaryText
+        view.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnResumeChat).setOnClickListener {
+            dialog.dismiss()
+            onContinue()
+        }
+        view.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnStartFreshChat).setOnClickListener {
+            dialog.dismiss()
+            onNewChat()
+        }
+
+        dialog.show()
+    }
+
+    private fun buildSessionChooserLine(summary: PersistedChatSessionSummary): String {
+        val dateText = if (summary.updatedAtEpochMs > 0L) {
+            SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault()).format(Date(summary.updatedAtEpochMs))
+        } else {
+            "Unknown time"
+        }
+
+        val modeText = summary.mode.ifBlank { "EXPLAIN" }
+        return "${summary.title}\n${summary.messageCount} msgs • $modeText • $dateText"
+    }
+
+    inner class SessionChooserAdapter(
+        private val sessions: MutableList<PersistedChatSessionSummary>,
+        private val onOpen: (PersistedChatSessionSummary) -> Unit,
+        private val onDelete: (PersistedChatSessionSummary, Int) -> Unit
+    ) : RecyclerView.Adapter<SessionChooserAdapter.SessionChooserViewHolder>() {
+
+        inner class SessionChooserViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+            val tvTitle: TextView = view.findViewById(R.id.tvSessionTitle)
+            val tvMeta: TextView = view.findViewById(R.id.tvSessionMeta)
+            val btnDelete: com.google.android.material.button.MaterialButton = view.findViewById(R.id.btnDeleteSession)
+        }
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SessionChooserViewHolder {
+            val view = LayoutInflater.from(parent.context)
+                .inflate(R.layout.item_chat_session_option, parent, false)
+            return SessionChooserViewHolder(view)
+        }
+
+        override fun onBindViewHolder(holder: SessionChooserViewHolder, position: Int) {
+            val item = sessions[position]
+            holder.tvTitle.text = item.title
+            holder.tvMeta.text = buildSessionChooserLine(item).substringAfter("\n", "")
+            holder.itemView.setOnClickListener {
+                onOpen(item)
+            }
+            holder.btnDelete.setOnClickListener {
+                val adapterPosition = holder.bindingAdapterPosition
+                if (adapterPosition != RecyclerView.NO_POSITION) {
+                    onDelete(sessions[adapterPosition], adapterPosition)
+                }
+            }
+        }
+
+        override fun getItemCount(): Int = sessions.size
+    }
+
+    private fun restorePersistedSession(snapshot: PersistedChatSession) {
+        messages.clear()
+        messages.addAll(snapshot.messages.map { it.toRuntimeMessage() })
+        chatAdapter.notifyDataSetChanged()
+        if (messages.isNotEmpty()) {
+            rvChat.scrollToPosition(messages.size - 1)
+        }
+
+        currentMode = runCatching { StudyMode.valueOf(snapshot.mode) }.getOrElse { StudyMode.EXPLAIN }
+        pendingExamPaperGeneration = false
+        pendingGuidedGenerationMode = null
+        lastTopicQuery = snapshot.lastTopicQuery.takeIf { it.isNotBlank() }
+        etMessage.setText(snapshot.draftText)
+
+        activeDocumentText = snapshot.activeDocumentText.takeIf { it.isNotBlank() }
+        activeDocumentName = snapshot.activeDocumentName.takeIf { it.isNotBlank() }
+        activeImageSource = snapshot.activeImageSource.takeIf { it.isNotBlank() }
+        activeImageBitmap = null
+
+        applySelectedModeChip()
+        updateAttachmentBanner()
+        if (activeDocumentText == null && !activeImageSource.isNullOrBlank()) {
+            lifecycleScope.launch {
+                activeImageBitmap = loadBitmapFromSource(activeImageSource)
+                if (activeImageBitmap == null) {
+                    Toast.makeText(this@ChatActivity, "Reattach image to continue with image context", Toast.LENGTH_SHORT).show()
+                    clearAttachment()
+                }
+            }
+        }
+
+        if (messages.isEmpty()) {
+            showInitialGreetingIfNeeded()
+        }
+        persistSessionSnapshot()
+    }
+
+    private fun persistSessionSnapshot() {
+        if (!::chatAdapter.isInitialized) return
+
+        val persistedMessages = messages
+            .filter { !it.isTyping }
+            .map { it.toPersistedMessage() }
+
+        val hasAnyState = persistedMessages.isNotEmpty() ||
+            !etMessage.text.isNullOrBlank() ||
+            !activeDocumentName.isNullOrBlank() ||
+            !activeImageSource.isNullOrBlank()
+
+        if (!hasAnyState) return
+
+        ChatSessionPrefs.save(
+            context = this,
+            snapshot = PersistedChatSession(
+                mode = currentMode.name,
+                lastTopicQuery = lastTopicQuery.orEmpty(),
+                draftText = etMessage.text?.toString().orEmpty(),
+                activeDocumentText = activeDocumentText.orEmpty(),
+                activeDocumentName = activeDocumentName.orEmpty(),
+                activeImageSource = activeImageSource.orEmpty(),
+                updatedAtEpochMs = System.currentTimeMillis(),
+                messages = persistedMessages
+            )
+        )
+    }
+
+    private fun ChatMessage.toPersistedMessage(): PersistedChatMessage {
+        return PersistedChatMessage(
+            text = text,
+            isUser = isUser,
+            messageType = messageType.name,
+            suggestions = suggestions
+        )
+    }
+
+    private fun PersistedChatMessage.toRuntimeMessage(): ChatMessage {
+        val mappedType = runCatching { MessageType.valueOf(messageType) }.getOrElse {
+            if (isUser) MessageType.USER else MessageType.AI
+        }
+        return ChatMessage(
+            text = text,
+            isUser = isUser,
+            isTyping = false,
+            suggestions = suggestions,
+            messageType = mappedType
+        )
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -294,11 +682,13 @@ Keep answers concise.
                     messages[index] = ChatMessage(finalResponse, false, suggestions = suggestions, messageType = MessageType.AI)
                     chatAdapter.notifyItemChanged(index)
                     rvChat.scrollToPosition(messages.size - 1)
+                    persistSessionSnapshot()
                 }
             } catch (e: Exception) {
                 if (index in messages.indices) {
                     messages[index] = ChatMessage("Error: ${e.message ?: "Something went wrong"}", false, messageType = MessageType.AI)
                     chatAdapter.notifyItemChanged(index)
+                    persistSessionSnapshot()
                 }
             }
         }
@@ -337,6 +727,7 @@ Keep answers concise.
                     } else {
                         messages[index] = ChatMessage("Error: Could not process image.", false, messageType = MessageType.AI)
                         chatAdapter.notifyItemChanged(index)
+                        persistSessionSnapshot()
                         return@launch
                     }
                 }
@@ -345,11 +736,13 @@ Keep answers concise.
                 messages[index] = ChatMessage(finalResponse, false, suggestions = suggestions, messageType = MessageType.AI)
                 chatAdapter.notifyItemChanged(index)
                 rvChat.scrollToPosition(messages.size - 1)
+                persistSessionSnapshot()
             } catch (e: Exception) {
                 val index = messages.indexOf(typingMessage)
                 if (index != -1) {
                     messages[index] = ChatMessage("Error: ${e.message}", false, messageType = MessageType.AI)
                     chatAdapter.notifyItemChanged(index)
+                    persistSessionSnapshot()
                 }
             }
         }
@@ -387,6 +780,7 @@ Keep answers concise.
         messages.add(message)
         chatAdapter.notifyItemInserted(messages.size - 1)
         rvChat.scrollToPosition(messages.size - 1)
+        persistSessionSnapshot()
     }
 
     private fun buildContext(): String {
@@ -412,30 +806,35 @@ Keep answers concise.
             currentMode = StudyMode.EXPLAIN
             pendingExamPaperGeneration = false
             showGuidedGenerationSheet(StudyMode.EXPLAIN)
+            persistSessionSnapshot()
         }
         chipShortNotesMode.setOnClickListener {
             pendingGuidedGenerationMode = null
             currentMode = StudyMode.SHORT_NOTES
             pendingExamPaperGeneration = false
             showGuidedGenerationSheet(StudyMode.SHORT_NOTES)
+            persistSessionSnapshot()
         }
         chipExamAnswer.setOnClickListener {
             pendingGuidedGenerationMode = null
             currentMode = StudyMode.EXAM_ANSWER
             pendingExamPaperGeneration = true
             showExamAnswerAttachmentSheet()
+            persistSessionSnapshot()
         }
         chipQuiz.setOnClickListener {
             pendingGuidedGenerationMode = null
             currentMode = StudyMode.QUIZ
             pendingExamPaperGeneration = false
             showGuidedGenerationSheet(StudyMode.QUIZ)
+            persistSessionSnapshot()
         }
         chipFlashcards.setOnClickListener {
             pendingGuidedGenerationMode = null
             currentMode = StudyMode.FLASHCARDS
             pendingExamPaperGeneration = false
             showGuidedGenerationSheet(StudyMode.FLASHCARDS)
+            persistSessionSnapshot()
         }
     }
 
@@ -588,6 +987,7 @@ Keep answers concise.
     }
 
     private fun startModeIntent(mode: StudyMode, source: String, value: String) {
+        persistSessionSnapshot()
         val intent = when (mode) {
             StudyMode.QUIZ -> Intent(this, QuizSetupActivity::class.java).apply {
                 putExtra(QuizSetupActivity.EXTRA_PREFILL_SOURCE, source) // "topic" or "notes"
@@ -938,6 +1338,7 @@ Keep answers concise.
             tvAttachmentInfo.text = ""
             layoutAttachmentBanner.visibility = View.GONE
         }
+        persistSessionSnapshot()
     }
 
     private fun clearAttachment() {
