@@ -2,7 +2,11 @@
 
 import android.content.Intent
 import android.os.Bundle
+import android.text.format.DateUtils
+import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -10,8 +14,11 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
+import androidx.core.content.ContextCompat
 import com.kartik.aistudyassistant.R
 import com.kartik.aistudyassistant.data.local.ContinueLearningPrefs
+import com.kartik.aistudyassistant.data.local.RecentActivityItem
+import com.kartik.aistudyassistant.data.local.RecentActivityType
 import com.kartik.aistudyassistant.data.local.SessionType
 import com.kartik.aistudyassistant.ui.chat.ChatActivity
 import com.kartik.aistudyassistant.ui.flashcard.FlashcardActivity
@@ -23,6 +30,7 @@ import com.kartik.aistudyassistant.ui.quiz.QuizSetupActivity
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
+import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
 
@@ -36,6 +44,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvContinueFlashcardSubtitle: TextView
     private lateinit var tvContinueQuizTitle: TextView
     private lateinit var tvContinueQuizSubtitle: TextView
+    private lateinit var llRecentActivity: LinearLayout
+    private lateinit var tvRecentActivityEmpty: TextView
 
     private var flashcardInProgress = false
     private var flashcardCurrentIndex = 0
@@ -54,9 +64,11 @@ class MainActivity : AppCompatActivity() {
         auth = FirebaseAuth.getInstance()
         tvWelcome = findViewById(R.id.tvWelcome)
         initContinueLearningViews()
+        initRecentActivityViews()
 
         loadUserData()
         updateContinueLearningSection()
+        updateRecentActivitySection()
         setupClickListeners()
         setupBottomNavigation()
     }
@@ -64,6 +76,7 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         updateContinueLearningSection()
+        updateRecentActivitySection()
     }
 
     private fun initContinueLearningViews() {
@@ -75,6 +88,11 @@ class MainActivity : AppCompatActivity() {
         tvContinueFlashcardSubtitle = findViewById(R.id.tvContinueFlashcardSubtitle)
         tvContinueQuizTitle = findViewById(R.id.tvContinueQuizTitle)
         tvContinueQuizSubtitle = findViewById(R.id.tvContinueQuizSubtitle)
+    }
+
+    private fun initRecentActivityViews() {
+        llRecentActivity = findViewById(R.id.llRecentActivity)
+        tvRecentActivityEmpty = findViewById(R.id.tvRecentActivityEmpty)
     }
 
     private fun updateContinueLearningSection() {
@@ -125,6 +143,142 @@ class MainActivity : AppCompatActivity() {
 
         viewContinueDivider.visibility = if (hasFlashcard && hasQuiz) View.VISIBLE else View.GONE
         layoutContinueLearningSection.visibility = if (hasFlashcard || hasQuiz) View.VISIBLE else View.GONE
+    }
+
+    private fun updateRecentActivitySection() {
+        val activities = ContinueLearningPrefs.readRecentActivities(this, limit = 5)
+
+        llRecentActivity.removeAllViews()
+        if (activities.isEmpty()) {
+            tvRecentActivityEmpty.visibility = View.VISIBLE
+            return
+        }
+
+        tvRecentActivityEmpty.visibility = View.GONE
+        activities.forEachIndexed { index, item ->
+            llRecentActivity.addView(createRecentActivityRow(item))
+            if (index < activities.lastIndex) {
+                llRecentActivity.addView(createRecentActivityDivider())
+            }
+        }
+    }
+
+    private fun createRecentActivityRow(item: RecentActivityItem): View {
+        val row = LayoutInflater.from(this).inflate(
+            R.layout.item_recent_activity,
+            llRecentActivity,
+            false
+        )
+
+        val icon = row.findViewById<ImageView>(R.id.ivRecentIcon)
+        val title = row.findViewById<TextView>(R.id.tvRecentTitle)
+        val subtitle = row.findViewById<TextView>(R.id.tvRecentSubtitle)
+
+        val topic = item.topic.ifBlank {
+            when (item.type) {
+                RecentActivityType.QUIZ -> "General Quiz"
+                RecentActivityType.FLASHCARD -> "General Study"
+                RecentActivityType.CHAT -> "General Chat"
+                RecentActivityType.UPLOAD -> "Study File"
+            }
+        }
+
+        when (item.type) {
+            RecentActivityType.QUIZ -> {
+                icon.setImageResource(android.R.drawable.ic_menu_edit)
+                icon.setColorFilter(ContextCompat.getColor(this, R.color.accent_orange))
+                title.text = "Quiz - $topic"
+                row.setOnClickListener {
+                    startActivity(
+                        Intent(this, QuizSetupActivity::class.java).apply {
+                            putExtra(QuizSetupActivity.EXTRA_PREFILL_TOPIC, topic)
+                        }
+                    )
+                }
+            }
+            RecentActivityType.FLASHCARD -> {
+                icon.setImageResource(android.R.drawable.ic_menu_gallery)
+                icon.setColorFilter(ContextCompat.getColor(this, R.color.accent_green))
+                title.text = "Flashcards - $topic"
+                row.setOnClickListener {
+                    startActivity(
+                        Intent(this, FlashcardSetupActivity::class.java).apply {
+                            putExtra(FlashcardSetupActivity.EXTRA_TOPIC_TEXT, topic)
+                        }
+                    )
+                }
+            }
+            RecentActivityType.CHAT -> {
+                icon.setImageResource(android.R.drawable.ic_menu_send)
+                icon.setColorFilter(ContextCompat.getColor(this, R.color.accent_purple))
+                title.text = "AI Chat - $topic"
+                row.setOnClickListener {
+                    startActivity(Intent(this, ChatActivity::class.java))
+                }
+            }
+            RecentActivityType.UPLOAD -> {
+                icon.setImageResource(android.R.drawable.ic_menu_upload)
+                icon.setColorFilter(ContextCompat.getColor(this, R.color.primary))
+                title.text = "Upload - $topic"
+                row.setOnClickListener {
+                    startActivity(Intent(this, UploadActivity::class.java))
+                }
+            }
+        }
+
+        subtitle.text = buildRecentSubtitle(item)
+
+        return row
+    }
+
+    private fun buildRecentSubtitle(item: RecentActivityItem): String {
+        val relativeTime = DateUtils.getRelativeTimeSpanString(
+            item.timestamp,
+            System.currentTimeMillis(),
+            DateUtils.MINUTE_IN_MILLIS,
+            DateUtils.FORMAT_ABBREV_RELATIVE
+        ).toString()
+
+        val contextualText = when (item.type) {
+            RecentActivityType.QUIZ -> {
+                val score = item.scoreOrCount
+                if (score > 0) "Scored $score in quiz" else "Attempted quiz"
+            }
+            RecentActivityType.FLASHCARD -> {
+                val cards = item.scoreOrCount
+                if (cards > 0) "Reviewed $cards cards" else "Studied flashcards"
+            }
+            RecentActivityType.CHAT -> {
+                val chatTopic = item.topic.trim()
+                if (chatTopic.isNotEmpty()) "Asked about: $chatTopic" else "Opened AI chat"
+            }
+            RecentActivityType.UPLOAD -> resolveUploadSubtitle(item.topic)
+        }
+
+        return "$contextualText • $relativeTime"
+    }
+
+    private fun resolveUploadSubtitle(fileName: String): String {
+        val extension = fileName.substringAfterLast('.', "").lowercase(Locale.getDefault())
+        return when (extension) {
+            "pdf" -> "Uploaded PDF"
+            "png", "jpg", "jpeg", "webp", "gif" -> "Uploaded Image"
+            "" -> "Uploaded File"
+            else -> "Uploaded ${extension.uppercase(Locale.getDefault())} file"
+        }
+    }
+
+    private fun createRecentActivityDivider(): View {
+        return View(this).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                1
+            ).apply {
+                marginStart = resources.getDimensionPixelSize(R.dimen.space_12)
+                marginEnd = resources.getDimensionPixelSize(R.dimen.space_12)
+            }
+            setBackgroundColor(ContextCompat.getColor(this@MainActivity, R.color.divider))
+        }
     }
 
     private fun loadUserData() {

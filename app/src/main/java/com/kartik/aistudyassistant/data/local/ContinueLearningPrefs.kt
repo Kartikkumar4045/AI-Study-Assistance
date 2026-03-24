@@ -3,12 +3,29 @@
 import android.content.Context
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.Serializable
 
 data class ContinueLearningSnapshot(
     val flashcardTopic: String,
     val flashcardCount: Int,
     val quizTopic: String,
     val quizScore: Int
+)
+
+@Serializable
+enum class RecentActivityType {
+    FLASHCARD,
+    QUIZ,
+    CHAT,
+    UPLOAD
+}
+
+@Serializable
+data class RecentActivityItem(
+    val type: RecentActivityType,
+    val topic: String,
+    val scoreOrCount: Int,
+    val timestamp: Long
 )
 
 enum class SessionType {
@@ -37,6 +54,8 @@ object ContinueLearningPrefs {
     const val KEY_LAST_FLASHCARD_COUNT = "last_flashcard_count"
     const val KEY_LAST_QUIZ_TOPIC = "last_quiz_topic"
     const val KEY_LAST_QUIZ_SCORE = "last_quiz_score"
+    private const val KEY_RECENT_ACTIVITY_JSON = "recent_activity_json"
+    private const val MAX_RECENT_ACTIVITY_ITEMS = 20
 
     // Quiz in-progress keys.
     const val KEY_QUIZ_TOPIC = "quiz_topic"
@@ -65,18 +84,70 @@ object ContinueLearningPrefs {
     private val json = Json { ignoreUnknownKeys = true }
 
     fun saveFlashcardActivity(context: Context, topic: String, cardCount: Int) {
+        val safeTopic = topic.ifBlank { "General Study" }
         context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
             .edit()
-            .putString(KEY_LAST_FLASHCARD_TOPIC, topic)
+            .putString(KEY_LAST_FLASHCARD_TOPIC, safeTopic)
             .putInt(KEY_LAST_FLASHCARD_COUNT, cardCount.coerceAtLeast(0))
             .apply()
+
+        appendRecentActivity(
+            context = context,
+            type = RecentActivityType.FLASHCARD,
+            topic = safeTopic,
+            scoreOrCount = cardCount.coerceAtLeast(0)
+        )
     }
 
     fun saveQuizActivity(context: Context, topic: String, score: Int) {
+        val safeTopic = topic.ifBlank { "General Quiz" }
         context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
             .edit()
-            .putString(KEY_LAST_QUIZ_TOPIC, topic)
+            .putString(KEY_LAST_QUIZ_TOPIC, safeTopic)
             .putInt(KEY_LAST_QUIZ_SCORE, score.coerceAtLeast(0))
+            .apply()
+
+        appendRecentActivity(
+            context = context,
+            type = RecentActivityType.QUIZ,
+            topic = safeTopic,
+            scoreOrCount = score.coerceAtLeast(0)
+        )
+    }
+
+    fun saveChatActivity(context: Context, topic: String) {
+        val safeTopic = topic.ifBlank { "General Chat" }
+        appendRecentActivity(
+            context = context,
+            type = RecentActivityType.CHAT,
+            topic = safeTopic,
+            scoreOrCount = 0
+        )
+    }
+
+    fun saveUploadActivity(context: Context, fileName: String) {
+        val safeName = fileName.ifBlank { "Study File" }
+        appendRecentActivity(
+            context = context,
+            type = RecentActivityType.UPLOAD,
+            topic = safeName,
+            scoreOrCount = 0
+        )
+    }
+
+    fun readRecentActivities(context: Context, limit: Int = 5): List<RecentActivityItem> {
+        val safeLimit = limit.coerceAtLeast(1)
+        val prefs = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+        val raw = prefs.getString(KEY_RECENT_ACTIVITY_JSON, "[]").orEmpty()
+        return decodeRecentActivityList(raw)
+            .sortedByDescending { it.timestamp }
+            .take(safeLimit)
+    }
+
+    fun clearRecentActivities(context: Context) {
+        context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+            .edit()
+            .remove(KEY_RECENT_ACTIVITY_JSON)
             .apply()
     }
 
@@ -305,6 +376,14 @@ object ContinueLearningPrefs {
         }
     }
 
+    private fun encodeRecentActivityList(values: List<RecentActivityItem>): String {
+        return try {
+            json.encodeToString<List<RecentActivityItem>>(values)
+        } catch (_: Exception) {
+            "[]"
+        }
+    }
+
     private fun encodeBooleanList(values: List<Boolean>): String {
         return try {
             json.encodeToString<List<Boolean>>(values)
@@ -327,6 +406,41 @@ object ContinueLearningPrefs {
         } catch (_: Exception) {
             emptyList()
         }
+    }
+
+    private fun decodeRecentActivityList(raw: String): List<RecentActivityItem> {
+        return try {
+            json.decodeFromString<List<RecentActivityItem>>(raw)
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun appendRecentActivity(
+        context: Context,
+        type: RecentActivityType,
+        topic: String,
+        scoreOrCount: Int
+    ) {
+        val prefs = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+        val existing = decodeRecentActivityList(
+            prefs.getString(KEY_RECENT_ACTIVITY_JSON, "[]").orEmpty()
+        )
+        val updated = listOf(
+            RecentActivityItem(
+                type = type,
+                topic = topic,
+                scoreOrCount = scoreOrCount,
+                timestamp = System.currentTimeMillis()
+            )
+        ) + existing
+
+        prefs.edit()
+            .putString(
+                KEY_RECENT_ACTIVITY_JSON,
+                encodeRecentActivityList(updated.take(MAX_RECENT_ACTIVITY_ITEMS))
+            )
+            .apply()
     }
 
     private fun parseStatus(raw: String?): SessionStatus {

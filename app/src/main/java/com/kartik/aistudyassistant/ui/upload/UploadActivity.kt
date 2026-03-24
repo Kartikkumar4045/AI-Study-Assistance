@@ -19,6 +19,7 @@ import androidx.cardview.widget.CardView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.kartik.aistudyassistant.R
+import com.kartik.aistudyassistant.data.local.ContinueLearningPrefs
 import com.kartik.aistudyassistant.ui.chat.ChatActivity
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.firebase.auth.FirebaseAuth
@@ -128,8 +129,9 @@ class UploadActivity : AppCompatActivity() {
         firestore.collection("Notes").document(userId).collection("UserNotes").document(noteId)
             .set(note)
             .addOnSuccessListener {
+                ContinueLearningPrefs.saveUploadActivity(this, fileName)
                 hideProgress()
-                Toast.makeText(this, "File uploaded and saved to Firestore!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "File uploaded successfully!", Toast.LENGTH_SHORT).show()
             }
             .addOnFailureListener { e ->
                 hideProgress()

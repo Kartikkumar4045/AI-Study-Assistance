@@ -26,7 +26,7 @@
                 android:layout_width="80dp"
                 android:layout_height="80dp"
                 android:src="@drawable/graduationcap201"
-                app:tint="@color/primary" />
+                 />
 
             <TextView
                 style="@style/TextAppearance.AIStudyAssistance.Title"
@@ -34,7 +34,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/space_16"
                 android:layout_gravity="center"
-                android:text="Join AI Study Assistance"
+                android:text="Join AI Study Assistant"
                 android:textSize="20sp" />
 
             <TextView

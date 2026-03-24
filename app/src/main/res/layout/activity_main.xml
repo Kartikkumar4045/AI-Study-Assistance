@@ -441,93 +441,26 @@
                 app:cardElevation="1dp">
 
                 <LinearLayout
-                    android:id="@+id/llRecentActivity"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
                     android:padding="@dimen/space_8">
 
-                    <!-- Sample Item 1 -->
                     <LinearLayout
+                        android:id="@+id/llRecentActivity"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
-                        android:padding="@dimen/space_12"
-                        android:background="?attr/selectableItemBackground">
+                        android:orientation="vertical" />
 
-                        <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
-                            android:src="@android:drawable/ic_menu_send"
-                            app:tint="@color/accent_purple" />
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="@dimen/space_12"
-                            android:layout_weight="1"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="AI Chat - Operating System"
-                                android:textColor="@color/text_main"
-                                android:textSize="@dimen/text_body"
-                                android:textStyle="bold" />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="2 hours ago"
-                                android:textColor="@color/text_secondary"
-                                android:textSize="@dimen/text_overline" />
-                        </LinearLayout>
-                    </LinearLayout>
-
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="1dp"
-                        android:layout_marginHorizontal="@dimen/space_12"
-                        android:background="@color/divider" />
-
-                    <!-- Sample Item 2 -->
-                    <LinearLayout
+                    <TextView
+                        android:id="@+id/tvRecentActivityEmpty"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
                         android:padding="@dimen/space_12"
-                        android:background="?attr/selectableItemBackground">
-
-                        <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
-                            android:src="@android:drawable/ic_menu_edit"
-                            app:tint="@color/accent_orange" />
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="@dimen/space_12"
-                            android:layout_weight="1"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Quiz - Data Structures"
-                                android:textColor="@color/text_main"
-                                android:textSize="@dimen/text_body"
-                                android:textStyle="bold" />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Yesterday"
-                                android:textColor="@color/text_secondary"
-                                android:textSize="@dimen/text_overline" />
-                        </LinearLayout>
-                    </LinearLayout>
+                        android:text="No recent study activity yet"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="@dimen/text_caption"
+                        android:visibility="gone" />
 
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
