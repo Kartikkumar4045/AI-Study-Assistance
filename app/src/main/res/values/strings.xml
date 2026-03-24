@@ -82,4 +82,8 @@
     <string name="chat_delete_session_confirm">Delete</string>
     <string name="chat_delete_session_cancel">Cancel</string>
     <string name="chat_delete_session_failed">Could not delete this session.</string>
+    <string name="chat_suggest_next_questions">Suggest next questions</string>
+    <string name="chat_refresh_questions">Refresh questions</string>
+    <string name="chat_suggesting_questions">Suggesting...</string>
+    <string name="chat_no_suggestions_available">No suggestions available right now.</string>
 </resources>

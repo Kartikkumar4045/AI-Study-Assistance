@@ -88,6 +88,18 @@
                 android:textColor="@color/text_secondary"
                 android:textSize="@dimen/text_overline" />
 
+            <TextView
+                android:id="@+id/btnSuggestNext"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="?android:attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:padding="@dimen/space_8"
+                android:text="@string/chat_suggest_next_questions"
+                android:textColor="@color/text_secondary"
+                android:textSize="@dimen/text_overline" />
+
             <ImageView
                 android:id="@+id/btnHelpful"
                 android:layout_width="32dp"
@@ -99,12 +111,22 @@
         </LinearLayout>
     </LinearLayout>
 
-    <com.google.android.material.chip.ChipGroup
-        android:id="@+id/chipGroupSuggestions"
+    <HorizontalScrollView
+        android:id="@+id/scrollSuggestions"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/space_8"
-        android:visibility="gone"
-        app:chipSpacing="@dimen/space_8" />
+        android:fillViewport="false"
+        android:scrollbars="none"
+        android:visibility="gone">
+
+        <com.google.android.material.chip.ChipGroup
+        android:id="@+id/chipGroupSuggestions"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:chipSpacing="@dimen/space_8"
+        app:singleLine="true" />
+
+    </HorizontalScrollView>
 
 </LinearLayout>

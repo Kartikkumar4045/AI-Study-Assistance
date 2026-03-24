@@ -11,6 +11,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
+import android.widget.HorizontalScrollView
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -543,7 +544,8 @@ class ChatActivity : AppCompatActivity() {
             text = text,
             isUser = isUser,
             messageType = messageType.name,
-            suggestions = suggestions
+            suggestions = suggestions,
+            isHelpful = isHelpful
         )
     }
 
@@ -556,7 +558,8 @@ class ChatActivity : AppCompatActivity() {
             isUser = isUser,
             isTyping = false,
             suggestions = suggestions,
-            messageType = mappedType
+            messageType = mappedType,
+            isHelpful = isHelpful
         )
     }
 
@@ -677,9 +680,8 @@ Keep answers concise.
                 val finalResponse = messages.getOrNull(index)?.text.orEmpty().ifBlank {
                     "Sorry, I could not generate a response. Please try again."
                 }
-                val suggestions = generateSuggestions(finalResponse)
                 if (index in messages.indices) {
-                    messages[index] = ChatMessage(finalResponse, false, suggestions = suggestions, messageType = MessageType.AI)
+                    messages[index] = ChatMessage(finalResponse, false, messageType = MessageType.AI)
                     chatAdapter.notifyItemChanged(index)
                     rvChat.scrollToPosition(messages.size - 1)
                     persistSessionSnapshot()
@@ -688,6 +690,85 @@ Keep answers concise.
                 if (index in messages.indices) {
                     messages[index] = ChatMessage("Error: ${e.message ?: "Something went wrong"}", false, messageType = MessageType.AI)
                     chatAdapter.notifyItemChanged(index)
+                    persistSessionSnapshot()
+                }
+            }
+        }
+    }
+
+    private fun regenerateResponseAt(targetIndex: Int) {
+        if (targetIndex !in messages.indices) return
+
+        val target = messages[targetIndex]
+        if (target.isUser || target.isTyping || target.messageType != MessageType.AI) return
+
+        val prompt = findLatestUserPromptBefore(targetIndex)
+        if (prompt.isNullOrBlank()) {
+            Toast.makeText(this, "No prompt found to regenerate", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // Regenerate in-place so the same AI bubble gets refreshed.
+        messages[targetIndex] = ChatMessage("AI is thinking...", false, isTyping = true, messageType = MessageType.SYSTEM)
+        chatAdapter.notifyItemChanged(targetIndex)
+
+        lifecycleScope.launch {
+            val context = buildContext()
+            val systemPrompt = """
+You are an AI study assistant.
+Explain concepts clearly.
+Use bullet points.
+Avoid markdown formatting.
+Keep answers concise.
+""".trimIndent()
+            val modePrompt = getModePrompt(currentMode, prompt)
+
+            if (activeDocumentText == null && activeImageBitmap == null && !activeImageSource.isNullOrBlank()) {
+                activeImageBitmap = loadBitmapFromSource(activeImageSource)
+            }
+
+            val fullPrompt = if (activeDocumentText != null) {
+                "$systemPrompt\n\nUse the following study material to answer.\n\nMaterial:\n$activeDocumentText\n\nQuestion:\n$modePrompt"
+            } else {
+                "$systemPrompt\n\nContext:\n$context\n\n$modePrompt"
+            }
+
+            try {
+                if (activeImageBitmap != null) {
+                    geminiHelper.getResponseWithImageStream(fullPrompt, activeImageBitmap!!).collect { partialResponse ->
+                        val cleaned = cleanResponse(partialResponse)
+                        withContext(Dispatchers.Main) {
+                            if (targetIndex in messages.indices) {
+                                messages[targetIndex] = ChatMessage(cleaned, false, isTyping = true, messageType = MessageType.AI)
+                                chatAdapter.notifyItemChanged(targetIndex)
+                            }
+                        }
+                    }
+                } else {
+                    geminiHelper.getResponseStream(fullPrompt).collect { partialResponse ->
+                        val cleaned = cleanResponse(partialResponse)
+                        withContext(Dispatchers.Main) {
+                            if (targetIndex in messages.indices) {
+                                messages[targetIndex] = ChatMessage(cleaned, false, isTyping = true, messageType = MessageType.AI)
+                                chatAdapter.notifyItemChanged(targetIndex)
+                            }
+                        }
+                    }
+                }
+
+                val finalResponse = messages.getOrNull(targetIndex)?.text.orEmpty().ifBlank {
+                    "Sorry, I could not generate a response. Please try again."
+                }
+                if (targetIndex in messages.indices) {
+                    messages[targetIndex] = ChatMessage(finalResponse, false, messageType = MessageType.AI)
+                    chatAdapter.notifyItemChanged(targetIndex)
+                    rvChat.scrollToPosition(messages.size - 1)
+                    persistSessionSnapshot()
+                }
+            } catch (e: Exception) {
+                if (targetIndex in messages.indices) {
+                    messages[targetIndex] = ChatMessage("Error: ${e.message ?: "Something went wrong"}", false, messageType = MessageType.AI)
+                    chatAdapter.notifyItemChanged(targetIndex)
                     persistSessionSnapshot()
                 }
             }
@@ -732,8 +813,7 @@ Keep answers concise.
                     }
                 }
                 val finalResponse = messages[index].text
-                val suggestions = generateSuggestions(finalResponse)
-                messages[index] = ChatMessage(finalResponse, false, suggestions = suggestions, messageType = MessageType.AI)
+                messages[index] = ChatMessage(finalResponse, false, messageType = MessageType.AI)
                 chatAdapter.notifyItemChanged(index)
                 rvChat.scrollToPosition(messages.size - 1)
                 persistSessionSnapshot()
@@ -786,6 +866,17 @@ Keep answers concise.
     private fun buildContext(): String {
         val recentMessages = messages.filter { !it.isTyping }.takeLast(6)
         return recentMessages.joinToString("\n") { if (it.isUser) "User: ${it.text}" else "AI: ${it.text}" }
+    }
+
+    private fun findLatestUserPromptBefore(index: Int): String? {
+        if (index <= 0 || index > messages.lastIndex) return null
+        for (i in index - 1 downTo 0) {
+            val message = messages[i]
+            if (message.isUser && message.text.isNotBlank()) {
+                return message.text
+            }
+        }
+        return null
     }
 
     private fun cleanResponse(response: String): String {
@@ -1069,11 +1160,97 @@ Keep answers concise.
 
     private suspend fun generateSuggestions(response: String): List<String> {
         return try {
-            val prompt = "Generate 2 follow-up questions for: $response"
+            val prompt = """
+Generate exactly 2 concise follow-up study questions based on the answer below.
+Rules:
+- Return plain text only.
+- One question per line.
+- Do not include numbering, bullets, labels, or explanations.
+- Keep each question under 12 words.
+
+Answer:
+$response
+""".trimIndent()
             val suggestionsText = geminiHelper.getResponse(prompt)
-            suggestionsText.lines().filter { it.isNotBlank() }.take(2)
+            suggestionsText
+                .lines()
+                .map { sanitizeSuggestion(it) }
+                .filter { it.isNotBlank() }
+                .distinct()
+                .take(2)
         } catch (e: Exception) {
             emptyList()
+        }
+    }
+
+    private fun sanitizeSuggestion(raw: String): String {
+        var value = raw.trim()
+        if (value.isBlank()) return ""
+
+        value = value
+            .replace(Regex("^[0-9]+[.)]\\s*"), "")
+            .replace(Regex("^[-*•]\\s*"), "")
+            .trim()
+
+        val lower = value.lowercase(Locale.US)
+        val isMetaLine = value.endsWith(":") ||
+            lower.startsWith("here are") ||
+            lower.contains("follow-up question") ||
+            lower.contains("follow up question") ||
+            lower.startsWith("next questions")
+        if (isMetaLine) return ""
+
+        if (value.length < 6) return ""
+
+        if (value.endsWith("?")) return value
+
+        val startsLikeQuestion = Regex(
+            "^(what|how|why|when|where|which|who|whom|whose|can|could|would|should|is|are|do|does|did|will|have|has|had)\\b",
+            RegexOption.IGNORE_CASE
+        ).containsMatchIn(value)
+
+        if (!startsLikeQuestion) return ""
+
+        return "$value?"
+    }
+
+    private fun canRequestSuggestions(message: ChatMessage): Boolean {
+        if (message.isUser || message.isTyping || message.messageType != MessageType.AI) return false
+        val text = message.text.trim()
+        if (text.isBlank()) return false
+        if (text.startsWith("Error:", ignoreCase = true)) return false
+        if (text.startsWith("Sorry, I could not generate", ignoreCase = true)) return false
+        return true
+    }
+
+    private fun requestSuggestionsForMessage(targetIndex: Int) {
+        if (targetIndex !in messages.indices) return
+
+        val current = messages[targetIndex]
+        if (!canRequestSuggestions(current) || current.isSuggestionsLoading) return
+
+        messages[targetIndex] = current.copy(isSuggestionsLoading = true)
+        chatAdapter.notifyItemChanged(targetIndex)
+
+        lifecycleScope.launch {
+            val suggestions = generateSuggestions(current.text)
+            withContext(Dispatchers.Main) {
+                if (targetIndex !in messages.indices) return@withContext
+
+                val latest = messages[targetIndex]
+                if (!canRequestSuggestions(latest)) return@withContext
+
+                messages[targetIndex] = latest.copy(
+                    suggestions = suggestions,
+                    isSuggestionsLoading = false
+                )
+                chatAdapter.notifyItemChanged(targetIndex)
+                persistSessionSnapshot()
+
+                if (suggestions.isEmpty()) {
+                    Toast.makeText(this@ChatActivity, getString(R.string.chat_no_suggestions_available), Toast.LENGTH_SHORT).show()
+                }
+            }
         }
     }
 
@@ -1357,10 +1534,12 @@ Keep answers concise.
             val cardMessage: CardView = view.findViewById(R.id.cardMessage)
             val layoutContainer: LinearLayout = view.findViewById(R.id.layoutMessageContainer)
             val chipGroupSuggestions: ChipGroup = view.findViewById(R.id.chipGroupSuggestions)
+            val scrollSuggestions: HorizontalScrollView = view.findViewById(R.id.scrollSuggestions)
             val tvShowMore: TextView = view.findViewById(R.id.tvShowMore)
             val layoutActionToolbar: LinearLayout = view.findViewById(R.id.layoutActionToolbar)
             val btnCopy: TextView = view.findViewById(R.id.btnCopy)
             val btnRegenerate: TextView = view.findViewById(R.id.btnRegenerate)
+            val btnSuggestNext: TextView = view.findViewById(R.id.btnSuggestNext)
             val btnHelpful: ImageView = view.findViewById(R.id.btnHelpful)
         }
 
@@ -1395,27 +1574,76 @@ Keep answers concise.
 
                 if (!message.isTyping && message.messageType == MessageType.AI) {
                     holder.layoutActionToolbar.visibility = View.VISIBLE
+                    holder.btnSuggestNext.visibility = if (canRequestSuggestions(message)) View.VISIBLE else View.GONE
+                    holder.btnSuggestNext.isEnabled = !message.isSuggestionsLoading
+                    holder.btnSuggestNext.text = if (message.isSuggestionsLoading) {
+                        getString(R.string.chat_suggesting_questions)
+                    } else if (message.suggestions.isEmpty()) {
+                        getString(R.string.chat_suggest_next_questions)
+                    } else {
+                        getString(R.string.chat_refresh_questions)
+                    }
+                    holder.btnHelpful.setImageResource(
+                        if (message.isHelpful) android.R.drawable.btn_star_big_on
+                        else android.R.drawable.btn_star_big_off
+                    )
+                    holder.btnHelpful.setColorFilter(
+                        getColor(if (message.isHelpful) R.color.accent_orange else R.color.text_secondary)
+                    )
+
                     holder.btnCopy.setOnClickListener {
                         val clipboard = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
                         clipboard.setPrimaryClip(android.content.ClipData.newPlainText("AI Response", message.text))
                         Toast.makeText(holder.itemView.context, "Copied", Toast.LENGTH_SHORT).show()
+                    }
+                    holder.btnRegenerate.setOnClickListener {
+                        val adapterPosition = holder.bindingAdapterPosition
+                        if (adapterPosition == RecyclerView.NO_POSITION) return@setOnClickListener
+                        regenerateResponseAt(adapterPosition)
+                    }
+
+                    holder.btnSuggestNext.setOnClickListener {
+                        val adapterPosition = holder.bindingAdapterPosition
+                        if (adapterPosition == RecyclerView.NO_POSITION) return@setOnClickListener
+                        requestSuggestionsForMessage(adapterPosition)
+                    }
+
+                    holder.btnHelpful.setOnClickListener {
+                        val adapterPosition = holder.bindingAdapterPosition
+                        if (adapterPosition == RecyclerView.NO_POSITION) return@setOnClickListener
+
+                        val current = messages.getOrNull(adapterPosition) ?: return@setOnClickListener
+                        if (current.isUser || current.messageType != MessageType.AI) return@setOnClickListener
+
+                        messages[adapterPosition] = current.copy(isHelpful = !current.isHelpful)
+                        chatAdapter.notifyItemChanged(adapterPosition)
+                        persistSessionSnapshot()
                     }
                 } else {
                     holder.layoutActionToolbar.visibility = View.GONE
                 }
 
                 if (message.suggestions.isNotEmpty()) {
-                    holder.chipGroupSuggestions.visibility = View.VISIBLE
+                    holder.scrollSuggestions.visibility = View.VISIBLE
                     holder.chipGroupSuggestions.removeAllViews()
                     for (suggestion in message.suggestions) {
                         val chip = Chip(holder.itemView.context).apply {
                             text = suggestion
+                            isSingleLine = true
+                            setEnsureMinTouchTargetSize(true)
+                            chipMinHeight = resources.getDimension(R.dimen.space_32)
+                            chipStartPadding = resources.getDimension(R.dimen.space_12)
+                            chipEndPadding = resources.getDimension(R.dimen.space_12)
+                            chipStrokeWidth = resources.getDimension(R.dimen.space_2)
+                            chipStrokeColor = getColorStateList(R.color.primary)
+                            chipBackgroundColor = getColorStateList(R.color.button_bg)
+                            setTextColor(getColor(R.color.primary))
                             setOnClickListener { sendMessage(suggestion) }
                         }
                         holder.chipGroupSuggestions.addView(chip)
                     }
                 } else {
-                    holder.chipGroupSuggestions.visibility = View.GONE
+                    holder.scrollSuggestions.visibility = View.GONE
                 }
             }
             holder.cardMessage.layoutParams = params
@@ -1429,7 +1657,9 @@ Keep answers concise.
         val isUser: Boolean,
         val isTyping: Boolean = false,
         val suggestions: List<String> = emptyList(),
-        val messageType: MessageType = MessageType.AI
+        val isSuggestionsLoading: Boolean = false,
+        val messageType: MessageType = MessageType.AI,
+        val isHelpful: Boolean = false
     ) : java.io.Serializable
 
     data class StudyNote(

@@ -9,7 +9,8 @@ data class PersistedChatMessage(
     val text: String,
     val isUser: Boolean,
     val messageType: String,
-    val suggestions: List<String>
+    val suggestions: List<String>,
+    val isHelpful: Boolean
 )
 
 data class PersistedChatSession(
@@ -328,6 +329,7 @@ object ChatSessionPrefs {
                             put("isUser", message.isUser)
                             put("messageType", message.messageType)
                             put("suggestions", JSONArray(message.suggestions))
+                            put("isHelpful", message.isHelpful)
                         }
                     )
                 }
@@ -350,7 +352,8 @@ object ChatSessionPrefs {
                     text = item.optString("text").orEmpty(),
                     isUser = item.optBoolean("isUser", false),
                     messageType = item.optString("messageType").ifBlank { "AI" },
-                    suggestions = suggestions.filter { it.isNotBlank() }
+                    suggestions = suggestions.filter { it.isNotBlank() },
+                    isHelpful = item.optBoolean("isHelpful", false)
                 )
             )
         }
