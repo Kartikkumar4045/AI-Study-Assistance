@@ -5,6 +5,8 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import java.util.Locale
+import java.util.TimeZone
 import java.util.UUID
 
 data class ContinueLearningSnapshot(
@@ -52,15 +54,33 @@ data class SessionOverview(
     val status: SessionStatus
 )
 
+data class StudyProgressSnapshot(
+    val dayStreak: Int,
+    val totalQuizzes: Int,
+    val totalTopics: Int
+)
+
 object ContinueLearningPrefs {
     private const val DEFAULT_SOURCE_TOPIC = "topic"
     private const val PREF_FILE = "continue_learning_prefs"
+    private const val DAY_IN_MILLIS = 24L * 60L * 60L * 1000L
     const val KEY_LAST_FLASHCARD_TOPIC = "last_flashcard_topic"
     const val KEY_LAST_FLASHCARD_COUNT = "last_flashcard_count"
     const val KEY_LAST_QUIZ_TOPIC = "last_quiz_topic"
     const val KEY_LAST_QUIZ_SCORE = "last_quiz_score"
     private const val KEY_RECENT_ACTIVITY_JSON = "recent_activity_json"
     private const val MAX_RECENT_ACTIVITY_ITEMS = 20
+    private const val KEY_PROGRESS_DAY_STREAK = "progress_day_streak"
+    private const val KEY_PROGRESS_LAST_ACTIVE_DAY = "progress_last_active_day"
+    private const val KEY_PROGRESS_TOTAL_QUIZZES = "progress_total_quizzes"
+    private const val KEY_PROGRESS_TOPICS_JSON = "progress_topics_json"
+    private const val UNSET_DAY = Long.MIN_VALUE
+    private val ignoredProgressTopics = setOf(
+        "general quiz",
+        "general study",
+        "general chat",
+        "study file"
+    )
 
     // Quiz in-progress keys.
     const val KEY_QUIZ_TOPIC = "quiz_topic"
@@ -120,6 +140,13 @@ object ContinueLearningPrefs {
             .putInt(KEY_LAST_FLASHCARD_COUNT, cardCount.coerceAtLeast(0))
             .apply()
 
+        updateStudyProgress(
+            context = context,
+            topic = safeTopic,
+            incrementQuizCount = false,
+            trackTopic = true
+        )
+
         appendRecentActivity(
             context = context,
             item = RecentActivityItem(
@@ -139,6 +166,13 @@ object ContinueLearningPrefs {
             .putString(KEY_LAST_QUIZ_TOPIC, safeTopic)
             .putInt(KEY_LAST_QUIZ_SCORE, score.coerceAtLeast(0))
             .apply()
+
+        updateStudyProgress(
+            context = context,
+            topic = safeTopic,
+            incrementQuizCount = true,
+            trackTopic = true
+        )
 
         appendRecentActivity(
             context = context,
@@ -160,6 +194,15 @@ object ContinueLearningPrefs {
     ) {
         val safeTopic = topic.ifBlank { "General Chat" }
         val now = System.currentTimeMillis()
+
+        updateStudyProgress(
+            context = context,
+            topic = safeTopic,
+            incrementQuizCount = false,
+            trackTopic = true,
+            timestamp = now
+        )
+
         val newItem = RecentActivityItem(
             type = RecentActivityType.CHAT,
             topic = safeTopic,
@@ -189,6 +232,14 @@ object ContinueLearningPrefs {
 
     fun saveUploadActivity(context: Context, fileName: String) {
         val safeFileName = fileName.ifBlank { "Study File" }
+
+        updateStudyProgress(
+            context = context,
+            topic = safeFileName,
+            incrementQuizCount = false,
+            trackTopic = false
+        )
+
         appendRecentActivity(
             context = context,
             item = RecentActivityItem(
@@ -199,6 +250,34 @@ object ContinueLearningPrefs {
                 id = UUID.randomUUID().toString()
             )
         )
+    }
+
+    fun readStudyProgress(context: Context): StudyProgressSnapshot {
+        val prefs = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+        val topics = decodeStringList(prefs.getString(KEY_PROGRESS_TOPICS_JSON, "[]").orEmpty())
+
+        return StudyProgressSnapshot(
+            dayStreak = prefs.getInt(KEY_PROGRESS_DAY_STREAK, 0).coerceAtLeast(0),
+            totalQuizzes = prefs.getInt(KEY_PROGRESS_TOTAL_QUIZZES, 0).coerceAtLeast(0),
+            totalTopics = topics.size
+        )
+    }
+
+    fun nextStreakValue(currentStreak: Int, lastActiveDay: Long?, activityDay: Long): Int {
+        val safeStreak = currentStreak.coerceAtLeast(0)
+        if (lastActiveDay == null) return 1
+        return when {
+            activityDay == lastActiveDay -> safeStreak
+            activityDay == lastActiveDay + 1L -> safeStreak + 1
+            else -> 1
+        }
+    }
+
+    fun normalizedTopicForProgress(topic: String): String? {
+        val normalized = topic.trim().lowercase(Locale.getDefault())
+        if (normalized.isBlank()) return null
+        if (normalized in ignoredProgressTopics) return null
+        return normalized
     }
 
     fun readRecentActivities(context: Context, limit: Int = MAX_RECENT_ACTIVITY_ITEMS): List<RecentActivityItem> {
@@ -437,6 +516,47 @@ object ContinueLearningPrefs {
         persistRecentActivities(prefs, updated.take(MAX_RECENT_ACTIVITY_ITEMS))
     }
 
+    private fun updateStudyProgress(
+        context: Context,
+        topic: String,
+        incrementQuizCount: Boolean,
+        trackTopic: Boolean,
+        timestamp: Long = System.currentTimeMillis()
+    ) {
+        val prefs = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+        val currentDay = localDayNumber(timestamp)
+        val previousDay = prefs.getLong(KEY_PROGRESS_LAST_ACTIVE_DAY, UNSET_DAY)
+            .takeIf { it != UNSET_DAY }
+
+        val currentStreak = prefs.getInt(KEY_PROGRESS_DAY_STREAK, 0)
+        val nextStreak = nextStreakValue(currentStreak, previousDay, currentDay)
+
+        val edit = prefs.edit()
+            .putInt(KEY_PROGRESS_DAY_STREAK, nextStreak)
+            .putLong(KEY_PROGRESS_LAST_ACTIVE_DAY, currentDay)
+
+        if (incrementQuizCount) {
+            val totalQuizzes = prefs.getInt(KEY_PROGRESS_TOTAL_QUIZZES, 0)
+            edit.putInt(KEY_PROGRESS_TOTAL_QUIZZES, totalQuizzes + 1)
+        }
+
+        if (trackTopic) {
+            val existingTopics = decodeStringList(
+                prefs.getString(KEY_PROGRESS_TOPICS_JSON, "[]").orEmpty()
+            ).toMutableSet()
+
+            normalizedTopicForProgress(topic)?.let { existingTopics.add(it) }
+            edit.putString(KEY_PROGRESS_TOPICS_JSON, encodeStringList(existingTopics.toList()))
+        }
+
+        edit.apply()
+    }
+
+    private fun localDayNumber(timestamp: Long): Long {
+        val offsetMillis = TimeZone.getDefault().getOffset(timestamp).toLong()
+        return (timestamp + offsetMillis) / DAY_IN_MILLIS
+    }
+
     private fun readRawRecentActivities(prefs: android.content.SharedPreferences): List<RecentActivityItem> {
         val raw = prefs.getString(KEY_RECENT_ACTIVITY_JSON, "[]").orEmpty()
         val decoded = decodeRecentActivityList(raw)
@@ -486,6 +606,14 @@ object ContinueLearningPrefs {
         }
     }
 
+    private fun encodeStringList(values: List<String>): String {
+        return try {
+            json.encodeToString(values)
+        } catch (_: Exception) {
+            "[]"
+        }
+    }
+
     private fun decodeIntList(raw: String): List<Int> {
         return try {
             json.decodeFromString(raw)
@@ -495,6 +623,14 @@ object ContinueLearningPrefs {
     }
 
     private fun decodeBooleanList(raw: String): List<Boolean> {
+        return try {
+            json.decodeFromString(raw)
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun decodeStringList(raw: String): List<String> {
         return try {
             json.decodeFromString(raw)
         } catch (_: Exception) {

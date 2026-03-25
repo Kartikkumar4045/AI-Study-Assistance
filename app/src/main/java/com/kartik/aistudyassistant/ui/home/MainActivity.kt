@@ -47,6 +47,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var llRecentActivity: LinearLayout
     private lateinit var tvRecentActivityEmpty: TextView
     private lateinit var tvRecentActivityClear: TextView
+    private lateinit var tvProgressDayStreak: TextView
+    private lateinit var tvProgressQuizzes: TextView
+    private lateinit var tvProgressTopics: TextView
 
     private var flashcardInProgress = false
     private var flashcardCurrentIndex = 0
@@ -66,6 +69,7 @@ class MainActivity : AppCompatActivity() {
         tvWelcome = findViewById(R.id.tvWelcome)
         initContinueLearningViews()
         initRecentActivityViews()
+        initStudyProgressViews()
 
         loadUserData()
         updateContinueLearningSection()
@@ -95,6 +99,20 @@ class MainActivity : AppCompatActivity() {
         llRecentActivity = findViewById(R.id.llRecentActivity)
         tvRecentActivityEmpty = findViewById(R.id.tvRecentActivityEmpty)
         tvRecentActivityClear = findViewById(R.id.tvRecentActivityClear)
+    }
+
+    private fun initStudyProgressViews() {
+        tvProgressDayStreak = findViewById(R.id.tvProgressDayStreak)
+        tvProgressQuizzes = findViewById(R.id.tvProgressQuizzes)
+        tvProgressTopics = findViewById(R.id.tvProgressTopics)
+    }
+
+    private fun updateStudyProgressSection() {
+        val progress = ContinueLearningPrefs.readStudyProgress(this)
+
+        tvProgressDayStreak.text = "🔥 ${progress.dayStreak}"
+        tvProgressQuizzes.text = "🧠 ${progress.totalQuizzes}"
+        tvProgressTopics.text = "📚 ${progress.totalTopics}"
     }
 
     private fun updateContinueLearningSection() {
@@ -154,6 +172,7 @@ class MainActivity : AppCompatActivity() {
         if (activities.isEmpty()) {
             tvRecentActivityEmpty.visibility = View.VISIBLE
             tvRecentActivityClear.visibility = View.GONE
+            updateStudyProgressSection()
             return
         }
 
@@ -165,6 +184,7 @@ class MainActivity : AppCompatActivity() {
                 llRecentActivity.addView(createRecentActivityDivider())
             }
         }
+        updateStudyProgressSection()
     }
 
     private fun createRecentActivityRow(item: RecentActivityItem): View {
@@ -446,4 +466,3 @@ class MainActivity : AppCompatActivity() {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
 }
-
