@@ -424,14 +424,36 @@
             </GridLayout>
 
             <!-- RECENT STUDY ACTIVITY -->
-            <TextView
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/space_24"
-                android:text="Recent Activity"
-                android:textColor="@color/text_main"
-                android:textSize="@dimen/text_subtitle"
-                android:textStyle="bold" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Recent Activity"
+                    android:textColor="@color/text_main"
+                    android:textSize="@dimen/text_subtitle"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvRecentActivityClear"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:paddingHorizontal="@dimen/space_8"
+                    android:paddingVertical="@dimen/space_4"
+                    android:text="Clear"
+                    android:textColor="@color/primary"
+                    android:textSize="@dimen/text_caption"
+                    android:visibility="gone" />
+            </LinearLayout>
 
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
@@ -444,20 +466,25 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="@dimen/space_8">
+                    android:padding="@dimen/space_12">
 
                     <LinearLayout
                         android:id="@+id/llRecentActivity"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:layout_marginVertical="@dimen/space_4"
                         android:orientation="vertical" />
 
                     <TextView
                         android:id="@+id/tvRecentActivityEmpty"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:padding="@dimen/space_12"
+                        android:layout_marginVertical="@dimen/space_4"
+                        android:gravity="center"
+                        android:paddingVertical="@dimen/space_20"
+                        android:paddingHorizontal="@dimen/space_12"
                         android:text="No recent study activity yet"
+                        android:textAlignment="center"
                         android:textColor="@color/text_secondary"
                         android:textSize="@dimen/text_caption"
                         android:visibility="gone" />

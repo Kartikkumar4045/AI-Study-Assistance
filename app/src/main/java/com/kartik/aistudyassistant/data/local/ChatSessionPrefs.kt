@@ -79,6 +79,15 @@ object ChatSessionPrefs {
         return activeSession?.snapshot
     }
 
+    fun getActiveSessionId(context: Context): String? {
+        val prefs = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+        migrateLegacyIfNeeded(prefs)
+
+        val sessions = readSessions(prefs)
+        if (sessions.isEmpty()) return null
+        return ensureActiveSessionId(prefs, sessions)
+    }
+
     fun createNewSession(context: Context): String {
         val prefs = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
         migrateLegacyIfNeeded(prefs)

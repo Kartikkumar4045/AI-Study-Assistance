@@ -30,6 +30,7 @@ import coil.request.SuccessResult
 import com.kartik.aistudyassistant.BuildConfig
 import com.kartik.aistudyassistant.core.utils.GeminiHelper
 import com.kartik.aistudyassistant.data.local.ChatSessionPrefs
+import com.kartik.aistudyassistant.data.local.ContinueLearningPrefs
 import com.kartik.aistudyassistant.data.local.PersistedChatMessage
 import com.kartik.aistudyassistant.data.local.PersistedChatSession
 import com.kartik.aistudyassistant.data.local.PersistedChatSessionSummary
@@ -59,6 +60,7 @@ import java.util.concurrent.TimeUnit
 class ChatActivity : AppCompatActivity() {
 
     companion object {
+        const val EXTRA_SESSION_ID = "extra_chat_session_id"
         private const val STATE_MESSAGES = "state_messages"
         private const val STATE_MODE = "state_mode"
         private const val STATE_ACTIVE_DOC_TEXT = "state_active_doc_text"
@@ -115,6 +117,7 @@ class ChatActivity : AppCompatActivity() {
         setupStudyModes()
 
         val hasIntentPrefill = hasIntentPrefillPayload()
+        val requestedSessionId = intent.getStringExtra(EXTRA_SESSION_ID).orEmpty()
         val isFirstChatOpenInProcess = !hasOpenedChatInCurrentProcess
         hasOpenedChatInCurrentProcess = true
 
@@ -123,6 +126,8 @@ class ChatActivity : AppCompatActivity() {
             if (messages.isEmpty()) {
                 showInitialGreetingIfNeeded()
             }
+        } else if (requestedSessionId.isNotBlank()) {
+            openRequestedSessionOrFallback(requestedSessionId)
         } else if (hasIntentPrefill) {
             handlePrefilledIntentPayload()
         } else if (isFirstChatOpenInProcess) {
@@ -130,6 +135,24 @@ class ChatActivity : AppCompatActivity() {
         } else {
             restoreLastSessionOrStartFresh()
         }
+    }
+
+    private fun openRequestedSessionOrFallback(sessionId: String) {
+        val changed = ChatSessionPrefs.setActiveSession(this, sessionId)
+        if (!changed) {
+            Toast.makeText(this, "Selected chat session is unavailable", Toast.LENGTH_SHORT).show()
+            startFreshSession(createNewSession = true)
+            return
+        }
+
+        val snapshot = ChatSessionPrefs.readSession(this, sessionId)
+        if (snapshot == null) {
+            Toast.makeText(this, "Selected chat session is unavailable", Toast.LENGTH_SHORT).show()
+            startFreshSession(createNewSession = true)
+            return
+        }
+
+        restorePersistedSession(snapshot)
     }
 
     override fun onPause() {
@@ -537,6 +560,38 @@ class ChatActivity : AppCompatActivity() {
                 messages = persistedMessages
             )
         )
+
+        val hasUserMessage = persistedMessages.any { it.isUser }
+        if (hasUserMessage) {
+            ContinueLearningPrefs.saveChatActivity(
+                context = this,
+                topic = resolveRecentChatTopic(persistedMessages),
+                sessionId = ChatSessionPrefs.getActiveSessionId(this).orEmpty(),
+                messageCount = persistedMessages.count { it.isUser }
+            )
+        }
+    }
+
+    private fun resolveRecentChatTopic(persistedMessages: List<PersistedChatMessage>): String {
+        val firstUserMessage = persistedMessages
+            .firstOrNull { it.isUser }
+            ?.text
+            .orEmpty()
+            .trim()
+
+        if (firstUserMessage.isNotBlank()) {
+            return firstUserMessage.take(50)
+        }
+
+        if (!lastTopicQuery.isNullOrBlank()) {
+            return lastTopicQuery.orEmpty().trim().take(50)
+        }
+
+        if (!activeDocumentName.isNullOrBlank()) {
+            return activeDocumentName.orEmpty().trim().take(50)
+        }
+
+        return "General Chat"
     }
 
     private fun ChatMessage.toPersistedMessage(): PersistedChatMessage {

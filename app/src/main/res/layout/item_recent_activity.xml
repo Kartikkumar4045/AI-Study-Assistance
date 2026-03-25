@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:background="?attr/selectableItemBackground"
@@ -12,6 +13,7 @@
         android:id="@+id/ivRecentIcon"
         android:layout_width="24dp"
         android:layout_height="24dp"
+        android:contentDescription="@null"
         android:src="@android:drawable/ic_menu_info_details" />
 
     <LinearLayout
@@ -36,5 +38,19 @@
             android:textColor="@color/text_secondary"
             android:textSize="@dimen/text_overline" />
     </LinearLayout>
+
+    <ImageView
+        android:id="@+id/ivRecentActions"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:layout_marginStart="@dimen/space_4"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:clickable="true"
+        android:contentDescription="@string/recent_activity_options"
+        android:focusable="true"
+        android:padding="6dp"
+        android:scaleType="centerInside"
+        android:src="@android:drawable/ic_menu_more"
+        app:tint="@color/text_secondary" />
 </LinearLayout>
 

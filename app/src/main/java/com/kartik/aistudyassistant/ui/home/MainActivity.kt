@@ -28,9 +28,9 @@ import com.kartik.aistudyassistant.ui.upload.UploadActivity
 import com.kartik.aistudyassistant.ui.quiz.QuizActivity
 import com.kartik.aistudyassistant.ui.quiz.QuizSetupActivity
 import com.google.android.material.bottomnavigation.BottomNavigationView
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
-import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
 
@@ -46,6 +46,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvContinueQuizSubtitle: TextView
     private lateinit var llRecentActivity: LinearLayout
     private lateinit var tvRecentActivityEmpty: TextView
+    private lateinit var tvRecentActivityClear: TextView
 
     private var flashcardInProgress = false
     private var flashcardCurrentIndex = 0
@@ -93,6 +94,7 @@ class MainActivity : AppCompatActivity() {
     private fun initRecentActivityViews() {
         llRecentActivity = findViewById(R.id.llRecentActivity)
         tvRecentActivityEmpty = findViewById(R.id.tvRecentActivityEmpty)
+        tvRecentActivityClear = findViewById(R.id.tvRecentActivityClear)
     }
 
     private fun updateContinueLearningSection() {
@@ -151,10 +153,12 @@ class MainActivity : AppCompatActivity() {
         llRecentActivity.removeAllViews()
         if (activities.isEmpty()) {
             tvRecentActivityEmpty.visibility = View.VISIBLE
+            tvRecentActivityClear.visibility = View.GONE
             return
         }
 
         tvRecentActivityEmpty.visibility = View.GONE
+        tvRecentActivityClear.visibility = View.VISIBLE
         activities.forEachIndexed { index, item ->
             llRecentActivity.addView(createRecentActivityRow(item))
             if (index < activities.lastIndex) {
@@ -171,17 +175,11 @@ class MainActivity : AppCompatActivity() {
         )
 
         val icon = row.findViewById<ImageView>(R.id.ivRecentIcon)
+        val actions = row.findViewById<ImageView>(R.id.ivRecentActions)
         val title = row.findViewById<TextView>(R.id.tvRecentTitle)
         val subtitle = row.findViewById<TextView>(R.id.tvRecentSubtitle)
 
-        val topic = item.topic.ifBlank {
-            when (item.type) {
-                RecentActivityType.QUIZ -> "General Quiz"
-                RecentActivityType.FLASHCARD -> "General Study"
-                RecentActivityType.CHAT -> "General Chat"
-                RecentActivityType.UPLOAD -> "Study File"
-            }
-        }
+        val topic = resolveRecentTopic(item)
 
         when (item.type) {
             RecentActivityType.QUIZ -> {
@@ -213,7 +211,13 @@ class MainActivity : AppCompatActivity() {
                 icon.setColorFilter(ContextCompat.getColor(this, R.color.accent_purple))
                 title.text = "AI Chat - $topic"
                 row.setOnClickListener {
-                    startActivity(Intent(this, ChatActivity::class.java))
+                    startActivity(
+                        Intent(this, ChatActivity::class.java).apply {
+                            if (item.sessionId.isNotBlank()) {
+                                putExtra(ChatActivity.EXTRA_SESSION_ID, item.sessionId)
+                            }
+                        }
+                    )
                 }
             }
             RecentActivityType.UPLOAD -> {
@@ -227,8 +231,55 @@ class MainActivity : AppCompatActivity() {
         }
 
         subtitle.text = buildRecentSubtitle(item)
+        actions.setOnClickListener {
+            showDeleteRecentActivityDialog(item)
+        }
 
         return row
+    }
+
+    private fun resolveRecentTopic(item: RecentActivityItem): String {
+        return item.topic.ifBlank {
+            when (item.type) {
+                RecentActivityType.QUIZ -> "General Quiz"
+                RecentActivityType.FLASHCARD -> "General Study"
+                RecentActivityType.CHAT -> "General Chat"
+                RecentActivityType.UPLOAD -> "Study File"
+            }
+        }
+    }
+
+    private fun buildRecentTitle(item: RecentActivityItem, topic: String): String {
+        return when (item.type) {
+            RecentActivityType.QUIZ -> "Quiz - $topic"
+            RecentActivityType.FLASHCARD -> "Flashcards - $topic"
+            RecentActivityType.CHAT -> "AI Chat - $topic"
+            RecentActivityType.UPLOAD -> "Upload - $topic"
+        }
+    }
+
+    private fun showDeleteRecentActivityDialog(item: RecentActivityItem) {
+        val title = buildRecentTitle(item, resolveRecentTopic(item))
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setTitle("Remove from Recent Activity")
+            .setMessage("Remove \"$title\" from Recent Activity?")
+            .setPositiveButton("Remove") { _, _ ->
+                val removed = ContinueLearningPrefs.removeRecentActivity(this, item.id)
+                if (!removed) {
+                    showToast("Could not remove this activity")
+                    return@setPositiveButton
+                }
+                updateRecentActivitySection()
+            }
+            .setNegativeButton("Cancel", null)
+            .create()
+
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setTextColor(
+                ContextCompat.getColor(this, R.color.red)
+            )
+        }
+        dialog.show()
     }
 
     private fun buildRecentSubtitle(item: RecentActivityItem): String {
@@ -239,34 +290,11 @@ class MainActivity : AppCompatActivity() {
             DateUtils.FORMAT_ABBREV_RELATIVE
         ).toString()
 
-        val contextualText = when (item.type) {
-            RecentActivityType.QUIZ -> {
-                val score = item.scoreOrCount
-                if (score > 0) "Scored $score in quiz" else "Attempted quiz"
-            }
-            RecentActivityType.FLASHCARD -> {
-                val cards = item.scoreOrCount
-                if (cards > 0) "Reviewed $cards cards" else "Studied flashcards"
-            }
-            RecentActivityType.CHAT -> {
-                val chatTopic = item.topic.trim()
-                if (chatTopic.isNotEmpty()) "Asked about: $chatTopic" else "Opened AI chat"
-            }
-            RecentActivityType.UPLOAD -> resolveUploadSubtitle(item.topic)
-        }
+        val contextualText = RecentActivitySubtitleFormatter.buildContextualText(item)
 
         return "$contextualText • $relativeTime"
     }
 
-    private fun resolveUploadSubtitle(fileName: String): String {
-        val extension = fileName.substringAfterLast('.', "").lowercase(Locale.getDefault())
-        return when (extension) {
-            "pdf" -> "Uploaded PDF"
-            "png", "jpg", "jpeg", "webp", "gif" -> "Uploaded Image"
-            "" -> "Uploaded File"
-            else -> "Uploaded ${extension.uppercase(Locale.getDefault())} file"
-        }
-    }
 
     private fun createRecentActivityDivider(): View {
         return View(this).apply {
@@ -316,6 +344,18 @@ class MainActivity : AppCompatActivity() {
 
         findViewById<CardView>(R.id.cardFlashcards).setOnClickListener {
             startActivity(Intent(this, FlashcardSetupActivity::class.java))
+        }
+
+        tvRecentActivityClear.setOnClickListener {
+            AlertDialog.Builder(this)
+                .setTitle("Clear recent activity")
+                .setMessage("Remove all items from Recent Activity?")
+                .setPositiveButton("Clear") { _, _ ->
+                    ContinueLearningPrefs.clearRecentActivities(this)
+                    updateRecentActivitySection()
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
         }
 
         itemContinueFlashcard.setOnClickListener {

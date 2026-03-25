@@ -1,9 +1,11 @@
 ﻿package com.kartik.aistudyassistant.data.local
 
 import android.content.Context
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.Serializable
+import java.util.UUID
 
 data class ContinueLearningSnapshot(
     val flashcardTopic: String,
@@ -13,21 +15,6 @@ data class ContinueLearningSnapshot(
 )
 
 @Serializable
-enum class RecentActivityType {
-    FLASHCARD,
-    QUIZ,
-    CHAT,
-    UPLOAD
-}
-
-@Serializable
-data class RecentActivityItem(
-    val type: RecentActivityType,
-    val topic: String,
-    val scoreOrCount: Int,
-    val timestamp: Long
-)
-
 enum class SessionType {
     FLASHCARD,
     QUIZ
@@ -38,6 +25,24 @@ enum class SessionStatus {
     IN_PROGRESS,
     COMPLETED
 }
+
+@Serializable
+enum class RecentActivityType {
+    QUIZ,
+    FLASHCARD,
+    CHAT,
+    UPLOAD
+}
+
+@Serializable
+data class RecentActivityItem(
+    val type: RecentActivityType,
+    val topic: String,
+    val scoreOrCount: Int,
+    val timestamp: Long,
+    val id: String = "",
+    val sessionId: String = ""
+)
 
 data class SessionOverview(
     val topicId: String,
@@ -61,11 +66,11 @@ object ContinueLearningPrefs {
     const val KEY_QUIZ_TOPIC = "quiz_topic"
     const val KEY_QUIZ_TOTAL_QUESTIONS = "quiz_total_questions"
     const val KEY_QUIZ_CURRENT_INDEX = "quiz_current_index"
-    const val KEY_QUIZ_ANSWERS = "quiz_answers"
-    const val KEY_QUIZ_IN_PROGRESS = "quiz_in_progress"
     private const val KEY_QUIZ_SOURCE = "quiz_source"
     private const val KEY_QUIZ_SELECTED_NOTE = "quiz_selected_note"
+    private const val KEY_QUIZ_ANSWERS = "quiz_answers"
     private const val KEY_QUIZ_QUESTIONS_JSON = "quiz_questions_json"
+    private const val KEY_QUIZ_IN_PROGRESS = "quiz_in_progress"
     private const val KEY_QUIZ_STATUS = "quiz_status"
 
     // Flashcard in-progress keys.
@@ -82,84 +87,6 @@ object ContinueLearningPrefs {
     private const val KEY_FLASHCARD_STATUS = "flashcard_status"
 
     private val json = Json { ignoreUnknownKeys = true }
-
-    fun saveFlashcardActivity(context: Context, topic: String, cardCount: Int) {
-        val safeTopic = topic.ifBlank { "General Study" }
-        context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
-            .edit()
-            .putString(KEY_LAST_FLASHCARD_TOPIC, safeTopic)
-            .putInt(KEY_LAST_FLASHCARD_COUNT, cardCount.coerceAtLeast(0))
-            .apply()
-
-        appendRecentActivity(
-            context = context,
-            type = RecentActivityType.FLASHCARD,
-            topic = safeTopic,
-            scoreOrCount = cardCount.coerceAtLeast(0)
-        )
-    }
-
-    fun saveQuizActivity(context: Context, topic: String, score: Int) {
-        val safeTopic = topic.ifBlank { "General Quiz" }
-        context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
-            .edit()
-            .putString(KEY_LAST_QUIZ_TOPIC, safeTopic)
-            .putInt(KEY_LAST_QUIZ_SCORE, score.coerceAtLeast(0))
-            .apply()
-
-        appendRecentActivity(
-            context = context,
-            type = RecentActivityType.QUIZ,
-            topic = safeTopic,
-            scoreOrCount = score.coerceAtLeast(0)
-        )
-    }
-
-    fun saveChatActivity(context: Context, topic: String) {
-        val safeTopic = topic.ifBlank { "General Chat" }
-        appendRecentActivity(
-            context = context,
-            type = RecentActivityType.CHAT,
-            topic = safeTopic,
-            scoreOrCount = 0
-        )
-    }
-
-    fun saveUploadActivity(context: Context, fileName: String) {
-        val safeName = fileName.ifBlank { "Study File" }
-        appendRecentActivity(
-            context = context,
-            type = RecentActivityType.UPLOAD,
-            topic = safeName,
-            scoreOrCount = 0
-        )
-    }
-
-    fun readRecentActivities(context: Context, limit: Int = 5): List<RecentActivityItem> {
-        val safeLimit = limit.coerceAtLeast(1)
-        val prefs = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
-        val raw = prefs.getString(KEY_RECENT_ACTIVITY_JSON, "[]").orEmpty()
-        return decodeRecentActivityList(raw)
-            .sortedByDescending { it.timestamp }
-            .take(safeLimit)
-    }
-
-    fun clearRecentActivities(context: Context) {
-        context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
-            .edit()
-            .remove(KEY_RECENT_ACTIVITY_JSON)
-            .apply()
-    }
-
-    fun read(context: Context): ContinueLearningSnapshot {
-        val prefs = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
-        return ContinueLearningSnapshot(
-            flashcardTopic = prefs.getString(KEY_LAST_FLASHCARD_TOPIC, "").orEmpty(),
-            flashcardCount = prefs.getInt(KEY_LAST_FLASHCARD_COUNT, 0),
-            quizTopic = prefs.getString(KEY_LAST_QUIZ_TOPIC, "").orEmpty(),
-            quizScore = prefs.getInt(KEY_LAST_QUIZ_SCORE, 0)
-        )
-    }
 
     data class QuizProgressSnapshot(
         val topic: String,
@@ -185,6 +112,119 @@ object ContinueLearningPrefs {
         val inProgress: Boolean
     )
 
+    fun saveFlashcardActivity(context: Context, topic: String, cardCount: Int) {
+        val safeTopic = topic.ifBlank { "General Study" }
+        context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_LAST_FLASHCARD_TOPIC, safeTopic)
+            .putInt(KEY_LAST_FLASHCARD_COUNT, cardCount.coerceAtLeast(0))
+            .apply()
+
+        appendRecentActivity(
+            context = context,
+            item = RecentActivityItem(
+                type = RecentActivityType.FLASHCARD,
+                topic = safeTopic,
+                scoreOrCount = cardCount.coerceAtLeast(0),
+                timestamp = System.currentTimeMillis(),
+                id = UUID.randomUUID().toString()
+            )
+        )
+    }
+
+    fun saveQuizActivity(context: Context, topic: String, score: Int) {
+        val safeTopic = topic.ifBlank { "General Quiz" }
+        context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_LAST_QUIZ_TOPIC, safeTopic)
+            .putInt(KEY_LAST_QUIZ_SCORE, score.coerceAtLeast(0))
+            .apply()
+
+        appendRecentActivity(
+            context = context,
+            item = RecentActivityItem(
+                type = RecentActivityType.QUIZ,
+                topic = safeTopic,
+                scoreOrCount = score.coerceAtLeast(0),
+                timestamp = System.currentTimeMillis(),
+                id = UUID.randomUUID().toString()
+            )
+        )
+    }
+
+    fun saveChatActivity(
+        context: Context,
+        topic: String,
+        sessionId: String = "",
+        messageCount: Int = 0
+    ) {
+        val safeTopic = topic.ifBlank { "General Chat" }
+        val now = System.currentTimeMillis()
+        val newItem = RecentActivityItem(
+            type = RecentActivityType.CHAT,
+            topic = safeTopic,
+            scoreOrCount = messageCount.coerceAtLeast(0),
+            timestamp = now,
+            id = UUID.randomUUID().toString(),
+            sessionId = sessionId
+        )
+
+        val prefs = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+        val existing = readRawRecentActivities(prefs)
+
+        val updated = if (sessionId.isBlank()) {
+            listOf(newItem) + existing
+        } else {
+            val filtered = existing.filterNot {
+                it.type == RecentActivityType.CHAT && it.sessionId == sessionId
+            }
+            listOf(newItem) + filtered
+        }
+
+        persistRecentActivities(
+            prefs = prefs,
+            values = updated.take(MAX_RECENT_ACTIVITY_ITEMS)
+        )
+    }
+
+    fun saveUploadActivity(context: Context, fileName: String) {
+        val safeFileName = fileName.ifBlank { "Study File" }
+        appendRecentActivity(
+            context = context,
+            item = RecentActivityItem(
+                type = RecentActivityType.UPLOAD,
+                topic = safeFileName,
+                scoreOrCount = 0,
+                timestamp = System.currentTimeMillis(),
+                id = UUID.randomUUID().toString()
+            )
+        )
+    }
+
+    fun readRecentActivities(context: Context, limit: Int = MAX_RECENT_ACTIVITY_ITEMS): List<RecentActivityItem> {
+        if (limit <= 0) return emptyList()
+        val prefs = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+        return readRawRecentActivities(prefs)
+            .sortedByDescending { it.timestamp }
+            .take(limit)
+    }
+
+    fun removeRecentActivity(context: Context, activityId: String): Boolean {
+        if (activityId.isBlank()) return false
+        val prefs = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+        val existing = readRawRecentActivities(prefs)
+        val updated = existing.filterNot { it.id == activityId }
+        if (updated.size == existing.size) return false
+
+        persistRecentActivities(prefs, updated)
+        return true
+    }
+
+    fun clearRecentActivities(context: Context) {
+        val prefs = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+        prefs.edit().putString(KEY_RECENT_ACTIVITY_JSON, "[]").apply()
+    }
+
     fun saveQuizProgress(
         context: Context,
         topic: String,
@@ -206,7 +246,10 @@ object ContinueLearningPrefs {
             .putString(KEY_QUIZ_ANSWERS, encodeIntList(answers))
             .putString(KEY_QUIZ_QUESTIONS_JSON, questionsJson)
             .putBoolean(KEY_QUIZ_IN_PROGRESS, inProgress)
-            .putString(KEY_QUIZ_STATUS, if (inProgress) SessionStatus.IN_PROGRESS.name else SessionStatus.NOT_STARTED.name)
+            .putString(
+                KEY_QUIZ_STATUS,
+                if (inProgress) SessionStatus.IN_PROGRESS.name else SessionStatus.NOT_STARTED.name
+            )
             .apply()
     }
 
@@ -214,7 +257,9 @@ object ContinueLearningPrefs {
         val prefs = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
         return QuizProgressSnapshot(
             topic = prefs.getString(KEY_QUIZ_TOPIC, "").orEmpty(),
-            source = prefs.getString(KEY_QUIZ_SOURCE, "topic").orEmpty().ifBlank { "topic" },
+            source = prefs.getString(KEY_QUIZ_SOURCE, DEFAULT_SOURCE_TOPIC)
+                .orEmpty()
+                .ifBlank { DEFAULT_SOURCE_TOPIC },
             selectedNoteId = prefs.getString(KEY_QUIZ_SELECTED_NOTE, "").orEmpty(),
             totalQuestions = prefs.getInt(KEY_QUIZ_TOTAL_QUESTIONS, 0),
             currentIndex = prefs.getInt(KEY_QUIZ_CURRENT_INDEX, 0),
@@ -276,7 +321,10 @@ object ContinueLearningPrefs {
             .putString(KEY_FLASHCARD_DIFFICULTY_STATES, encodeIntList(difficultyStates))
             .putString(KEY_FLASHCARD_FLASHCARDS_JSON, flashcardsJson)
             .putBoolean(KEY_FLASHCARD_IN_PROGRESS, inProgress)
-            .putString(KEY_FLASHCARD_STATUS, if (inProgress) SessionStatus.IN_PROGRESS.name else SessionStatus.NOT_STARTED.name)
+            .putString(
+                KEY_FLASHCARD_STATUS,
+                if (inProgress) SessionStatus.IN_PROGRESS.name else SessionStatus.NOT_STARTED.name
+            )
             .apply()
     }
 
@@ -339,7 +387,9 @@ object ContinueLearningPrefs {
         val prefs = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
         val sessions = mutableListOf<SessionOverview>()
 
-        val flashStatus = parseStatus(prefs.getString(KEY_FLASHCARD_STATUS, SessionStatus.NOT_STARTED.name))
+        val flashStatus = parseStatus(
+            prefs.getString(KEY_FLASHCARD_STATUS, SessionStatus.NOT_STARTED.name)
+        )
         if (flashStatus == SessionStatus.IN_PROGRESS) {
             sessions.add(
                 SessionOverview(
@@ -352,7 +402,9 @@ object ContinueLearningPrefs {
             )
         }
 
-        val quizStatus = parseStatus(prefs.getString(KEY_QUIZ_STATUS, SessionStatus.NOT_STARTED.name))
+        val quizStatus = parseStatus(
+            prefs.getString(KEY_QUIZ_STATUS, SessionStatus.NOT_STARTED.name)
+        )
         if (quizStatus == SessionStatus.IN_PROGRESS) {
             sessions.add(
                 SessionOverview(
@@ -368,9 +420,51 @@ object ContinueLearningPrefs {
         return sessions
     }
 
+    fun shouldLogChatForSession(existingLoggedSessionIds: Set<String>, sessionId: String): Boolean {
+        if (sessionId.isBlank()) return true
+        return !existingLoggedSessionIds.contains(sessionId)
+    }
+
+    fun updatedLoggedSessionIds(existingLoggedSessionIds: Set<String>, sessionId: String): Set<String> {
+        if (sessionId.isBlank()) return existingLoggedSessionIds
+        return existingLoggedSessionIds + sessionId
+    }
+
+    private fun appendRecentActivity(context: Context, item: RecentActivityItem) {
+        val prefs = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+        val existing = readRawRecentActivities(prefs)
+        val updated = listOf(item) + existing
+        persistRecentActivities(prefs, updated.take(MAX_RECENT_ACTIVITY_ITEMS))
+    }
+
+    private fun readRawRecentActivities(prefs: android.content.SharedPreferences): List<RecentActivityItem> {
+        val raw = prefs.getString(KEY_RECENT_ACTIVITY_JSON, "[]").orEmpty()
+        val decoded = decodeRecentActivityList(raw)
+        return decoded.mapIndexed { index, item ->
+            if (item.id.isNotBlank()) {
+                item
+            } else {
+                item.copy(id = buildFallbackRecentId(item, index))
+            }
+        }
+    }
+
+    private fun buildFallbackRecentId(item: RecentActivityItem, index: Int): String {
+        return "${item.type.name}_${item.timestamp}_${item.topic.hashCode()}_$index"
+    }
+
+    private fun persistRecentActivities(
+        prefs: android.content.SharedPreferences,
+        values: List<RecentActivityItem>
+    ) {
+        prefs.edit()
+            .putString(KEY_RECENT_ACTIVITY_JSON, encodeRecentActivityList(values))
+            .apply()
+    }
+
     private fun encodeIntList(values: List<Int>): String {
         return try {
-            json.encodeToString<List<Int>>(values)
+            json.encodeToString(values)
         } catch (_: Exception) {
             "[]"
         }
@@ -378,7 +472,7 @@ object ContinueLearningPrefs {
 
     private fun encodeRecentActivityList(values: List<RecentActivityItem>): String {
         return try {
-            json.encodeToString<List<RecentActivityItem>>(values)
+            json.encodeToString(values)
         } catch (_: Exception) {
             "[]"
         }
@@ -386,7 +480,7 @@ object ContinueLearningPrefs {
 
     private fun encodeBooleanList(values: List<Boolean>): String {
         return try {
-            json.encodeToString<List<Boolean>>(values)
+            json.encodeToString(values)
         } catch (_: Exception) {
             "[]"
         }
@@ -394,7 +488,7 @@ object ContinueLearningPrefs {
 
     private fun decodeIntList(raw: String): List<Int> {
         return try {
-            json.decodeFromString<List<Int>>(raw)
+            json.decodeFromString(raw)
         } catch (_: Exception) {
             emptyList()
         }
@@ -402,7 +496,7 @@ object ContinueLearningPrefs {
 
     private fun decodeBooleanList(raw: String): List<Boolean> {
         return try {
-            json.decodeFromString<List<Boolean>>(raw)
+            json.decodeFromString(raw)
         } catch (_: Exception) {
             emptyList()
         }
@@ -410,37 +504,10 @@ object ContinueLearningPrefs {
 
     private fun decodeRecentActivityList(raw: String): List<RecentActivityItem> {
         return try {
-            json.decodeFromString<List<RecentActivityItem>>(raw)
+            json.decodeFromString(raw)
         } catch (_: Exception) {
             emptyList()
         }
-    }
-
-    private fun appendRecentActivity(
-        context: Context,
-        type: RecentActivityType,
-        topic: String,
-        scoreOrCount: Int
-    ) {
-        val prefs = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
-        val existing = decodeRecentActivityList(
-            prefs.getString(KEY_RECENT_ACTIVITY_JSON, "[]").orEmpty()
-        )
-        val updated = listOf(
-            RecentActivityItem(
-                type = type,
-                topic = topic,
-                scoreOrCount = scoreOrCount,
-                timestamp = System.currentTimeMillis()
-            )
-        ) + existing
-
-        prefs.edit()
-            .putString(
-                KEY_RECENT_ACTIVITY_JSON,
-                encodeRecentActivityList(updated.take(MAX_RECENT_ACTIVITY_ITEMS))
-            )
-            .apply()
     }
 
     private fun parseStatus(raw: String?): SessionStatus {
@@ -451,9 +518,3 @@ object ContinueLearningPrefs {
         }
     }
 }
-
-
-
-
-
-
