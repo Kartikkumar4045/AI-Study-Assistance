@@ -16,7 +16,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.kartik.aistudyassistant.data.model.AuthResult
 import com.kartik.aistudyassistant.ui.home.MainActivity
 import com.google.android.material.bottomsheet.BottomSheetDialog
-import com.google.firebase.database.FirebaseDatabase
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 class SignInActivity : AppCompatActivity() {
 
@@ -29,7 +29,6 @@ class SignInActivity : AppCompatActivity() {
     private lateinit var btnSignIn: MaterialButton
     private lateinit var tvForgotPassword: TextView
     private lateinit var tvSignUp: TextView
-    private var lastLoginInput: String = ""
     private var isCheckingExistingSession: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -60,8 +59,7 @@ class SignInActivity : AppCompatActivity() {
             when (result) {
                 is AuthResult.Success -> navigateToMain()
                 is AuthResult.VerificationRequired -> {
-                    authManager.signOut()
-                    Toast.makeText(this, result.message, Toast.LENGTH_LONG).show()
+                    showVerificationRequiredDialog(result)
                 }
                 is AuthResult.Error -> {
                     authManager.signOut()
@@ -89,24 +87,16 @@ class SignInActivity : AppCompatActivity() {
 
     private fun setupClickListeners() {
         btnSignIn.setOnClickListener {
-            val emailOrPhone = etEmail.text.toString().trim()
+            val email = etEmail.text.toString().trim().lowercase()
             val password = etPassword.text.toString().trim()
 
-            if (!validateInputs(emailOrPhone, password)) return@setOnClickListener
-
-            lastLoginInput = emailOrPhone
+            if (!validateInputs(email, password)) return@setOnClickListener
 
             btnSignIn.isEnabled = false
-            btnSignIn.text = "Signing In..."
+            btnSignIn.text = getString(R.string.signin_signing_in)
 
-            if (isValidPhone(emailOrPhone)) {
-                // If it's a phone number, find email first
-                findEmailByPhone(emailOrPhone, password)
-            } else {
-                // Direct email sign in
-                authManager.signInWithEmail(emailOrPhone, password) { result ->
-                    handleSignInResult(result)
-                }
+            authManager.signInWithEmail(email, password) { result ->
+                handleSignInResult(result)
             }
         }
 
@@ -123,35 +113,13 @@ class SignInActivity : AppCompatActivity() {
         }
     }
 
-    private fun findEmailByPhone(phone: String, password: String) {
-        val usersRef = FirebaseDatabase.getInstance().reference.child("Users")
-        usersRef.orderByChild("phone").equalTo(phone)
-            .get()
-            .addOnSuccessListener { snapshot ->
-                if (snapshot.exists()) {
-                    val userData = snapshot.children.first()
-                    val email = userData.child("email").value.toString()
-                    authManager.signInWithEmail(email, password) { result ->
-                        handleSignInResult(result)
-                    }
-                } else {
-                    Toast.makeText(this, "No account found with this phone number", Toast.LENGTH_LONG).show()
-                    resetButton()
-                }
-            }
-            .addOnFailureListener { exception ->
-                Toast.makeText(this, "Error: ${exception.message}", Toast.LENGTH_LONG).show()
-                resetButton()
-            }
-    }
-
     private fun handleSignInResult(result: AuthResult) {
         when (result) {
             is AuthResult.Success -> {
                 UserProfilePrefs.cacheFromUser(
                     context = this,
                     user = auth.currentUser,
-                    fallbackPhone = lastLoginInput.takeIf { isValidPhone(it) }.orEmpty()
+                    fallbackPhone = ""
                 )
                 Toast.makeText(this, "Welcome back!", Toast.LENGTH_SHORT).show()
                 navigateToMain()
@@ -161,21 +129,7 @@ class SignInActivity : AppCompatActivity() {
                 resetButton()
             }
             is AuthResult.VerificationRequired -> {
-                val shouldResendEmail = !result.emailVerified
-                if (shouldResendEmail) {
-                    authManager.sendEmailVerificationForCurrentUser { resendResult ->
-                        if (resendResult is AuthResult.Error) {
-                            Toast.makeText(
-                                this,
-                                resendResult.message ?: "Failed to send verification email",
-                                Toast.LENGTH_LONG
-                            ).show()
-                        }
-                    }
-                }
-
-                Toast.makeText(this, result.message, Toast.LENGTH_LONG).show()
-                authManager.signOut()
+                showVerificationRequiredDialog(result)
                 resetButton()
             }
             AuthResult.Cancelled -> {
@@ -185,15 +139,15 @@ class SignInActivity : AppCompatActivity() {
         }
     }
 
-    private fun validateInputs(emailOrPhone: String, password: String): Boolean {
-        if (emailOrPhone.isEmpty()) {
-            etEmail.error = "Email or Phone is required"
+    private fun validateInputs(email: String, password: String): Boolean {
+        if (email.isEmpty()) {
+            etEmail.error = "Email is required"
             etEmail.requestFocus()
             return false
         }
 
-        if (!Patterns.EMAIL_ADDRESS.matcher(emailOrPhone).matches() && !isValidPhone(emailOrPhone)) {
-            etEmail.error = "Enter valid email or 10-digit phone number"
+        if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            etEmail.error = "Enter valid email"
             etEmail.requestFocus()
             return false
         }
@@ -207,14 +161,10 @@ class SignInActivity : AppCompatActivity() {
         return true
     }
 
-    private fun isValidPhone(input: String): Boolean {
-        // India phone number validation: exactly 10 digits
-        return input.length == 10 && input.all { it.isDigit() }
-    }
-
     private fun showForgotPasswordBottomSheet() {
         val bottomSheetDialog = BottomSheetDialog(this)
-        val view = layoutInflater.inflate(R.layout.bottom_sheet_forgot_password, null)
+        val root = findViewById<android.view.ViewGroup>(android.R.id.content)
+        val view = layoutInflater.inflate(R.layout.bottom_sheet_forgot_password, root, false)
         bottomSheetDialog.setContentView(view)
 
         val etForgotEmail = view.findViewById<EditText>(R.id.etForgotEmail)
@@ -245,7 +195,7 @@ class SignInActivity : AppCompatActivity() {
             }
 
             btnSendReset.isEnabled = false
-            btnSendReset.text = "Sending..."
+            btnSendReset.text = getString(R.string.common_sending)
 
             // Problem #4 Fix: Directly send reset email without deprecated check
             auth.sendPasswordResetEmail(email)
@@ -261,7 +211,7 @@ class SignInActivity : AppCompatActivity() {
                         val error = task.exception?.message ?: "Failed to send reset email"
                         Toast.makeText(this, error, Toast.LENGTH_LONG).show()
                         btnSendReset.isEnabled = true
-                        btnSendReset.text = "Send Reset Link"
+                        btnSendReset.text = getString(R.string.signin_send_reset_link)
                     }
                 }
         }
@@ -287,14 +237,74 @@ class SignInActivity : AppCompatActivity() {
         btnSignIn.isEnabled = false
         btnGoogle.isEnabled = false
         btnGithub.isEnabled = false
-        btnSignIn.text = "Please wait..."
+        btnSignIn.text = getString(R.string.signin_please_wait)
     }
 
     private fun resetButton() {
         btnSignIn.isEnabled = true
-        btnSignIn.text = "Sign In"
+        btnSignIn.text = getString(R.string.signin_sign_in)
         btnGoogle.isEnabled = true
         btnGithub.isEnabled = true
+    }
+
+    private fun showVerificationRequiredDialog(result: AuthResult.VerificationRequired) {
+        val details = buildString {
+            append(result.message)
+            append("\n\n")
+            append("Email: ")
+            append(if (result.emailVerified) "Verified" else "Not verified")
+            append("\n")
+            append("Phone: ")
+            append(if (result.phoneVerified) "Verified" else "Not verified")
+        }
+
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setTitle("Verification required")
+            .setMessage(details)
+            .setPositiveButton(
+                if (!result.phoneVerified) "Verify phone" else "OK"
+            ) { _, _ ->
+                if (!result.phoneVerified) {
+                    val phone = result.phone
+                    if (phone.isNullOrBlank()) {
+                        Toast.makeText(this, "Phone number not found. Update it in sign up.", Toast.LENGTH_LONG).show()
+                    } else {
+                        openPhoneVerification(phone)
+                    }
+                }
+            }
+            .setNegativeButton("Sign out") { _, _ ->
+                authManager.signOut()
+            }
+
+        if (!result.emailVerified && auth.currentUser != null) {
+            dialog.setNeutralButton("Resend email") { _, _ ->
+                authManager.sendEmailVerificationForCurrentUser { resendResult ->
+                    when (resendResult) {
+                        is AuthResult.Success -> Toast.makeText(
+                            this,
+                            "Verification email sent",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        is AuthResult.Error -> Toast.makeText(
+                            this,
+                            resendResult.message ?: "Failed to send verification email",
+                            Toast.LENGTH_LONG
+                        ).show()
+                        else -> Unit
+                    }
+                }
+            }
+        }
+
+        dialog.show()
+    }
+
+    private fun openPhoneVerification(phone: String) {
+        val intent = Intent(this, PhoneVerificationActivity::class.java)
+            .putExtra(PhoneVerificationActivity.EXTRA_PHONE, phone)
+            .putExtra(PhoneVerificationActivity.EXTRA_MODE, PhoneVerificationActivity.MODE_LINK)
+        startActivity(intent)
     }
 }
 

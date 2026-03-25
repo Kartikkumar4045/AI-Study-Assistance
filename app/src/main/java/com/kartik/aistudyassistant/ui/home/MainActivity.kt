@@ -92,6 +92,12 @@ class MainActivity : AppCompatActivity() {
         authManager.checkCurrentUserVerification { result ->
             when (result) {
                 is AuthResult.Success -> Unit
+                is AuthResult.VerificationRequired -> {
+                    Toast.makeText(this, result.message, Toast.LENGTH_LONG).show()
+                    authManager.signOut()
+                    startActivity(Intent(this, SignInActivity::class.java))
+                    finish()
+                }
                 else -> {
                     authManager.signOut()
                     startActivity(Intent(this, SignInActivity::class.java))
@@ -136,9 +142,9 @@ class MainActivity : AppCompatActivity() {
     private fun updateStudyProgressSection() {
         val progress = ContinueLearningPrefs.readStudyProgress(this)
 
-        tvProgressDayStreak.text = "🔥 ${progress.dayStreak}"
-        tvProgressQuizzes.text = "🧠 ${progress.totalQuizzes}"
-        tvProgressTopics.text = "📚 ${progress.totalTopics}"
+        tvProgressDayStreak.text = getString(R.string.home_progress_day_streak, progress.dayStreak)
+        tvProgressQuizzes.text = getString(R.string.home_progress_quizzes, progress.totalQuizzes)
+        tvProgressTopics.text = getString(R.string.home_progress_topics, progress.totalTopics)
     }
 
     private fun updateContinueLearningSection() {
@@ -166,22 +172,24 @@ class MainActivity : AppCompatActivity() {
         val hasQuiz = quizInProgress
 
         if (hasFlashcard) {
-            val topic = flashcardTopic.ifBlank { "General Study" }
+            val topic = flashcardTopic.ifBlank { getString(R.string.home_general_study) }
             val current = (flashcardCurrentIndex + 1).coerceAtLeast(1)
             val total = flashcardTotal.coerceAtLeast(1)
-            tvContinueFlashcardTitle.text = "Resume Flashcards"
-            tvContinueFlashcardSubtitle.text = "Flashcards: $topic (Card $current/$total)"
+            tvContinueFlashcardTitle.text = getString(R.string.home_resume_flashcards)
+            tvContinueFlashcardSubtitle.text =
+                getString(R.string.home_continue_flashcards_subtitle, topic, current, total)
             itemContinueFlashcard.visibility = View.VISIBLE
         } else {
             itemContinueFlashcard.visibility = View.GONE
         }
 
         if (hasQuiz) {
-            val topic = quizTopic.ifBlank { "General Quiz" }
+            val topic = quizTopic.ifBlank { getString(R.string.home_general_quiz) }
             val current = (quizCurrentIndex + 1).coerceAtLeast(1)
             val total = quizTotal.coerceAtLeast(1)
-            tvContinueQuizTitle.text = "Resume Quiz"
-            tvContinueQuizSubtitle.text = "Quiz: $topic (Q$current/$total)"
+            tvContinueQuizTitle.text = getString(R.string.home_resume_quiz)
+            tvContinueQuizSubtitle.text =
+                getString(R.string.home_continue_quiz_subtitle, topic, current, total)
             itemContinueQuiz.visibility = View.VISIBLE
         } else {
             itemContinueQuiz.visibility = View.GONE
@@ -231,7 +239,7 @@ class MainActivity : AppCompatActivity() {
             RecentActivityType.QUIZ -> {
                 icon.setImageResource(android.R.drawable.ic_menu_edit)
                 icon.setColorFilter(ContextCompat.getColor(this, R.color.accent_orange))
-                title.text = "Quiz - $topic"
+                title.text = getString(R.string.home_recent_quiz_title, topic)
                 row.setOnClickListener {
                     startActivity(
                         Intent(this, QuizSetupActivity::class.java).apply {
@@ -243,7 +251,7 @@ class MainActivity : AppCompatActivity() {
             RecentActivityType.FLASHCARD -> {
                 icon.setImageResource(android.R.drawable.ic_menu_gallery)
                 icon.setColorFilter(ContextCompat.getColor(this, R.color.accent_green))
-                title.text = "Flashcards - $topic"
+                title.text = getString(R.string.home_recent_flashcards_title, topic)
                 row.setOnClickListener {
                     startActivity(
                         Intent(this, FlashcardSetupActivity::class.java).apply {
@@ -255,7 +263,7 @@ class MainActivity : AppCompatActivity() {
             RecentActivityType.CHAT -> {
                 icon.setImageResource(android.R.drawable.ic_menu_send)
                 icon.setColorFilter(ContextCompat.getColor(this, R.color.accent_purple))
-                title.text = "AI Chat - $topic"
+                title.text = getString(R.string.home_recent_chat_title, topic)
                 row.setOnClickListener {
                     startActivity(
                         Intent(this, ChatActivity::class.java).apply {
@@ -269,7 +277,7 @@ class MainActivity : AppCompatActivity() {
             RecentActivityType.UPLOAD -> {
                 icon.setImageResource(android.R.drawable.ic_menu_upload)
                 icon.setColorFilter(ContextCompat.getColor(this, R.color.primary))
-                title.text = "Upload - $topic"
+                title.text = getString(R.string.home_recent_upload_title, topic)
                 row.setOnClickListener {
                     startActivity(Intent(this, UploadActivity::class.java))
                 }
@@ -287,37 +295,37 @@ class MainActivity : AppCompatActivity() {
     private fun resolveRecentTopic(item: RecentActivityItem): String {
         return item.topic.ifBlank {
             when (item.type) {
-                RecentActivityType.QUIZ -> "General Quiz"
-                RecentActivityType.FLASHCARD -> "General Study"
-                RecentActivityType.CHAT -> "General Chat"
-                RecentActivityType.UPLOAD -> "Study File"
+                RecentActivityType.QUIZ -> getString(R.string.home_general_quiz)
+                RecentActivityType.FLASHCARD -> getString(R.string.home_general_study)
+                RecentActivityType.CHAT -> getString(R.string.home_general_chat)
+                RecentActivityType.UPLOAD -> getString(R.string.home_study_file)
             }
         }
     }
 
     private fun buildRecentTitle(item: RecentActivityItem, topic: String): String {
         return when (item.type) {
-            RecentActivityType.QUIZ -> "Quiz - $topic"
-            RecentActivityType.FLASHCARD -> "Flashcards - $topic"
-            RecentActivityType.CHAT -> "AI Chat - $topic"
-            RecentActivityType.UPLOAD -> "Upload - $topic"
+            RecentActivityType.QUIZ -> getString(R.string.home_recent_quiz_title, topic)
+            RecentActivityType.FLASHCARD -> getString(R.string.home_recent_flashcards_title, topic)
+            RecentActivityType.CHAT -> getString(R.string.home_recent_chat_title, topic)
+            RecentActivityType.UPLOAD -> getString(R.string.home_recent_upload_title, topic)
         }
     }
 
     private fun showDeleteRecentActivityDialog(item: RecentActivityItem) {
         val title = buildRecentTitle(item, resolveRecentTopic(item))
         val dialog = MaterialAlertDialogBuilder(this)
-            .setTitle("Remove from Recent Activity")
-            .setMessage("Remove \"$title\" from Recent Activity?")
-            .setPositiveButton("Remove") { _, _ ->
+            .setTitle(getString(R.string.home_remove_recent_title))
+            .setMessage(getString(R.string.home_remove_recent_message, title))
+            .setPositiveButton(getString(R.string.home_remove)) { _, _ ->
                 val removed = ContinueLearningPrefs.removeRecentActivity(this, item.id)
                 if (!removed) {
-                    showToast("Could not remove this activity")
+                    showToast(getString(R.string.home_remove_recent_failed))
                     return@setPositiveButton
                 }
                 updateRecentActivitySection()
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(getString(R.string.profile_logout_cancel_action), null)
             .create()
 
         dialog.setOnShowListener {
@@ -338,7 +346,7 @@ class MainActivity : AppCompatActivity() {
 
         val contextualText = RecentActivitySubtitleFormatter.buildContextualText(item)
 
-        return "$contextualText • $relativeTime"
+        return getString(R.string.home_recent_subtitle_format, contextualText, relativeTime)
     }
 
 
@@ -360,9 +368,12 @@ class MainActivity : AppCompatActivity() {
         if (user != null) {
             val userRef = FirebaseDatabase.getInstance().reference.child("Users").child(user.uid)
             userRef.child("email").get().addOnSuccessListener { snapshot ->
-                val email = snapshot.value?.toString() ?: user.email ?: "Student"
+                val email = snapshot.value?.toString() ?: user.email ?: getString(R.string.profile_default_name)
                 val name = email.substringBefore("@")
-                tvWelcome.text = "Hello, ${name.replaceFirstChar { it.uppercase() }} 👋"
+                tvWelcome.text = getString(
+                    R.string.home_welcome,
+                    name.replaceFirstChar { it.uppercase() }
+                )
             }
         }
     }
@@ -406,19 +417,19 @@ class MainActivity : AppCompatActivity() {
 
         tvRecentActivityClear.setOnClickListener {
             AlertDialog.Builder(this)
-                .setTitle("Clear recent activity")
-                .setMessage("Remove all items from Recent Activity?")
-                .setPositiveButton("Clear") { _, _ ->
+                .setTitle(getString(R.string.home_clear_recent_title))
+                .setMessage(getString(R.string.home_clear_recent_message))
+                .setPositiveButton(getString(R.string.home_clear)) { _, _ ->
                     ContinueLearningPrefs.clearRecentActivities(this)
                     updateRecentActivitySection()
                 }
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(getString(R.string.profile_logout_cancel_action), null)
                 .show()
         }
 
         itemContinueFlashcard.setOnClickListener {
             if (!flashcardInProgress) {
-                showToast("No flashcard session to resume")
+                showToast(getString(R.string.home_no_flashcard_session))
                 return@setOnClickListener
             }
 
@@ -439,7 +450,7 @@ class MainActivity : AppCompatActivity() {
 
         itemContinueQuiz.setOnClickListener {
             if (!quizInProgress) {
-                showToast("No quiz session to resume")
+                showToast(getString(R.string.home_no_quiz_session))
                 return@setOnClickListener
             }
 
@@ -461,10 +472,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun showResumeDialog(onResume: () -> Unit, onStartOver: () -> Unit) {
         AlertDialog.Builder(this)
-            .setTitle("Continue Learning")
-            .setMessage("Resume where you left?")
-            .setPositiveButton("Resume") { _, _ -> onResume() }
-            .setNegativeButton("Start Over") { _, _ -> onStartOver() }
+            .setTitle(getString(R.string.home_continue_learning_title))
+            .setMessage(getString(R.string.home_continue_learning_message))
+            .setPositiveButton(getString(R.string.home_resume)) { _, _ -> onResume() }
+            .setNegativeButton(getString(R.string.home_start_over)) { _, _ -> onStartOver() }
             .show()
     }
 
@@ -507,13 +518,15 @@ class MainActivity : AppCompatActivity() {
     private fun showStreakDetailsBottomSheet() {
         val details = ContinueLearningPrefs.readStudyStreakDetails(this)
         val dialog = BottomSheetDialog(this)
-        val content = layoutInflater.inflate(R.layout.bottom_sheet_streak_details, null)
+        val root = findViewById<android.view.ViewGroup>(android.R.id.content)
+        val content = layoutInflater.inflate(R.layout.bottom_sheet_streak_details, root, false)
 
-        content.findViewById<TextView>(R.id.tvStreakValue).text = "🔥 ${details.dayStreak} days"
+        content.findViewById<TextView>(R.id.tvStreakValue).text =
+            getString(R.string.home_streak_value, details.dayStreak)
         content.findViewById<TextView>(R.id.tvLastActive).text = buildLastActiveText(details.lastActiveDaysAgo)
         content.findViewById<TextView>(R.id.tvStreakHint).text =
-            if (details.lastActiveDaysAgo == 0) "Great work today. Keep it going tomorrow!"
-            else "Study today to keep streak"
+            if (details.lastActiveDaysAgo == 0) getString(R.string.home_streak_hint_today)
+            else getString(R.string.home_streak_hint_keep)
 
         val dotContainer = content.findViewById<LinearLayout>(R.id.llStreakDots)
         details.recentSevenDaysActive.forEach { isActive ->
@@ -536,10 +549,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun buildLastActiveText(daysAgo: Int?): String {
         return when (daysAgo) {
-            null -> "Last active: Never"
-            0 -> "Last active: Today"
-            1 -> "Last active: Yesterday"
-            else -> "Last active: $daysAgo days ago"
+            null -> getString(R.string.home_last_active_never)
+            0 -> getString(R.string.home_last_active_today)
+            1 -> getString(R.string.home_last_active_yesterday)
+            else -> getString(R.string.home_last_active_days_ago, daysAgo)
         }
     }
 

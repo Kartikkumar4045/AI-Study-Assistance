@@ -7,6 +7,7 @@ import androidx.credentials.*
 import androidx.credentials.exceptions.GetCredentialException
 import com.kartik.aistudyassistant.data.model.AuthResult as AppAuthResult
 import com.google.android.libraries.identity.googleid.*
+import com.google.firebase.FirebaseException
 import com.google.firebase.auth.*
 import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.CoroutineScope
@@ -14,6 +15,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
+import java.util.concurrent.TimeUnit
+import java.util.UUID
 
 class AuthManager(private val context: Context) {
 
@@ -27,6 +30,8 @@ class AuthManager(private val context: Context) {
         private val emailUserCache = mutableMapOf<String, CachedUserData>()
         private const val CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
         private const val PHONE_LENGTH = 10
+        private const val OTP_TIMEOUT_SECONDS = 60L
+        private const val TEMP_PASSWORD_PREFIX = "Tmp#"
 
         data class CachedUserData(
             val uid: String,
@@ -35,6 +40,7 @@ class AuthManager(private val context: Context) {
         ) {
             fun isValid(): Boolean = System.currentTimeMillis() - timestamp < CACHE_DURATION
         }
+
     }
 
     fun checkCurrentUserVerification(callback: (AppAuthResult) -> Unit) {
@@ -60,6 +66,208 @@ class AuthManager(private val context: Context) {
             }
             .addOnFailureListener { e ->
                 callback(AppAuthResult.Error(e.message ?: "Failed to send verification email"))
+            }
+    }
+
+    fun startPendingEmailVerification(email: String, callback: (AppAuthResult) -> Unit) {
+        val normalizedEmail = email.trim().lowercase()
+        if (normalizedEmail.isBlank()) {
+            callback(AppAuthResult.Error("Email is required"))
+            return
+        }
+
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val existingUserData = checkEmailExists(normalizedEmail)
+                if (existingUserData != null) {
+                    withContext(Dispatchers.Main) {
+                        callback(
+                            AppAuthResult.Error(
+                                "An account already exists with this email using ${existingUserData.provider}."
+                            )
+                        )
+                    }
+                    return@launch
+                }
+
+                withContext(Dispatchers.Main) {
+                    val currentUser = auth.currentUser
+                    if (currentUser != null && currentUser.email.equals(normalizedEmail, ignoreCase = true)) {
+                        sendEmailVerificationForCurrentUser(callback)
+                    } else {
+                        auth.signOut()
+                        val tempPassword = buildTempPassword()
+                        auth.createUserWithEmailAndPassword(normalizedEmail, tempPassword)
+                            .addOnSuccessListener {
+                                auth.currentUser?.sendEmailVerification()
+                                    ?.addOnSuccessListener { callback(AppAuthResult.Success(true)) }
+                                    ?.addOnFailureListener { e ->
+                                        callback(
+                                            AppAuthResult.Error(
+                                                e.message ?: "Failed to send verification email"
+                                            )
+                                        )
+                                    }
+                            }
+                            .addOnFailureListener { e ->
+                                callback(AppAuthResult.Error(e.message ?: "Unable to start email verification"))
+                            }
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    callback(AppAuthResult.Error(e.message ?: "Unable to start email verification"))
+                }
+            }
+        }
+    }
+
+    fun refreshEmailVerificationStatus(callback: (Boolean, String?) -> Unit) {
+        val currentUser = auth.currentUser
+        if (currentUser == null) {
+            callback(false, "Please verify email first")
+            return
+        }
+
+        currentUser.reload()
+            .addOnSuccessListener {
+                callback(currentUser.isEmailVerified, null)
+            }
+            .addOnFailureListener { e ->
+                callback(false, e.message ?: "Failed to refresh email verification")
+            }
+    }
+
+    fun completeVerifiedEmailSignUp(
+        phone: String,
+        password: String,
+        callback: (AppAuthResult) -> Unit
+    ) {
+        val currentUser = auth.currentUser
+        if (currentUser == null) {
+            callback(AppAuthResult.Error("Please verify email first"))
+            return
+        }
+
+        if (!currentUser.isEmailVerified) {
+            callback(AppAuthResult.Error("Email is not verified yet"))
+            return
+        }
+
+        val verifiedPhone = currentUser.phoneNumber
+        val resolvedPhone = if (!verifiedPhone.isNullOrBlank()) {
+            toLocalPhone(verifiedPhone)
+        } else {
+            phone.trim()
+        }
+
+        CoroutineScope(Dispatchers.IO).launch {
+            val phoneExists = checkPhoneExists(resolvedPhone, currentUser.uid)
+            if (phoneExists) {
+                withContext(Dispatchers.Main) {
+                    callback(AppAuthResult.Error("This phone number is already registered with another account."))
+                }
+                return@launch
+            }
+
+            withContext(Dispatchers.Main) {
+                currentUser.updatePassword(password)
+                    .addOnSuccessListener {
+                        val email = currentUser.email.orEmpty()
+                        saveUserToDatabase(
+                            uid = currentUser.uid,
+                            email = email,
+                            phone = resolvedPhone,
+                            provider = "password",
+                            isNewUser = true,
+                            callback = { dbResult ->
+                                when (dbResult) {
+                                    is AppAuthResult.Success -> evaluateVerificationState(currentUser, true, callback)
+                                    else -> callback(dbResult)
+                                }
+                            }
+                        )
+                    }
+                    .addOnFailureListener { e ->
+                        callback(AppAuthResult.Error(e.message ?: "Failed to finalize account setup"))
+                    }
+            }
+        }
+    }
+
+    fun startPhoneVerification(
+        activity: Activity,
+        rawPhone: String,
+        onCodeSent: (verificationId: String, token: PhoneAuthProvider.ForceResendingToken) -> Unit,
+        onVerified: (AppAuthResult) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        val phoneE164 = normalizePhoneToE164(rawPhone)
+        if (phoneE164 == null) {
+            onError("Enter a valid phone number")
+            return
+        }
+
+        val callbacks = buildPhoneCallbacks(phoneE164, onCodeSent, onVerified, onError)
+        val options = PhoneAuthOptions.newBuilder(auth)
+            .setPhoneNumber(phoneE164)
+            .setTimeout(OTP_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .setActivity(activity)
+            .setCallbacks(callbacks)
+            .build()
+
+        PhoneAuthProvider.verifyPhoneNumber(options)
+    }
+
+    fun resendPhoneVerification(
+        activity: Activity,
+        rawPhone: String,
+        token: PhoneAuthProvider.ForceResendingToken,
+        onCodeSent: (verificationId: String, resendToken: PhoneAuthProvider.ForceResendingToken) -> Unit,
+        onVerified: (AppAuthResult) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        val phoneE164 = normalizePhoneToE164(rawPhone)
+        if (phoneE164 == null) {
+            onError("Enter a valid phone number")
+            return
+        }
+
+        val callbacks = buildPhoneCallbacks(phoneE164, onCodeSent, onVerified, onError)
+        val options = PhoneAuthOptions.newBuilder(auth)
+            .setPhoneNumber(phoneE164)
+            .setTimeout(OTP_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .setActivity(activity)
+            .setCallbacks(callbacks)
+            .setForceResendingToken(token)
+            .build()
+
+        PhoneAuthProvider.verifyPhoneNumber(options)
+    }
+
+    fun verifyPhoneCode(
+        verificationId: String,
+        code: String,
+        callback: (AppAuthResult) -> Unit
+    ) {
+        val credential = PhoneAuthProvider.getCredential(verificationId, code)
+        linkPhoneCredential(credential, callback)
+    }
+
+    fun getCurrentUserStoredPhone(callback: (String?) -> Unit) {
+        val currentUser = auth.currentUser
+        if (currentUser == null) {
+            callback(null)
+            return
+        }
+
+        database.reference.child("Users").child(currentUser.uid).child("phone")
+            .get()
+            .addOnSuccessListener { snapshot ->
+                callback(snapshot.getValue(String::class.java))
+            }
+            .addOnFailureListener {
+                callback(null)
             }
     }
 
@@ -93,7 +301,6 @@ class AuthManager(private val context: Context) {
 
                     handleProviderSignIn(
                         idToken = googleIdTokenCredential.idToken,
-                        provider = "google.com",
                         email = googleIdTokenCredential.id,
                         callback = callback
                     )
@@ -113,29 +320,25 @@ class AuthManager(private val context: Context) {
     // GitHub Sign-In
     fun signInWithGithub(activity: Activity, callback: (AppAuthResult) -> Unit) {
         val provider = OAuthProvider.newBuilder("github.com")
-            .addCustomParameter("allow_signup", "true") // Fixed: Allow signups
+            .addCustomParameter("allow_signup", "true")
             .build()
 
         auth.startActivityForSignInWithProvider(activity, provider)
             .addOnSuccessListener { authResult ->
                 val user = authResult.user
                 user?.let {
-                    val email = it.email ?: ""
-                    // Check if user exists in database and handle accordingly
+                    val email = it.email?.trim()?.lowercase().orEmpty()
                     CoroutineScope(Dispatchers.IO).launch {
                         try {
-                            val existingUserData = checkEmailExists(email)
+                            val existingUserData = if (email.isBlank()) null else checkEmailExists(email)
 
                             withContext(Dispatchers.Main) {
                                 if (existingUserData != null && existingUserData.uid != it.uid) {
-                                    // Email exists with different UID - this shouldn't happen with GitHub
-                                    // Handle by linking or showing error
                                     callback(AppAuthResult.Error(
                                         "This email is already registered with ${existingUserData.provider}. " +
                                                 "Please sign in with ${existingUserData.provider} first."
                                     ))
                                 } else {
-                                    // Either new user or same user, save/update in database
                                     saveUserToDatabase(
                                         uid = it.uid,
                                         email = email,
@@ -244,31 +447,33 @@ class AuthManager(private val context: Context) {
     // Handle provider sign-in (Google)
     private fun handleProviderSignIn(
         idToken: String,
-        provider: String,
         email: String,
         callback: (AppAuthResult) -> Unit
     ) {
+        val provider = "google.com"
+        val normalizedEmail = email.trim().lowercase()
+        if (normalizedEmail.isBlank()) {
+            callback(AppAuthResult.Error("Unable to read Google account email"))
+            return
+        }
+
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // Check if email exists in database
-                val existingUserData = checkEmailExists(email)
+                val existingUserData = checkEmailExists(normalizedEmail)
 
                 withContext(Dispatchers.Main) {
                     if (existingUserData != null) {
-                        // Email exists, try to sign in with credential and link
                         linkProviderToExistingAccount(
                             idToken = idToken,
                             provider = provider,
                             existingUid = existingUserData.uid,
-                            existingProvider = existingUserData.provider,
                             callback = callback
                         )
                     } else {
-                        // New email, create account with this provider
                         createProviderAccount(
                             idToken = idToken,
                             provider = provider,
-                            email = email,
+                            email = normalizedEmail,
                             callback = callback
                         )
                     }
@@ -281,12 +486,10 @@ class AuthManager(private val context: Context) {
         }
     }
 
-    // Link provider to existing account
     private fun linkProviderToExistingAccount(
         idToken: String,
         provider: String,
         existingUid: String,
-        existingProvider: String,
         callback: (AppAuthResult) -> Unit
     ) {
         val credential = when (provider) {
@@ -310,7 +513,7 @@ class AuthManager(private val context: Context) {
                         updateUserData(user.uid, provider, callback)
                     } else {
                         // Different account, need to link
-                        linkAccounts(user, existingUid, provider, callback)
+                        linkAccounts(user, callback)
                     }
                 } else {
                     val exception = task.exception
@@ -357,11 +560,8 @@ class AuthManager(private val context: Context) {
         }
     }
 
-    // Link two accounts
     private fun linkAccounts(
         newUser: FirebaseUser?,
-        existingUid: String,
-        provider: String,
         callback: (AppAuthResult) -> Unit
     ) {
         if (newUser == null) {
@@ -445,8 +645,9 @@ class AuthManager(private val context: Context) {
                                                 callback(
                                                     AppAuthResult.VerificationRequired(
                                                         emailVerified = false,
-                                                        phoneVerified = isPhoneLocallyVerified(phone),
-                                                        message = "Verify your email to continue. We sent a verification link."
+                                                        phoneVerified = false,
+                                                        message = "Verify your email and phone to continue.",
+                                                        phone = phone
                                                     )
                                                 )
                                             }
@@ -482,11 +683,14 @@ class AuthManager(private val context: Context) {
         isNewUser: Boolean,
         callback: (AppAuthResult) -> Unit
     ) {
+        val normalizedEmail = email.trim().lowercase()
         val emailVerified = auth.currentUser?.isEmailVerified == true
-        val phoneVerified = isPhoneLocallyVerified(phone)
+        val phoneE164 = normalizePhoneToE164(phone).orEmpty()
+        val phoneVerified = !auth.currentUser?.phoneNumber.isNullOrBlank()
         val userMap = HashMap<String, Any>().apply {
-            put("email", email.lowercase())
+            put("email", normalizedEmail)
             put("phone", phone)
+            put("phoneE164", phoneE164)
             put("provider", provider)
             put("createdAt", System.currentTimeMillis())
             put("lastLogin", System.currentTimeMillis())
@@ -498,17 +702,21 @@ class AuthManager(private val context: Context) {
         database.reference.child("Users").child(uid)
             .setValue(userMap)
             .addOnSuccessListener {
-                // Save email mapping
-                val encodedEmail = encodeEmail(email)
+                if (normalizedEmail.isBlank()) {
+                    callback(AppAuthResult.Success(isNewUser))
+                    return@addOnSuccessListener
+                }
+
+                val encodedEmail = encodeEmail(normalizedEmail)
                 database.reference.child("Emails").child(encodedEmail)
                     .setValue(uid)
                     .addOnSuccessListener {
-                        // Update cache
-                        emailUserCache[email.lowercase()] = CachedUserData(
+                        emailUserCache[normalizedEmail] = CachedUserData(
                             uid = uid,
                             provider = provider,
                             timestamp = System.currentTimeMillis()
                         )
+
                         callback(AppAuthResult.Success(isNewUser))
                     }
                     .addOnFailureListener { e ->
@@ -576,9 +784,11 @@ class AuthManager(private val context: Context) {
                         }
 
                     val phone = snapshot.child("phone").getValue(String::class.java).orEmpty()
+                    val persistedPhoneVerified = snapshot.child("phoneVerified").getValue(Boolean::class.java)
                     val updates = hashMapOf<String, Any>(
                         "emailVerified" to (auth.currentUser?.isEmailVerified == true),
-                        "phoneVerified" to isPhoneLocallyVerified(phone),
+                        "phoneVerified" to isPhoneCredentialVerified(auth.currentUser, persistedPhoneVerified),
+                        "phoneE164" to normalizePhoneToE164(phone).orEmpty(),
                         "verificationUpdatedAt" to System.currentTimeMillis()
                     )
                     snapshot.ref.updateChildren(updates)
@@ -607,23 +817,29 @@ class AuthManager(private val context: Context) {
                     .addOnSuccessListener { snapshot ->
                         val phone = snapshot.child("phone").getValue(String::class.java).orEmpty()
                         val persistedPhoneVerified = snapshot.child("phoneVerified").getValue(Boolean::class.java)
-                        val phoneVerified = persistedPhoneVerified ?: isPhoneLocallyVerified(phone)
+                        val phoneVerified = isPhoneCredentialVerified(user, persistedPhoneVerified)
+                        val phoneE164 = normalizePhoneToE164(phone).orEmpty()
+                        val snapshotProvider = snapshot.child("provider").getValue(String::class.java)
+                        val provider = resolvePrimaryProvider(user, snapshotProvider)
+                        val requiresStrictVerification = !isSocialProvider(provider)
 
                         val updates = hashMapOf<String, Any>(
                             "emailVerified" to emailVerified,
                             "phoneVerified" to phoneVerified,
+                            "phoneE164" to phoneE164,
                             "verificationUpdatedAt" to System.currentTimeMillis(),
                             "lastLogin" to System.currentTimeMillis()
                         )
                         snapshot.ref.updateChildren(updates)
 
                         when {
-                            !emailVerified || !phoneVerified -> {
+                            requiresStrictVerification && (!emailVerified || !phoneVerified) -> {
                                 callback(
                                     AppAuthResult.VerificationRequired(
                                         emailVerified = emailVerified,
                                         phoneVerified = phoneVerified,
-                                        message = buildVerificationMessage(emailVerified, phoneVerified)
+                                        message = buildVerificationMessage(emailVerified, phoneVerified, true),
+                                        phone = phone
                                     )
                                 )
                             }
@@ -639,21 +855,159 @@ class AuthManager(private val context: Context) {
             }
     }
 
-    private fun buildVerificationMessage(emailVerified: Boolean, phoneVerified: Boolean): String {
+    private fun buildVerificationMessage(
+        emailVerified: Boolean,
+        phoneVerified: Boolean,
+        requiresPhoneVerification: Boolean
+    ): String {
         return when {
-            !emailVerified && !phoneVerified -> "Verify your email and phone to continue."
+            !emailVerified && requiresPhoneVerification && !phoneVerified -> "Verify your email and phone to continue."
             !emailVerified -> "Please verify your email to continue."
-            else -> "Please verify your phone to continue."
+            requiresPhoneVerification -> "Please verify your phone to continue."
+            else -> "Verification required"
         }
     }
 
-    private fun isPhoneLocallyVerified(phone: String): Boolean {
-        return phone.length == PHONE_LENGTH && phone.all { it.isDigit() }
+    private fun buildTempPassword(): String {
+        return TEMP_PASSWORD_PREFIX + UUID.randomUUID().toString().replace("-", "").take(12)
+    }
+
+    private fun buildPhoneCallbacks(
+        phoneE164: String,
+        onCodeSent: (verificationId: String, token: PhoneAuthProvider.ForceResendingToken) -> Unit,
+        onVerified: (AppAuthResult) -> Unit,
+        onError: (String) -> Unit
+    ): PhoneAuthProvider.OnVerificationStateChangedCallbacks {
+        return object : PhoneAuthProvider.OnVerificationStateChangedCallbacks() {
+            override fun onVerificationCompleted(credential: PhoneAuthCredential) {
+                linkPhoneCredential(credential, onVerified)
+            }
+
+            override fun onVerificationFailed(e: FirebaseException) {
+                onError(e.message ?: "Phone verification failed")
+            }
+
+            override fun onCodeSent(
+                verificationId: String,
+                token: PhoneAuthProvider.ForceResendingToken
+            ) {
+                onCodeSent(verificationId, token)
+            }
+        }
+    }
+
+    private fun linkPhoneCredential(
+        credential: PhoneAuthCredential,
+        callback: (AppAuthResult) -> Unit
+    ) {
+        val currentUser = auth.currentUser
+        if (currentUser == null) {
+            callback(AppAuthResult.Error("User not logged in"))
+            return
+        }
+
+        currentUser.linkWithCredential(credential)
+            .addOnSuccessListener { authResult ->
+                val resolvedUser = authResult.user ?: currentUser
+                val phoneE164 = resolvedUser.phoneNumber ?: credential.smsCode?.let { null }
+                persistVerifiedPhone(resolvedUser.uid, phoneE164, callback)
+            }
+            .addOnFailureListener { exception ->
+                when (exception) {
+                    is FirebaseAuthUserCollisionException,
+                    is FirebaseAuthInvalidCredentialsException -> {
+                        callback(AppAuthResult.Error("Invalid OTP or phone number already linked to another account"))
+                    }
+                    else -> {
+                        // If phone is already linked to this user, treat as success and sync DB.
+                        val alreadyLinked = currentUser.providerData.any { it.providerId == PhoneAuthProvider.PROVIDER_ID }
+                        if (alreadyLinked) {
+                            persistVerifiedPhone(currentUser.uid, currentUser.phoneNumber, callback)
+                        } else {
+                            callback(AppAuthResult.Error(exception.message ?: "Failed to verify phone"))
+                        }
+                    }
+                }
+            }
+    }
+
+    private fun persistVerifiedPhone(
+        uid: String,
+        phoneE164Input: String?,
+        callback: (AppAuthResult) -> Unit
+    ) {
+        database.reference.child("Users").child(uid).get()
+            .addOnSuccessListener { snapshot ->
+                val existingPhone = snapshot.child("phone").getValue(String::class.java).orEmpty()
+                val phoneE164 = phoneE164Input ?: normalizePhoneToE164(existingPhone).orEmpty()
+                val localPhone = toLocalPhone(phoneE164).ifBlank { existingPhone }
+                val updates = hashMapOf<String, Any>(
+                    "phone" to localPhone,
+                    "phoneE164" to phoneE164,
+                    "phoneVerified" to true,
+                    "verificationUpdatedAt" to System.currentTimeMillis()
+                )
+
+                snapshot.ref.updateChildren(updates)
+                    .addOnSuccessListener {
+                        val currentUser = auth.currentUser
+                        if (currentUser != null) {
+                            evaluateVerificationState(currentUser, false, callback)
+                        } else {
+                            callback(AppAuthResult.Success(false))
+                        }
+                    }
+                    .addOnFailureListener { e ->
+                        callback(AppAuthResult.Error(e.message ?: "Failed to save verified phone"))
+                    }
+            }
+            .addOnFailureListener { e ->
+                callback(AppAuthResult.Error(e.message ?: "Failed to load user profile"))
+            }
+    }
+
+    private fun isPhoneCredentialVerified(user: FirebaseUser?, persistedPhoneVerified: Boolean?): Boolean {
+        return (persistedPhoneVerified == true) && !user?.phoneNumber.isNullOrBlank()
+    }
+
+    private fun normalizePhoneToE164(rawPhone: String): String? {
+        val trimmed = rawPhone.trim()
+        if (trimmed.isEmpty()) return null
+
+        return when {
+            trimmed.startsWith("+") && trimmed.drop(1).all { it.isDigit() } -> trimmed
+            trimmed.length == PHONE_LENGTH && trimmed.all { it.isDigit() } -> "+91$trimmed"
+            else -> null
+        }
+    }
+
+    private fun toLocalPhone(phoneE164: String): String {
+        val digits = phoneE164.filter { it.isDigit() }
+        return if (digits.length >= PHONE_LENGTH) digits.takeLast(PHONE_LENGTH) else digits
+    }
+
+    private fun isSocialProvider(provider: String): Boolean {
+        return provider == "google.com" || provider == "github.com"
+    }
+
+    private fun resolvePrimaryProvider(user: FirebaseUser, snapshotProvider: String?): String {
+        val providers = user.providerData
+            .map { it.providerId }
+            .filter { it != "firebase" }
+
+        return when {
+            providers.any { it == "google.com" } -> "google.com"
+            providers.any { it == "github.com" } -> "github.com"
+            providers.any { it == "password" } -> "password"
+            !snapshotProvider.isNullOrBlank() && snapshotProvider != "unknown" -> snapshotProvider
+            else -> "password"
+        }
     }
 
     // Check if email exists in database with caching
     private suspend fun checkEmailExists(email: String): CachedUserData? {
         val lowerEmail = email.lowercase()
+        if (lowerEmail.isBlank()) return null
 
         // Check cache first
         emailUserCache[lowerEmail]?.let { cachedData ->
@@ -702,20 +1056,44 @@ class AuthManager(private val context: Context) {
     }
 
     // Check if phone number already exists in database
-    private suspend fun checkPhoneExists(phone: String): Boolean {
+    private suspend fun checkPhoneExists(phone: String, currentUid: String? = null): Boolean {
         if (phone.isEmpty()) return false
+
+        val normalizedPhone = normalizePhoneToE164(phone) ?: return false
+        val localPhone = toLocalPhone(normalizedPhone)
+
         return try {
-            val snapshot = database.reference.child("Users")
-                .orderByChild("phone")
-                .equalTo(phone)
+            val byE164Snapshot = database.reference.child("Users")
+                .orderByChild("phoneE164")
+                .equalTo(normalizedPhone)
                 .get()
                 .await()
-            snapshot.exists()
+
+            val hasOtherAccountByE164 = byE164Snapshot.children.any { snapshot ->
+                val uid = snapshot.key
+                uid != null && uid != currentUid
+            }
+
+            if (hasOtherAccountByE164) {
+                return true
+            }
+
+            val byLocalPhoneSnapshot = database.reference.child("Users")
+                .orderByChild("phone")
+                .equalTo(localPhone)
+                .get()
+                .await()
+
+            byLocalPhoneSnapshot.children.any { snapshot ->
+                val uid = snapshot.key
+                uid != null && uid != currentUid
+            }
         } catch (e: Exception) {
             Log.e(tag, "Error checking phone", e)
             false
         }
     }
+
 
     private fun encodeEmail(email: String): String {
         return email.lowercase()
@@ -740,4 +1118,3 @@ class AuthManager(private val context: Context) {
         emailUserCache.clear()
     }
 }
-

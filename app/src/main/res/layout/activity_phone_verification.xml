@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background"
+    android:fillViewport="true"
+    android:fitsSystemWindows="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="@dimen/space_24">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_marginTop="@dimen/space_32"
+            android:layout_marginBottom="@dimen/space_32">
+
+            <ImageView
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:src="@drawable/graduationcap201" />
+
+            <TextView
+                style="@style/TextAppearance.AIStudyAssistance.Title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_16"
+                android:text="Verify Phone Number"
+                android:textSize="24sp" />
+
+            <TextView
+                android:id="@+id/tvOtpSubtitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_8"
+                android:text="Enter the OTP sent to your number"
+                android:textColor="@color/text_secondary"
+                android:textSize="@dimen/text_body" />
+        </LinearLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilOtp"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/space_24"
+            app:boxCornerRadiusBottomEnd="@dimen/radius_m"
+            app:boxCornerRadiusBottomStart="@dimen/radius_m"
+            app:boxCornerRadiusTopEnd="@dimen/radius_m"
+            app:boxCornerRadiusTopStart="@dimen/radius_m"
+            app:startIconDrawable="@drawable/authorization30"
+            app:startIconTint="@color/primary"
+            android:hint="6-digit OTP">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etOtp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="number"
+                android:maxLength="6" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnVerifyOtp"
+            style="@style/Widget.AIStudyAssistance.Button.Primary"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/button_height"
+            android:text="Verify OTP" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnResendOtp"
+            style="@style/Widget.AIStudyAssistance.Button.Secondary"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/button_height"
+            android:layout_marginTop="@dimen/space_12"
+            android:text="Resend OTP" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnBackToSignIn"
+            style="@style/Widget.AIStudyAssistance.Button.Secondary"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/button_height"
+            android:layout_marginTop="@dimen/space_12"
+            android:text="Back to Sign In" />
+
+    </LinearLayout>
+</ScrollView>
+
