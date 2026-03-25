@@ -2,6 +2,7 @@
 
 import android.content.Intent
 import android.os.Bundle
+import android.os.SystemClock
 import android.view.HapticFeedbackConstants
 import android.view.View
 import android.widget.*
@@ -39,6 +40,7 @@ class QuizActivity : AppCompatActivity() {
     private val userAnswers = mutableListOf<Int>() // Store selected option index (0-3)
     private var questionsJsonRaw: String = ""
     private var quizCompleted = false
+    private var sessionStartElapsedRealtime = 0L
 
     private var quizQuestions = listOf<QuizQuestion>()
 
@@ -58,6 +60,7 @@ class QuizActivity : AppCompatActivity() {
         setupQuiz()
         displayQuestion()
         persistQuizProgress()
+        sessionStartElapsedRealtime = SystemClock.elapsedRealtime()
     }
 
     private fun loadQuizState() {
@@ -290,8 +293,17 @@ class QuizActivity : AppCompatActivity() {
     }
 
     override fun onPause() {
+        val now = SystemClock.elapsedRealtime()
+        val elapsed = (now - sessionStartElapsedRealtime).coerceAtLeast(0L)
+        ContinueLearningPrefs.addStudyTime(this, elapsed)
+        sessionStartElapsedRealtime = 0L
         super.onPause()
         persistQuizProgress()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        sessionStartElapsedRealtime = SystemClock.elapsedRealtime()
     }
 }
 

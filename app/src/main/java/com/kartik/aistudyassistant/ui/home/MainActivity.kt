@@ -1,6 +1,8 @@
 ﻿package com.kartik.aistudyassistant.ui.home
 
 import android.content.Intent
+import android.content.res.ColorStateList
+import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.text.format.DateUtils
 import android.view.LayoutInflater
@@ -14,13 +16,17 @@ import com.google.android.material.bottomsheet.BottomSheetDialog
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.content.res.AppCompatResources
 import androidx.cardview.widget.CardView
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.drawable.DrawableCompat
+import androidx.core.view.MenuItemCompat
 import com.kartik.aistudyassistant.R
 import com.kartik.aistudyassistant.data.local.ContinueLearningPrefs
 import com.kartik.aistudyassistant.data.local.RecentActivityItem
 import com.kartik.aistudyassistant.data.local.RecentActivityType
 import com.kartik.aistudyassistant.data.local.SessionType
+import com.kartik.aistudyassistant.data.local.UserProfilePrefs
 import com.kartik.aistudyassistant.data.model.AuthResult
 import com.kartik.aistudyassistant.data.repository.AuthManager
 import com.kartik.aistudyassistant.ui.auth.SignInActivity
@@ -35,12 +41,17 @@ import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
+import coil.imageLoader
+import coil.request.ImageRequest
+import coil.transform.CircleCropTransformation
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var auth: FirebaseAuth
     private lateinit var authManager: AuthManager
     private lateinit var tvWelcome: TextView
+    private lateinit var ivProfileImage: ImageView
+    private lateinit var bottomNav: BottomNavigationView
     private lateinit var layoutContinueLearningSection: LinearLayout
     private lateinit var itemContinueFlashcard: LinearLayout
     private lateinit var itemContinueQuiz: LinearLayout
@@ -76,6 +87,7 @@ class MainActivity : AppCompatActivity() {
         auth = FirebaseAuth.getInstance()
         authManager = AuthManager(this)
         tvWelcome = findViewById(R.id.tvWelcome)
+        ivProfileImage = findViewById(R.id.ivProfileImage)
         initContinueLearningViews()
         initRecentActivityViews()
         initStudyProgressViews()
@@ -83,6 +95,7 @@ class MainActivity : AppCompatActivity() {
         loadUserData()
         updateContinueLearningSection()
         updateRecentActivitySection()
+        updateProfileAvatarUi()
         setupClickListeners()
         setupBottomNavigation()
         enforceVerificationGate()
@@ -109,8 +122,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        loadUserData()
         updateContinueLearningSection()
         updateRecentActivitySection()
+        updateProfileAvatarUi()
     }
 
     private fun initContinueLearningViews() {
@@ -365,14 +380,35 @@ class MainActivity : AppCompatActivity() {
 
     private fun loadUserData() {
         val user = auth.currentUser
+        val cached = UserProfilePrefs.read(this)
+
+        if (cached.name.isNotBlank()) {
+            tvWelcome.text = getString(R.string.home_welcome, cached.name)
+        }
+
         if (user != null) {
             val userRef = FirebaseDatabase.getInstance().reference.child("Users").child(user.uid)
-            userRef.child("email").get().addOnSuccessListener { snapshot ->
-                val email = snapshot.value?.toString() ?: user.email ?: getString(R.string.profile_default_name)
-                val name = email.substringBefore("@")
+            userRef.get().addOnSuccessListener { snapshot ->
+                val dbName = snapshot.child("name").getValue(String::class.java).orEmpty()
+                val dbEmail = snapshot.child("email").getValue(String::class.java).orEmpty()
+
+                val resolvedName = dbName
+                    .ifBlank { user.displayName.orEmpty() }
+                    .ifBlank { cached.name }
+                    .ifBlank { dbEmail.ifBlank { user.email.orEmpty() }.substringBefore("@") }
+                    .ifBlank { getString(R.string.profile_default_name) }
+
                 tvWelcome.text = getString(
                     R.string.home_welcome,
-                    name.replaceFirstChar { it.uppercase() }
+                    resolvedName.replaceFirstChar { it.uppercase() }
+                )
+
+                UserProfilePrefs.save(
+                    context = this,
+                    name = resolvedName,
+                    email = cached.email.ifBlank { dbEmail.ifBlank { user.email.orEmpty() } },
+                    phone = cached.phone,
+                    photoUri = cached.photoUri
                 )
             }
         }
@@ -380,7 +416,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupClickListeners() {
         findViewById<CardView>(R.id.cvProfile).setOnClickListener {
+            refreshHomeData()
+        }
+
+        ivProfileImage.setOnLongClickListener {
             openProfile()
+            true
         }
 
         tileProgressStreak.setOnClickListener {
@@ -480,8 +521,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupBottomNavigation() {
-        val bottomNav = findViewById<BottomNavigationView>(R.id.bottomNavigation)
+        bottomNav = findViewById(R.id.bottomNavigation)
+        bottomNav.itemIconTintList = null
+        applyBaseBottomNavIcons()
         bottomNav.selectedItemId = R.id.nav_home
+        updateBottomNavProfileIcon(UserProfilePrefs.read(this).photoUri)
 
         bottomNav.setOnItemSelectedListener { item ->
             when (item.itemId) {
@@ -509,6 +553,62 @@ class MainActivity : AppCompatActivity() {
 
     private fun openProfile() {
         startActivity(Intent(this, ProfileActivity::class.java))
+    }
+
+    private fun updateProfileAvatarUi() {
+        val photoUri = UserProfilePrefs.read(this).photoUri
+        ivProfileImage.setImageResource(R.drawable.graduationcap201)
+
+        if (::bottomNav.isInitialized) {
+            updateBottomNavProfileIcon(photoUri)
+        }
+    }
+
+    private fun updateBottomNavProfileIcon(photoUri: String) {
+        val profileItem = bottomNav.menu.findItem(R.id.nav_profile)
+        if (photoUri.isBlank()) {
+            profileItem.icon = buildTintedBottomNavIcon(android.R.drawable.ic_menu_myplaces)
+            return
+        }
+
+        MenuItemCompat.setIconTintList(profileItem, null)
+        this.imageLoader.enqueue(
+            ImageRequest.Builder(this)
+                .data(photoUri)
+                .crossfade(true)
+                .transformations(CircleCropTransformation())
+                .target(
+                    onSuccess = { drawable ->
+                        profileItem.icon = drawable
+                    },
+                    onError = {
+                        profileItem.icon = buildTintedBottomNavIcon(android.R.drawable.ic_menu_myplaces)
+                    }
+                )
+                .build()
+        )
+    }
+
+    private fun applyBaseBottomNavIcons() {
+        bottomNav.menu.findItem(R.id.nav_home).icon = buildTintedBottomNavIcon(android.R.drawable.ic_menu_today)
+        bottomNav.menu.findItem(R.id.nav_chat).icon = buildTintedBottomNavIcon(android.R.drawable.ic_menu_send)
+        bottomNav.menu.findItem(R.id.nav_upload).icon = buildTintedBottomNavIcon(android.R.drawable.ic_menu_add)
+        bottomNav.menu.findItem(R.id.nav_quiz).icon = buildTintedBottomNavIcon(android.R.drawable.ic_menu_edit)
+    }
+
+    private fun buildTintedBottomNavIcon(resId: Int): Drawable? {
+        val drawable = AppCompatResources.getDrawable(this, resId)?.mutate() ?: return null
+        val tintList: ColorStateList = ContextCompat.getColorStateList(this, R.color.bottom_nav_tint) ?: return drawable
+        DrawableCompat.setTintList(drawable, tintList)
+        return drawable
+    }
+
+    private fun refreshHomeData() {
+        loadUserData()
+        updateContinueLearningSection()
+        updateRecentActivitySection()
+        updateProfileAvatarUi()
+        showToast(getString(R.string.common_refreshed))
     }
 
     private fun showToast(message: String) {

@@ -6,7 +6,8 @@ import com.google.firebase.auth.FirebaseUser
 data class CachedUserProfile(
     val name: String,
     val email: String,
-    val phone: String
+    val phone: String,
+    val photoUri: String
 )
 
 object UserProfilePrefs {
@@ -14,13 +15,15 @@ object UserProfilePrefs {
     private const val KEY_NAME = "name"
     private const val KEY_EMAIL = "email"
     private const val KEY_PHONE = "phone"
+    private const val KEY_PHOTO_URI = "photo_uri"
 
-    fun save(context: Context, name: String, email: String, phone: String) {
+    fun save(context: Context, name: String, email: String, phone: String, photoUri: String = "") {
         context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
             .edit()
             .putString(KEY_NAME, name)
             .putString(KEY_EMAIL, email)
             .putString(KEY_PHONE, phone)
+            .putString(KEY_PHOTO_URI, photoUri)
             .apply()
     }
 
@@ -29,7 +32,8 @@ object UserProfilePrefs {
         return CachedUserProfile(
             name = prefs.getString(KEY_NAME, "").orEmpty(),
             email = prefs.getString(KEY_EMAIL, "").orEmpty(),
-            phone = prefs.getString(KEY_PHONE, "").orEmpty()
+            phone = prefs.getString(KEY_PHONE, "").orEmpty(),
+            photoUri = prefs.getString(KEY_PHOTO_URI, "").orEmpty()
         )
     }
 
@@ -46,7 +50,8 @@ object UserProfilePrefs {
             context = context,
             name = resolvedName,
             email = user.email.orEmpty(),
-            phone = user.phoneNumber.orEmpty().ifBlank { fallbackPhone }
+            phone = user.phoneNumber.orEmpty().ifBlank { fallbackPhone },
+            photoUri = user.photoUrl?.toString().orEmpty()
         )
     }
 

@@ -70,6 +70,7 @@ class FlashcardActivity : AppCompatActivity() {
     private var pendingAnswerRevealedStates: List<Boolean> = emptyList()
     private var pendingDifficultyStates: List<Int> = emptyList()
     private var currentCardTimerStartMs = 0L
+    private var sessionStartElapsedRealtime = 0L
     private val timerHandler = Handler(Looper.getMainLooper())
     private val timerRunnable = object : Runnable {
         override fun run() {
@@ -100,6 +101,7 @@ class FlashcardActivity : AppCompatActivity() {
             updateNavigationButtons(targetIndex)
             startTimerForCard(targetIndex)
         }
+        sessionStartElapsedRealtime = SystemClock.elapsedRealtime()
     }
 
     private fun readIntentData() {
@@ -707,9 +709,18 @@ class FlashcardActivity : AppCompatActivity() {
     }
 
     override fun onPause() {
+        val now = SystemClock.elapsedRealtime()
+        val elapsed = (now - sessionStartElapsedRealtime).coerceAtLeast(0L)
+        ContinueLearningPrefs.addStudyTime(this, elapsed)
+        sessionStartElapsedRealtime = 0L
         stopTimerForCard(currentCardIndex)
         persistFlashcardProgress()
         super.onPause()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        sessionStartElapsedRealtime = SystemClock.elapsedRealtime()
     }
 
     companion object {

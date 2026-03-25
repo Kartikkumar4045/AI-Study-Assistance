@@ -1113,6 +1113,39 @@ class AuthManager(private val context: Context) {
         return auth.currentUser != null
     }
 
+    fun updateUserDisplayName(name: String, callback: (Boolean, String?) -> Unit) {
+        val currentUser = auth.currentUser
+        if (currentUser == null) {
+            callback(false, "User not logged in")
+            return
+        }
+
+        val normalizedName = name.trim()
+        if (normalizedName.isBlank()) {
+            callback(false, "Name cannot be empty")
+            return
+        }
+
+        val request = UserProfileChangeRequest.Builder()
+            .setDisplayName(normalizedName)
+            .build()
+
+        currentUser.updateProfile(request)
+            .addOnSuccessListener {
+                database.reference.child("Users").child(currentUser.uid).child("name")
+                    .setValue(normalizedName)
+                    .addOnSuccessListener {
+                        callback(true, null)
+                    }
+                    .addOnFailureListener { e ->
+                        callback(false, e.message ?: "Failed to save name")
+                    }
+            }
+            .addOnFailureListener { e ->
+                callback(false, e.message ?: "Failed to update profile")
+            }
+    }
+
     // Clear cache (call on logout)
     fun clearCache() {
         emailUserCache.clear()

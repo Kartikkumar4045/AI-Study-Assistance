@@ -41,24 +41,46 @@
         </RelativeLayout>
     </com.google.android.material.appbar.MaterialToolbar>
 
-    <LinearLayout
-        android:id="@+id/layoutProfileContent"
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/scrollProfileContent"
         android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginHorizontal="@dimen/space_24"
-        android:layout_marginTop="@dimen/space_24"
-        android:gravity="center_horizontal"
-        android:orientation="vertical"
+        android:layout_height="0dp"
+        android:fillViewport="true"
+        android:clipToPadding="false"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/toolbar">
+        app:layout_constraintTop_toBottomOf="@id/toolbar"
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <LinearLayout
+            android:id="@+id/layoutProfileContent"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="@dimen/space_24"
+            android:layout_marginTop="@dimen/space_24"
+            android:layout_marginBottom="@dimen/space_24"
+            android:gravity="center_horizontal"
+            android:orientation="vertical">
 
         <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardAvatar"
             android:layout_width="88dp"
             android:layout_height="88dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackgroundBorderless"
             app:cardBackgroundColor="@color/primary_light"
             app:cardCornerRadius="44dp"
             app:strokeWidth="0dp">
+
+            <ImageView
+                android:id="@+id/ivAvatarPhoto"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:contentDescription="@string/profile_photo"
+                android:scaleType="centerCrop"
+                android:visibility="gone"
+                tools:src="@drawable/graduationcap201" />
 
             <TextView
                 android:id="@+id/tvAvatarInitial"
@@ -72,13 +94,166 @@
         </com.google.android.material.card.MaterialCardView>
 
         <TextView
-            android:id="@+id/tvUserName"
-            style="@style/TextAppearance.AIStudyAssistance.Title"
+            android:id="@+id/tvPhotoActionHint"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_16"
-            android:textColor="@color/text_main"
-            tools:text="Student" />
+            android:layout_marginTop="@dimen/space_8"
+            android:text="@string/profile_photo_action_hint"
+            android:textColor="@color/text_secondary"
+            android:textSize="@dimen/text_caption" />
+
+        <LinearLayout
+            android:id="@+id/layoutNameEdit"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_8"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="@dimen/space_8"
+            android:paddingVertical="@dimen/space_4">
+
+            <TextView
+                android:id="@+id/tvUserName"
+                style="@style/TextAppearance.AIStudyAssistance.Title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/text_main"
+                tools:text="Student" />
+
+            <ImageView
+                android:id="@+id/ivEditName"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_marginStart="@dimen/space_8"
+                android:contentDescription="@string/profile_edit_name_title"
+                android:src="@android:drawable/ic_menu_edit"
+                app:tint="@color/text_secondary" />
+        </LinearLayout>
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_24"
+            app:cardBackgroundColor="@color/card_bg"
+            app:cardCornerRadius="@dimen/radius_m"
+            app:cardElevation="2dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="@dimen/space_16">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/profile_learning_snapshot_title"
+                    android:textColor="@color/text_main"
+                    android:textSize="@dimen/text_body"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_4"
+                    android:text="@string/profile_learning_snapshot_subtitle"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="@dimen/text_caption" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_16"
+                    android:text="@string/profile_learning_streak_label"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="@dimen/text_caption" />
+
+                <TextView
+                    android:id="@+id/tvLearningStreakValue"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_4"
+                    android:textColor="@color/text_main"
+                    android:textSize="@dimen/text_body"
+                    android:textStyle="bold"
+                    tools:text="12 days" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginTop="@dimen/space_16"
+                    android:layout_marginBottom="@dimen/space_16"
+                    android:background="@color/divider" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/profile_learning_time_label"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="@dimen/text_caption" />
+
+                <TextView
+                    android:id="@+id/tvLearningStudyTimeValue"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_4"
+                    android:textColor="@color/text_main"
+                    android:textSize="@dimen/text_body"
+                    android:textStyle="bold"
+                    tools:text="2h 15m" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginTop="@dimen/space_16"
+                    android:layout_marginBottom="@dimen/space_16"
+                    android:background="@color/divider" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/profile_learning_quizzes_label"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="@dimen/text_caption" />
+
+                <TextView
+                    android:id="@+id/tvLearningQuizValue"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_4"
+                    android:textColor="@color/text_main"
+                    android:textSize="@dimen/text_body"
+                    android:textStyle="bold"
+                    tools:text="24" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginTop="@dimen/space_16"
+                    android:layout_marginBottom="@dimen/space_16"
+                    android:background="@color/divider" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/profile_learning_last_active_label"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="@dimen/text_caption" />
+
+                <TextView
+                    android:id="@+id/tvLearningLastActiveValue"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_4"
+                    android:textColor="@color/text_main"
+                    android:textSize="@dimen/text_body"
+                    android:textStyle="bold"
+                    tools:text="Mar 26, 2026" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
@@ -144,8 +319,9 @@
             android:layout_height="@dimen/button_height"
             android:layout_marginTop="@dimen/space_24"
             android:text="@string/profile_logout" />
-    </LinearLayout>
+        </LinearLayout>
+
+    </androidx.core.widget.NestedScrollView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
-
 

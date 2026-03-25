@@ -60,6 +60,13 @@ data class StudyProgressSnapshot(
     val totalTopics: Int
 )
 
+data class ProfileLearningSnapshot(
+    val dayStreak: Int,
+    val totalStudyTimeMs: Long,
+    val totalQuizzes: Int,
+    val lastActiveTimestamp: Long?
+)
+
 @Serializable
 data class QuizAttemptRecord(
     val topic: String,
@@ -108,6 +115,7 @@ object ContinueLearningPrefs {
     private const val KEY_PROGRESS_DAY_STREAK = "progress_day_streak"
     private const val KEY_PROGRESS_LAST_ACTIVE_DAY = "progress_last_active_day"
     private const val KEY_PROGRESS_TOTAL_QUIZZES = "progress_total_quizzes"
+    private const val KEY_PROGRESS_TOTAL_STUDY_TIME_MS = "progress_total_study_time_ms"
     private const val KEY_PROGRESS_TOPICS_JSON = "progress_topics_json"
     private const val KEY_PROGRESS_ACTIVE_DAYS_JSON = "progress_active_days_json"
     private const val KEY_PROGRESS_QUIZ_ATTEMPTS_JSON = "progress_quiz_attempts_json"
@@ -355,6 +363,40 @@ object ContinueLearningPrefs {
             dayStreak = prefs.getInt(KEY_PROGRESS_DAY_STREAK, 0).coerceAtLeast(0),
             totalQuizzes = prefs.getInt(KEY_PROGRESS_TOTAL_QUIZZES, 0).coerceAtLeast(0),
             totalTopics = topics.size
+        )
+    }
+
+    fun addStudyTime(context: Context, durationMs: Long, timestamp: Long = System.currentTimeMillis()) {
+        val safeDuration = durationMs.coerceAtLeast(0L)
+        if (safeDuration == 0L) return
+
+        val prefs = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+        val existingTotal = prefs.getLong(KEY_PROGRESS_TOTAL_STUDY_TIME_MS, 0L)
+        prefs.edit()
+            .putLong(KEY_PROGRESS_TOTAL_STUDY_TIME_MS, existingTotal + safeDuration)
+            .apply()
+
+        updateStudyProgress(
+            context = context,
+            topic = "",
+            incrementQuizCount = false,
+            trackTopic = false,
+            timestamp = timestamp
+        )
+    }
+
+    fun readProfileLearningSnapshot(context: Context): ProfileLearningSnapshot {
+        val prefs = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+        val progress = readStudyProgress(context)
+        val details = readStudyStreakDetails(context)
+        val lastActivityTs = readRawRecentActivities(prefs)
+            .maxOfOrNull { it.timestamp }
+
+        return ProfileLearningSnapshot(
+            dayStreak = details.dayStreak,
+            totalStudyTimeMs = prefs.getLong(KEY_PROGRESS_TOTAL_STUDY_TIME_MS, 0L).coerceAtLeast(0L),
+            totalQuizzes = progress.totalQuizzes,
+            lastActiveTimestamp = lastActivityTs
         )
     }
 
