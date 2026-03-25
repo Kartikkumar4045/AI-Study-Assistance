@@ -514,9 +514,11 @@ class FlashcardActivity : AppCompatActivity() {
         stopTimerForCard(currentCardIndex)
         isDeckCompleted = true
         ContinueLearningPrefs.saveFlashcardActivity(
-            this,
-            resolveDisplayTopic(),
-            flashcards.size
+            context = this,
+            topic = resolveDisplayTopic(),
+            cardCount = flashcards.size,
+            source = if (source == FlashcardSetupActivity.SOURCE_NOTES) ContinueLearningPrefs.SOURCE_NOTES else ContinueLearningPrefs.SOURCE_TOPIC,
+            noteName = selectedNote
         )
         ContinueLearningPrefs.markFlashcardCompleted(this)
         tvStudyModeLabel.visibility = View.GONE
@@ -678,7 +680,9 @@ class FlashcardActivity : AppCompatActivity() {
 
     private fun resolveDisplayTopic(): String {
         return if (source == FlashcardSetupActivity.SOURCE_NOTES) {
-            selectedNote.ifBlank { getString(R.string.flashcard_my_notes) }
+            topicText.ifBlank {
+                selectedNote.ifBlank { getString(R.string.flashcard_my_notes) }
+            }
         } else {
             topicText.ifBlank { getString(R.string.flashcard_general_study) }
         }

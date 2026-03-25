@@ -567,7 +567,9 @@ class ChatActivity : AppCompatActivity() {
                 context = this,
                 topic = resolveRecentChatTopic(persistedMessages),
                 sessionId = ChatSessionPrefs.getActiveSessionId(this).orEmpty(),
-                messageCount = persistedMessages.count { it.isUser }
+                messageCount = persistedMessages.count { it.isUser },
+                source = if (!activeDocumentName.isNullOrBlank()) ContinueLearningPrefs.SOURCE_NOTES else ContinueLearningPrefs.SOURCE_TOPIC,
+                noteName = activeDocumentName.orEmpty()
             )
         }
     }

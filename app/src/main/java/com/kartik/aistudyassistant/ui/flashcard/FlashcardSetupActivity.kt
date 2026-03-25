@@ -15,6 +15,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AlertDialog
 import androidx.cardview.widget.CardView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
@@ -23,6 +24,7 @@ import com.kartik.aistudyassistant.domain.flashcard.FlashcardGenerator
 import com.kartik.aistudyassistant.core.utils.GeminiHelper
 import com.kartik.aistudyassistant.R
 import com.kartik.aistudyassistant.data.model.Flashcard
+import com.kartik.aistudyassistant.ui.upload.UploadActivity
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.slider.Slider
 import com.google.firebase.auth.FirebaseAuth
@@ -64,6 +66,8 @@ class FlashcardSetupActivity : AppCompatActivity() {
     private var selectedNote: NoteItem? = null
     private var isGenerating = false
     private var prefillNoteName = ""
+    private var prefillTopicText = ""
+    private var hasHandledMissingPrefillNote = false
     private val notesList = mutableListOf<NoteItem>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -90,9 +94,10 @@ class FlashcardSetupActivity : AppCompatActivity() {
             ?.takeIf { it == SOURCE_TOPIC || it == SOURCE_NOTES }
             ?: selectedSource
         prefillNoteName = intent.getStringExtra(EXTRA_PREFILL_NOTE_NAME).orEmpty()
+        prefillTopicText = intent.getStringExtra(EXTRA_TOPIC_TEXT).orEmpty().trim()
         if (selectedSource == SOURCE_TOPIC) {
-            intent.getStringExtra(EXTRA_TOPIC_TEXT)
-                ?.takeIf { it.isNotBlank() }
+            prefillTopicText
+                .takeIf { it.isNotBlank() }
                 ?.let { etTopic.setText(it) }
         }
 
@@ -251,9 +256,12 @@ class FlashcardSetupActivity : AppCompatActivity() {
                     val index = notesList.indexOfFirst { it.name.equals(prefillNoteName, ignoreCase = true) }
                     if (index >= 0) {
                         spinnerNotes.setSelection(index + 1)
-                    }
-                }
-                validateInputs()
+                    } else if (!hasHandledMissingPrefillNote) {
+                        hasHandledMissingPrefillNote = true
+                        showMissingPrefilledNoteDialog(prefillNoteName)
+                     }
+                 }
+                 validateInputs()
             }
             .addOnFailureListener { e ->
                 Toast.makeText(
@@ -264,11 +272,38 @@ class FlashcardSetupActivity : AppCompatActivity() {
             }
     }
 
+    private fun showMissingPrefilledNoteDialog(requestedNoteName: String) {
+        AlertDialog.Builder(this)
+            .setTitle("File not available")
+            .setMessage(
+                "We could not find \"$requestedNoteName\" in your uploaded notes. " +
+                    "It may have been studied from a device-only attachment.\n\n" +
+                    "You can upload it now, or skip and continue with topic mode."
+            )
+            .setPositiveButton("Upload") { _, _ ->
+                startActivity(Intent(this, UploadActivity::class.java))
+            }
+            .setNegativeButton("Skip") { _, _ ->
+                selectedSource = SOURCE_TOPIC
+                val fallbackTopic = prefillTopicText.ifBlank { requestedNoteName }
+                if (etTopic.text.toString().trim().isBlank()) {
+                    etTopic.setText(fallbackTopic)
+                }
+                updateUI()
+            }
+            .show()
+    }
+
     private fun generateFlashcards() {
         if (isGenerating) return
 
         val topicText = etTopic.text.toString().trim()
         val note = selectedNote
+        val masteryTopic = if (selectedSource == SOURCE_NOTES) {
+            prefillTopicText.ifBlank { topicText.ifBlank { note?.name.orEmpty() } }
+        } else {
+            topicText
+        }
 
         setGeneratingState(true)
         lifecycleScope.launch {
@@ -295,7 +330,7 @@ class FlashcardSetupActivity : AppCompatActivity() {
 
                 val intent = Intent(this@FlashcardSetupActivity, FlashcardActivity::class.java).apply {
                     putExtra(EXTRA_SOURCE, selectedSource)
-                    putExtra(EXTRA_TOPIC_TEXT, topicText)
+                    putExtra(EXTRA_TOPIC_TEXT, masteryTopic)
                     putExtra(EXTRA_SELECTED_NOTE, note?.name.orEmpty())
                     putExtra(EXTRA_CARD_COUNT, generated.size)
                     putExtra(EXTRA_FLASHCARDS_JSON, Json.encodeToString(generated))

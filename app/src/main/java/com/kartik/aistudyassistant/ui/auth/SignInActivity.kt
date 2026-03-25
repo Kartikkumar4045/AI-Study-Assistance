@@ -30,6 +30,7 @@ class SignInActivity : AppCompatActivity() {
     private lateinit var tvForgotPassword: TextView
     private lateinit var tvSignUp: TextView
     private var lastLoginInput: String = ""
+    private var isCheckingExistingSession: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,20 +40,35 @@ class SignInActivity : AppCompatActivity() {
         auth = FirebaseAuth.getInstance()
         authManager = AuthManager(this)
 
-        // Problem #2 Fix: Check if user is already logged in
-        if (auth.currentUser != null) {
-            navigateToMain()
-        }
-
         initViews()
         setupClickListeners()
     }
 
     override fun onStart() {
         super.onStart()
-        // Double check on start
-        if (auth.currentUser != null) {
-            navigateToMain()
+        checkExistingSession()
+    }
+
+    private fun checkExistingSession() {
+        if (auth.currentUser == null || isCheckingExistingSession) {
+            return
+        }
+
+        isCheckingExistingSession = true
+        authManager.checkCurrentUserVerification { result ->
+            isCheckingExistingSession = false
+            when (result) {
+                is AuthResult.Success -> navigateToMain()
+                is AuthResult.VerificationRequired -> {
+                    authManager.signOut()
+                    Toast.makeText(this, result.message, Toast.LENGTH_LONG).show()
+                }
+                is AuthResult.Error -> {
+                    authManager.signOut()
+                    Toast.makeText(this, result.message ?: "Please sign in", Toast.LENGTH_SHORT).show()
+                }
+                AuthResult.Cancelled -> Unit
+            }
         }
     }
 
@@ -142,6 +158,24 @@ class SignInActivity : AppCompatActivity() {
             }
             is AuthResult.Error -> {
                 Toast.makeText(this, result.message ?: "Sign in failed", Toast.LENGTH_LONG).show()
+                resetButton()
+            }
+            is AuthResult.VerificationRequired -> {
+                val shouldResendEmail = !result.emailVerified
+                if (shouldResendEmail) {
+                    authManager.sendEmailVerificationForCurrentUser { resendResult ->
+                        if (resendResult is AuthResult.Error) {
+                            Toast.makeText(
+                                this,
+                                resendResult.message ?: "Failed to send verification email",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    }
+                }
+
+                Toast.makeText(this, result.message, Toast.LENGTH_LONG).show()
+                authManager.signOut()
                 resetButton()
             }
             AuthResult.Cancelled -> {

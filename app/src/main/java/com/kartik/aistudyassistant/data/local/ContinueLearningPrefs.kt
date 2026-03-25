@@ -60,10 +60,45 @@ data class StudyProgressSnapshot(
     val totalTopics: Int
 )
 
+@Serializable
+data class QuizAttemptRecord(
+    val topic: String,
+    val score: Int,
+    val timestamp: Long
+)
+
+@Serializable
+data class TopicMasteryRecord(
+    val topicKey: String,
+    val displayTopic: String,
+    val quizCount: Int,
+    val flashcardCount: Int,
+    val chatCount: Int,
+    val lastActivityTimestamp: Long,
+    val lastSource: String = "topic",
+    val lastNoteName: String = ""
+)
+
+data class StudyStreakDetails(
+    val dayStreak: Int,
+    val lastActiveDaysAgo: Int?,
+    val recentSevenDaysActive: List<Boolean>
+)
+
+data class QuizPerformanceSnapshot(
+    val totalQuizzes: Int,
+    val averageScore: Int,
+    val bestScore: Int,
+    val recentAttempts: List<QuizAttemptRecord>,
+    val availableTopics: List<String>
+)
+
 object ContinueLearningPrefs {
     private const val DEFAULT_SOURCE_TOPIC = "topic"
     private const val PREF_FILE = "continue_learning_prefs"
     private const val DAY_IN_MILLIS = 24L * 60L * 60L * 1000L
+    const val SOURCE_TOPIC = "topic"
+    const val SOURCE_NOTES = "notes"
     const val KEY_LAST_FLASHCARD_TOPIC = "last_flashcard_topic"
     const val KEY_LAST_FLASHCARD_COUNT = "last_flashcard_count"
     const val KEY_LAST_QUIZ_TOPIC = "last_quiz_topic"
@@ -74,7 +109,13 @@ object ContinueLearningPrefs {
     private const val KEY_PROGRESS_LAST_ACTIVE_DAY = "progress_last_active_day"
     private const val KEY_PROGRESS_TOTAL_QUIZZES = "progress_total_quizzes"
     private const val KEY_PROGRESS_TOPICS_JSON = "progress_topics_json"
+    private const val KEY_PROGRESS_ACTIVE_DAYS_JSON = "progress_active_days_json"
+    private const val KEY_PROGRESS_QUIZ_ATTEMPTS_JSON = "progress_quiz_attempts_json"
+    private const val KEY_PROGRESS_TOPIC_MASTERY_JSON = "progress_topic_mastery_json"
     private const val UNSET_DAY = Long.MIN_VALUE
+    private const val MAX_ACTIVE_DAYS = 120
+    private const val MAX_QUIZ_ATTEMPTS = 200
+    private const val ALL_TOPICS_FILTER = "All Topics"
     private val ignoredProgressTopics = setOf(
         "general quiz",
         "general study",
@@ -132,8 +173,15 @@ object ContinueLearningPrefs {
         val inProgress: Boolean
     )
 
-    fun saveFlashcardActivity(context: Context, topic: String, cardCount: Int) {
+    fun saveFlashcardActivity(
+        context: Context,
+        topic: String,
+        cardCount: Int,
+        source: String = SOURCE_TOPIC,
+        noteName: String = ""
+    ) {
         val safeTopic = topic.ifBlank { "General Study" }
+        val now = System.currentTimeMillis()
         context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
             .edit()
             .putString(KEY_LAST_FLASHCARD_TOPIC, safeTopic)
@@ -144,7 +192,17 @@ object ContinueLearningPrefs {
             context = context,
             topic = safeTopic,
             incrementQuizCount = false,
-            trackTopic = true
+            trackTopic = true,
+            timestamp = now
+        )
+
+        updateTopicMastery(
+            context = context,
+            topic = safeTopic,
+            type = RecentActivityType.FLASHCARD,
+            timestamp = now,
+            source = source,
+            noteName = noteName
         )
 
         appendRecentActivity(
@@ -153,14 +211,21 @@ object ContinueLearningPrefs {
                 type = RecentActivityType.FLASHCARD,
                 topic = safeTopic,
                 scoreOrCount = cardCount.coerceAtLeast(0),
-                timestamp = System.currentTimeMillis(),
+                timestamp = now,
                 id = UUID.randomUUID().toString()
             )
         )
     }
 
-    fun saveQuizActivity(context: Context, topic: String, score: Int) {
+    fun saveQuizActivity(
+        context: Context,
+        topic: String,
+        score: Int,
+        source: String = SOURCE_TOPIC,
+        noteName: String = ""
+    ) {
         val safeTopic = topic.ifBlank { "General Quiz" }
+        val now = System.currentTimeMillis()
         context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
             .edit()
             .putString(KEY_LAST_QUIZ_TOPIC, safeTopic)
@@ -171,7 +236,26 @@ object ContinueLearningPrefs {
             context = context,
             topic = safeTopic,
             incrementQuizCount = true,
-            trackTopic = true
+            trackTopic = true,
+            timestamp = now
+        )
+
+        appendQuizAttempt(
+            context = context,
+            attempt = QuizAttemptRecord(
+                topic = safeTopic,
+                score = score.coerceAtLeast(0),
+                timestamp = now
+            )
+        )
+
+        updateTopicMastery(
+            context = context,
+            topic = safeTopic,
+            type = RecentActivityType.QUIZ,
+            timestamp = now,
+            source = source,
+            noteName = noteName
         )
 
         appendRecentActivity(
@@ -180,7 +264,7 @@ object ContinueLearningPrefs {
                 type = RecentActivityType.QUIZ,
                 topic = safeTopic,
                 scoreOrCount = score.coerceAtLeast(0),
-                timestamp = System.currentTimeMillis(),
+                timestamp = now,
                 id = UUID.randomUUID().toString()
             )
         )
@@ -190,7 +274,9 @@ object ContinueLearningPrefs {
         context: Context,
         topic: String,
         sessionId: String = "",
-        messageCount: Int = 0
+        messageCount: Int = 0,
+        source: String = SOURCE_TOPIC,
+        noteName: String = ""
     ) {
         val safeTopic = topic.ifBlank { "General Chat" }
         val now = System.currentTimeMillis()
@@ -201,6 +287,15 @@ object ContinueLearningPrefs {
             incrementQuizCount = false,
             trackTopic = true,
             timestamp = now
+        )
+
+        updateTopicMastery(
+            context = context,
+            topic = safeTopic,
+            type = RecentActivityType.CHAT,
+            timestamp = now,
+            source = source,
+            noteName = noteName
         )
 
         val newItem = RecentActivityItem(
@@ -262,6 +357,78 @@ object ContinueLearningPrefs {
             totalTopics = topics.size
         )
     }
+
+    fun readStudyStreakDetails(context: Context, nowMillis: Long = System.currentTimeMillis()): StudyStreakDetails {
+        val prefs = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+        val streak = prefs.getInt(KEY_PROGRESS_DAY_STREAK, 0).coerceAtLeast(0)
+        val today = localDayNumber(nowMillis)
+        val lastActiveDay = prefs.getLong(KEY_PROGRESS_LAST_ACTIVE_DAY, UNSET_DAY)
+            .takeIf { it != UNSET_DAY }
+
+        val activeDays = decodeLongList(
+            prefs.getString(KEY_PROGRESS_ACTIVE_DAYS_JSON, "[]").orEmpty()
+        ).toSet()
+
+        val recent = (6L downTo 0L).map { offset ->
+            activeDays.contains(today - offset)
+        }
+
+        return StudyStreakDetails(
+            dayStreak = streak,
+            lastActiveDaysAgo = lastActiveDay?.let { (today - it).coerceAtLeast(0L).toInt() },
+            recentSevenDaysActive = recent
+        )
+    }
+
+    fun readQuizPerformance(
+        context: Context,
+        daysFilter: Int?,
+        topicFilter: String?,
+        nowMillis: Long = System.currentTimeMillis()
+    ): QuizPerformanceSnapshot {
+        val attempts = readQuizAttempts(context)
+        val normalizedFilter = topicFilter
+            ?.takeIf { it.isNotBlank() && !it.equals(ALL_TOPICS_FILTER, ignoreCase = true) }
+            ?.trim()
+            ?.lowercase(Locale.getDefault())
+        val minTime = daysFilter?.let { nowMillis - (it.toLong() * DAY_IN_MILLIS) }
+
+        val filtered = attempts
+            .filter { attempt ->
+                val topicMatches = normalizedFilter == null ||
+                    attempt.topic.trim().lowercase(Locale.getDefault()) == normalizedFilter
+                val timeMatches = minTime == null || attempt.timestamp >= minTime
+                topicMatches && timeMatches
+            }
+            .sortedByDescending { it.timestamp }
+
+        val total = filtered.size
+        val average = if (total > 0) filtered.sumOf { it.score } / total else 0
+        val best = filtered.maxOfOrNull { it.score } ?: 0
+
+        val topics = attempts
+            .map { it.topic.trim() }
+            .filter { it.isNotBlank() }
+            .distinctBy { it.lowercase(Locale.getDefault()) }
+            .sortedBy { it.lowercase(Locale.getDefault()) }
+
+        return QuizPerformanceSnapshot(
+            totalQuizzes = total,
+            averageScore = average,
+            bestScore = best,
+            recentAttempts = filtered.take(5),
+            availableTopics = topics
+        )
+    }
+
+    fun readTopicMastery(context: Context): List<TopicMasteryRecord> {
+        val prefs = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+        return decodeTopicMasteryList(
+            prefs.getString(KEY_PROGRESS_TOPIC_MASTERY_JSON, "[]").orEmpty()
+        ).sortedByDescending { it.lastActivityTimestamp }
+    }
+
+    fun allTopicsFilterLabel(): String = ALL_TOPICS_FILTER
 
     fun nextStreakValue(currentStreak: Int, lastActiveDay: Long?, activityDay: Long): Int {
         val safeStreak = currentStreak.coerceAtLeast(0)
@@ -535,6 +702,16 @@ object ContinueLearningPrefs {
             .putInt(KEY_PROGRESS_DAY_STREAK, nextStreak)
             .putLong(KEY_PROGRESS_LAST_ACTIVE_DAY, currentDay)
 
+        val activeDays = decodeLongList(
+            prefs.getString(KEY_PROGRESS_ACTIVE_DAYS_JSON, "[]").orEmpty()
+        ).toMutableSet()
+        activeDays.add(currentDay)
+        val trimmedDays = activeDays
+            .sortedDescending()
+            .take(MAX_ACTIVE_DAYS)
+            .sorted()
+        edit.putString(KEY_PROGRESS_ACTIVE_DAYS_JSON, encodeLongList(trimmedDays))
+
         if (incrementQuizCount) {
             val totalQuizzes = prefs.getInt(KEY_PROGRESS_TOTAL_QUIZZES, 0)
             edit.putInt(KEY_PROGRESS_TOTAL_QUIZZES, totalQuizzes + 1)
@@ -550,6 +727,72 @@ object ContinueLearningPrefs {
         }
 
         edit.apply()
+    }
+
+    private fun appendQuizAttempt(context: Context, attempt: QuizAttemptRecord) {
+        val prefs = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+        val existing = decodeQuizAttemptList(
+            prefs.getString(KEY_PROGRESS_QUIZ_ATTEMPTS_JSON, "[]").orEmpty()
+        )
+        val updated = (listOf(attempt) + existing)
+            .sortedByDescending { it.timestamp }
+            .take(MAX_QUIZ_ATTEMPTS)
+
+        prefs.edit()
+            .putString(KEY_PROGRESS_QUIZ_ATTEMPTS_JSON, encodeQuizAttemptList(updated))
+            .apply()
+    }
+
+    private fun readQuizAttempts(context: Context): List<QuizAttemptRecord> {
+        val prefs = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+        return decodeQuizAttemptList(
+            prefs.getString(KEY_PROGRESS_QUIZ_ATTEMPTS_JSON, "[]").orEmpty()
+        )
+    }
+
+    private fun updateTopicMastery(
+        context: Context,
+        topic: String,
+        type: RecentActivityType,
+        timestamp: Long,
+        source: String = SOURCE_TOPIC,
+        noteName: String = ""
+    ) {
+        val normalizedKey = normalizedTopicForProgress(topic) ?: return
+        val prefs = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+        val entries = decodeTopicMasteryList(
+            prefs.getString(KEY_PROGRESS_TOPIC_MASTERY_JSON, "[]").orEmpty()
+        ).toMutableList()
+
+        val index = entries.indexOfFirst { it.topicKey == normalizedKey }
+        val previous = if (index >= 0) entries[index] else null
+        val safeSource = source.takeIf { it == SOURCE_TOPIC || it == SOURCE_NOTES }
+            ?: previous?.lastSource
+            ?: SOURCE_TOPIC
+        val safeNoteName = noteName.trim().ifBlank {
+            if (safeSource == SOURCE_NOTES) previous?.lastNoteName.orEmpty() else ""
+        }
+
+        val updated = TopicMasteryRecord(
+            topicKey = normalizedKey,
+            displayTopic = topic.trim().ifBlank { normalizedKey },
+            quizCount = (previous?.quizCount ?: 0) + if (type == RecentActivityType.QUIZ) 1 else 0,
+            flashcardCount = (previous?.flashcardCount ?: 0) + if (type == RecentActivityType.FLASHCARD) 1 else 0,
+            chatCount = (previous?.chatCount ?: 0) + if (type == RecentActivityType.CHAT) 1 else 0,
+            lastActivityTimestamp = timestamp,
+            lastSource = safeSource,
+            lastNoteName = if (safeSource == SOURCE_NOTES) safeNoteName else ""
+        )
+
+        if (index >= 0) {
+            entries[index] = updated
+        } else {
+            entries.add(updated)
+        }
+
+        prefs.edit()
+            .putString(KEY_PROGRESS_TOPIC_MASTERY_JSON, encodeTopicMasteryList(entries))
+            .apply()
     }
 
     private fun localDayNumber(timestamp: Long): Long {
@@ -614,6 +857,30 @@ object ContinueLearningPrefs {
         }
     }
 
+    private fun encodeLongList(values: List<Long>): String {
+        return try {
+            json.encodeToString(values)
+        } catch (_: Exception) {
+            "[]"
+        }
+    }
+
+    private fun encodeQuizAttemptList(values: List<QuizAttemptRecord>): String {
+        return try {
+            json.encodeToString(values)
+        } catch (_: Exception) {
+            "[]"
+        }
+    }
+
+    private fun encodeTopicMasteryList(values: List<TopicMasteryRecord>): String {
+        return try {
+            json.encodeToString(values)
+        } catch (_: Exception) {
+            "[]"
+        }
+    }
+
     private fun decodeIntList(raw: String): List<Int> {
         return try {
             json.decodeFromString(raw)
@@ -631,6 +898,30 @@ object ContinueLearningPrefs {
     }
 
     private fun decodeStringList(raw: String): List<String> {
+        return try {
+            json.decodeFromString(raw)
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun decodeLongList(raw: String): List<Long> {
+        return try {
+            json.decodeFromString(raw)
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun decodeQuizAttemptList(raw: String): List<QuizAttemptRecord> {
+        return try {
+            json.decodeFromString(raw)
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun decodeTopicMasteryList(raw: String): List<TopicMasteryRecord> {
         return try {
             json.decodeFromString(raw)
         } catch (_: Exception) {

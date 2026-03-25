@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.view.View
 import android.widget.*
 import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
 import androidx.lifecycle.lifecycleScope
@@ -15,6 +16,7 @@ import com.kartik.aistudyassistant.BuildConfig
 import com.kartik.aistudyassistant.R
 import com.kartik.aistudyassistant.core.utils.GeminiHelper
 import com.kartik.aistudyassistant.domain.quiz.QuizGenerator
+import com.kartik.aistudyassistant.ui.upload.UploadActivity
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.slider.Slider
 import com.google.firebase.auth.FirebaseAuth
@@ -60,6 +62,8 @@ class QuizSetupActivity : AppCompatActivity() {
     private var selectedNote: NoteItem? = null
     private var isGenerating = false
     private var prefillNoteName = ""
+    private var prefillTopic = ""
+    private var hasHandledMissingPrefillNote = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -83,9 +87,10 @@ class QuizSetupActivity : AppCompatActivity() {
             ?.takeIf { it == "topic" || it == "notes" }
             ?: selectedSource
         prefillNoteName = intent.getStringExtra(EXTRA_PREFILL_NOTE_NAME).orEmpty()
+        prefillTopic = intent.getStringExtra(EXTRA_PREFILL_TOPIC).orEmpty().trim()
         if (selectedSource == "topic") {
-            intent.getStringExtra(EXTRA_PREFILL_TOPIC)
-                ?.takeIf { it.isNotBlank() }
+            prefillTopic
+                .takeIf { it.isNotBlank() }
                 ?.let { etTopic.setText(it) }
         }
         PDFBoxResourceLoader.init(applicationContext)
@@ -260,9 +265,34 @@ class QuizSetupActivity : AppCompatActivity() {
             val index = notesList.indexOfFirst { it.name.equals(prefillNoteName, ignoreCase = true) }
             if (index >= 0) {
                 spinnerNotes.setSelection(index + 1)
+            } else if (!hasHandledMissingPrefillNote) {
+                hasHandledMissingPrefillNote = true
+                showMissingPrefilledNoteDialog(prefillNoteName)
+             }
+         }
+         validateInputs()
+    }
+
+    private fun showMissingPrefilledNoteDialog(requestedNoteName: String) {
+        AlertDialog.Builder(this)
+            .setTitle("File not available")
+            .setMessage(
+                "We could not find \"$requestedNoteName\" in your uploaded notes. " +
+                    "It may have come from a device-only attachment.\n\n" +
+                    "You can upload it now, or skip and continue with topic mode."
+            )
+            .setPositiveButton("Upload") { _, _ ->
+                startActivity(Intent(this, UploadActivity::class.java))
             }
-        }
-        validateInputs()
+            .setNegativeButton("Skip") { _, _ ->
+                selectedSource = "topic"
+                val fallbackTopic = prefillTopic.ifBlank { requestedNoteName }
+                if (etTopic.text.toString().trim().isBlank()) {
+                    etTopic.setText(fallbackTopic)
+                }
+                updateUI()
+            }
+            .show()
     }
 
     private fun validateInputs() {
@@ -332,7 +362,7 @@ class QuizSetupActivity : AppCompatActivity() {
                     val topicValue = if (selectedSource == "topic") {
                         topicInput
                     } else {
-                        noteInput?.name.orEmpty()
+                        prefillTopic.ifBlank { noteInput?.name.orEmpty() }
                     }
                     intent.putExtra("quizDataJson", json)
                     intent.putExtra("questionCount", questionCount)

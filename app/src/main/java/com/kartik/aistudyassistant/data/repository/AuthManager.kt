@@ -26,6 +26,7 @@ class AuthManager(private val context: Context) {
         // Cache for user existence checks
         private val emailUserCache = mutableMapOf<String, CachedUserData>()
         private const val CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
+        private const val PHONE_LENGTH = 10
 
         data class CachedUserData(
             val uid: String,
@@ -34,6 +35,32 @@ class AuthManager(private val context: Context) {
         ) {
             fun isValid(): Boolean = System.currentTimeMillis() - timestamp < CACHE_DURATION
         }
+    }
+
+    fun checkCurrentUserVerification(callback: (AppAuthResult) -> Unit) {
+        val currentUser = auth.currentUser
+        if (currentUser == null) {
+            callback(AppAuthResult.Error("User not logged in"))
+            return
+        }
+
+        evaluateVerificationState(currentUser, false, callback)
+    }
+
+    fun sendEmailVerificationForCurrentUser(callback: (AppAuthResult) -> Unit) {
+        val currentUser = auth.currentUser
+        if (currentUser == null) {
+            callback(AppAuthResult.Error("User not logged in"))
+            return
+        }
+
+        currentUser.sendEmailVerification()
+            .addOnSuccessListener {
+                callback(AppAuthResult.Success(false))
+            }
+            .addOnFailureListener { e ->
+                callback(AppAuthResult.Error(e.message ?: "Failed to send verification email"))
+            }
     }
 
     // Google Sign-In
@@ -115,7 +142,18 @@ class AuthManager(private val context: Context) {
                                         phone = "",
                                         provider = "github.com",
                                         isNewUser = authResult.additionalUserInfo?.isNewUser ?: false,
-                                        callback = callback
+                                        callback = { dbResult ->
+                                            when (dbResult) {
+                                                is AppAuthResult.Success -> {
+                                                    evaluateVerificationState(
+                                                        it,
+                                                        authResult.additionalUserInfo?.isNewUser ?: false,
+                                                        callback
+                                                    )
+                                                }
+                                                else -> callback(dbResult)
+                                            }
+                                        }
                                     )
                                 }
                             }
@@ -179,7 +217,12 @@ class AuthManager(private val context: Context) {
                 if (task.isSuccessful) {
                     val user = auth.currentUser
                     user?.let {
-                        updateUserPhoneIfNeeded(it.uid, email, callback)
+                        updateUserPhoneIfNeeded(it.uid, email) { updateResult ->
+                            when (updateResult) {
+                                is AppAuthResult.Error -> callback(updateResult)
+                                else -> evaluateVerificationState(it, false, callback)
+                            }
+                        }
                     } ?: callback(AppAuthResult.Error("User not found"))
                 } else {
                     val exception = task.exception
@@ -361,7 +404,12 @@ class AuthManager(private val context: Context) {
                                 phone = "",
                                 provider = provider,
                                 isNewUser = true,
-                                callback = callback
+                                callback = { dbResult ->
+                                    when (dbResult) {
+                                        is AppAuthResult.Success -> evaluateVerificationState(it, true, callback)
+                                        else -> callback(dbResult)
+                                    }
+                                }
                             )
                         } ?: callback(AppAuthResult.Error("Failed to create account"))
                     } else {
@@ -382,15 +430,34 @@ class AuthManager(private val context: Context) {
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     val user = auth.currentUser
-                    user?.let {
-                        saveUserToDatabase(
-                            uid = it.uid,
-                            email = email,
-                            phone = phone,
-                            provider = "password",
-                            isNewUser = true,
-                            callback = callback
-                        )
+                    user?.let { firebaseUser ->
+                        firebaseUser.sendEmailVerification()
+                            .addOnSuccessListener {
+                                saveUserToDatabase(
+                                    uid = firebaseUser.uid,
+                                    email = email,
+                                    phone = phone,
+                                    provider = "password",
+                                    isNewUser = true,
+                                    callback = { dbResult ->
+                                        when (dbResult) {
+                                            is AppAuthResult.Success -> {
+                                                callback(
+                                                    AppAuthResult.VerificationRequired(
+                                                        emailVerified = false,
+                                                        phoneVerified = isPhoneLocallyVerified(phone),
+                                                        message = "Verify your email to continue. We sent a verification link."
+                                                    )
+                                                )
+                                            }
+                                            else -> callback(dbResult)
+                                        }
+                                    }
+                                )
+                            }
+                            .addOnFailureListener { e ->
+                                callback(AppAuthResult.Error(e.message ?: "Failed to send verification email"))
+                            }
                     } ?: callback(AppAuthResult.Error("Failed to create account"))
                 } else {
                     val exception = task.exception
@@ -415,12 +482,17 @@ class AuthManager(private val context: Context) {
         isNewUser: Boolean,
         callback: (AppAuthResult) -> Unit
     ) {
+        val emailVerified = auth.currentUser?.isEmailVerified == true
+        val phoneVerified = isPhoneLocallyVerified(phone)
         val userMap = HashMap<String, Any>().apply {
             put("email", email.lowercase())
             put("phone", phone)
             put("provider", provider)
             put("createdAt", System.currentTimeMillis())
             put("lastLogin", System.currentTimeMillis())
+            put("emailVerified", emailVerified)
+            put("phoneVerified", phoneVerified)
+            put("verificationUpdatedAt", System.currentTimeMillis())
         }
 
         database.reference.child("Users").child(uid)
@@ -458,17 +530,24 @@ class AuthManager(private val context: Context) {
     ) {
         val updates = mapOf<String, Any>(
             "lastLogin" to System.currentTimeMillis(),
-            "provider" to provider // Update last used provider
+            "provider" to provider, // Update last used provider
+            "emailVerified" to (auth.currentUser?.isEmailVerified == true),
+            "verificationUpdatedAt" to System.currentTimeMillis()
         )
 
         database.reference.child("Users").child(uid)
             .updateChildren(updates)
             .addOnSuccessListener {
-                callback(AppAuthResult.Success(false))
+                val currentUser = auth.currentUser
+                if (currentUser != null) {
+                    evaluateVerificationState(currentUser, false, callback)
+                } else {
+                    callback(AppAuthResult.Error("User not found"))
+                }
             }
             .addOnFailureListener { e ->
                 Log.e(tag, "Failed to update user", e)
-                callback(AppAuthResult.Success(false))
+                callback(AppAuthResult.Error("Failed to update user"))
             }
     }
 
@@ -496,6 +575,14 @@ class AuthManager(private val context: Context) {
                             }
                         }
 
+                    val phone = snapshot.child("phone").getValue(String::class.java).orEmpty()
+                    val updates = hashMapOf<String, Any>(
+                        "emailVerified" to (auth.currentUser?.isEmailVerified == true),
+                        "phoneVerified" to isPhoneLocallyVerified(phone),
+                        "verificationUpdatedAt" to System.currentTimeMillis()
+                    )
+                    snapshot.ref.updateChildren(updates)
+
                     callback(AppAuthResult.Success(false))
                 } else {
                     // User exists in Auth but not in DB - fix inconsistency
@@ -506,6 +593,62 @@ class AuthManager(private val context: Context) {
             .addOnFailureListener {
                 callback(AppAuthResult.Success(false))
             }
+    }
+
+    private fun evaluateVerificationState(
+        user: FirebaseUser,
+        isNewUser: Boolean,
+        callback: (AppAuthResult) -> Unit
+    ) {
+        user.reload()
+            .addOnSuccessListener {
+                val emailVerified = user.isEmailVerified
+                database.reference.child("Users").child(user.uid).get()
+                    .addOnSuccessListener { snapshot ->
+                        val phone = snapshot.child("phone").getValue(String::class.java).orEmpty()
+                        val persistedPhoneVerified = snapshot.child("phoneVerified").getValue(Boolean::class.java)
+                        val phoneVerified = persistedPhoneVerified ?: isPhoneLocallyVerified(phone)
+
+                        val updates = hashMapOf<String, Any>(
+                            "emailVerified" to emailVerified,
+                            "phoneVerified" to phoneVerified,
+                            "verificationUpdatedAt" to System.currentTimeMillis(),
+                            "lastLogin" to System.currentTimeMillis()
+                        )
+                        snapshot.ref.updateChildren(updates)
+
+                        when {
+                            !emailVerified || !phoneVerified -> {
+                                callback(
+                                    AppAuthResult.VerificationRequired(
+                                        emailVerified = emailVerified,
+                                        phoneVerified = phoneVerified,
+                                        message = buildVerificationMessage(emailVerified, phoneVerified)
+                                    )
+                                )
+                            }
+                            else -> callback(AppAuthResult.Success(isNewUser))
+                        }
+                    }
+                    .addOnFailureListener { e ->
+                        callback(AppAuthResult.Error(e.message ?: "Failed to validate account status"))
+                    }
+            }
+            .addOnFailureListener { e ->
+                callback(AppAuthResult.Error(e.message ?: "Failed to refresh account status"))
+            }
+    }
+
+    private fun buildVerificationMessage(emailVerified: Boolean, phoneVerified: Boolean): String {
+        return when {
+            !emailVerified && !phoneVerified -> "Verify your email and phone to continue."
+            !emailVerified -> "Please verify your email to continue."
+            else -> "Please verify your phone to continue."
+        }
+    }
+
+    private fun isPhoneLocallyVerified(phone: String): Boolean {
+        return phone.length == PHONE_LENGTH && phone.all { it.isDigit() }
     }
 
     // Check if email exists in database with caching

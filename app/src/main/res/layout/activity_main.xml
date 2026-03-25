@@ -519,9 +519,13 @@
                     android:weightSum="3">
 
                     <LinearLayout
+                        android:id="@+id/tileProgressStreak"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:clickable="true"
+                        android:focusable="true"
                         android:gravity="center"
                         android:orientation="vertical">
 
@@ -543,9 +547,13 @@
                     </LinearLayout>
 
                     <LinearLayout
+                        android:id="@+id/tileProgressQuizzes"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:clickable="true"
+                        android:focusable="true"
                         android:gravity="center"
                         android:orientation="vertical">
 
@@ -567,9 +575,13 @@
                     </LinearLayout>
 
                     <LinearLayout
+                        android:id="@+id/tileProgressTopics"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:clickable="true"
+                        android:focusable="true"
                         android:gravity="center"
                         android:orientation="vertical">
 

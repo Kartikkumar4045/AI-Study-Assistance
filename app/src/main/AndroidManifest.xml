@@ -32,6 +32,14 @@
             android:exported="true" />
 
         <activity
+            android:name=".ui.home.QuizPerformanceActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.home.TopicsMasteryActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".ui.chat.ChatActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />

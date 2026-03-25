@@ -118,6 +118,25 @@ class SignUpActivity : AppCompatActivity() {
                 startActivity(Intent(this, MainActivity::class.java))
                 finish()
             }
+            is AuthResult.VerificationRequired -> {
+                if (!result.emailVerified) {
+                    authManager.sendEmailVerificationForCurrentUser { resendResult ->
+                        if (resendResult is AuthResult.Error) {
+                            Toast.makeText(
+                                this,
+                                resendResult.message ?: "Failed to send verification email",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    }
+                }
+
+                Toast.makeText(this, result.message, Toast.LENGTH_LONG).show()
+                authManager.signOut()
+                enableAllButtons()
+                startActivity(Intent(this, SignInActivity::class.java))
+                finish()
+            }
             is AuthResult.Error -> {
                 Toast.makeText(this, result.message ?: "Sign up failed", Toast.LENGTH_LONG).show()
                 enableAllButtons()

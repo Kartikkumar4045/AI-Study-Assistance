@@ -10,6 +10,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import com.google.android.material.bottomsheet.BottomSheetDialog
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -20,6 +21,9 @@ import com.kartik.aistudyassistant.data.local.ContinueLearningPrefs
 import com.kartik.aistudyassistant.data.local.RecentActivityItem
 import com.kartik.aistudyassistant.data.local.RecentActivityType
 import com.kartik.aistudyassistant.data.local.SessionType
+import com.kartik.aistudyassistant.data.model.AuthResult
+import com.kartik.aistudyassistant.data.repository.AuthManager
+import com.kartik.aistudyassistant.ui.auth.SignInActivity
 import com.kartik.aistudyassistant.ui.chat.ChatActivity
 import com.kartik.aistudyassistant.ui.flashcard.FlashcardActivity
 import com.kartik.aistudyassistant.ui.flashcard.FlashcardSetupActivity
@@ -35,6 +39,7 @@ import com.google.firebase.database.FirebaseDatabase
 class MainActivity : AppCompatActivity() {
 
     private lateinit var auth: FirebaseAuth
+    private lateinit var authManager: AuthManager
     private lateinit var tvWelcome: TextView
     private lateinit var layoutContinueLearningSection: LinearLayout
     private lateinit var itemContinueFlashcard: LinearLayout
@@ -50,6 +55,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvProgressDayStreak: TextView
     private lateinit var tvProgressQuizzes: TextView
     private lateinit var tvProgressTopics: TextView
+    private lateinit var tileProgressStreak: LinearLayout
+    private lateinit var tileProgressQuizzes: LinearLayout
+    private lateinit var tileProgressTopics: LinearLayout
 
     private var flashcardInProgress = false
     private var flashcardCurrentIndex = 0
@@ -66,6 +74,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         auth = FirebaseAuth.getInstance()
+        authManager = AuthManager(this)
         tvWelcome = findViewById(R.id.tvWelcome)
         initContinueLearningViews()
         initRecentActivityViews()
@@ -76,6 +85,20 @@ class MainActivity : AppCompatActivity() {
         updateRecentActivitySection()
         setupClickListeners()
         setupBottomNavigation()
+        enforceVerificationGate()
+    }
+
+    private fun enforceVerificationGate() {
+        authManager.checkCurrentUserVerification { result ->
+            when (result) {
+                is AuthResult.Success -> Unit
+                else -> {
+                    authManager.signOut()
+                    startActivity(Intent(this, SignInActivity::class.java))
+                    finish()
+                }
+            }
+        }
     }
 
     override fun onResume() {
@@ -105,6 +128,9 @@ class MainActivity : AppCompatActivity() {
         tvProgressDayStreak = findViewById(R.id.tvProgressDayStreak)
         tvProgressQuizzes = findViewById(R.id.tvProgressQuizzes)
         tvProgressTopics = findViewById(R.id.tvProgressTopics)
+        tileProgressStreak = findViewById(R.id.tileProgressStreak)
+        tileProgressQuizzes = findViewById(R.id.tileProgressQuizzes)
+        tileProgressTopics = findViewById(R.id.tileProgressTopics)
     }
 
     private fun updateStudyProgressSection() {
@@ -346,6 +372,18 @@ class MainActivity : AppCompatActivity() {
             openProfile()
         }
 
+        tileProgressStreak.setOnClickListener {
+            showStreakDetailsBottomSheet()
+        }
+
+        tileProgressQuizzes.setOnClickListener {
+            startActivity(Intent(this, QuizPerformanceActivity::class.java))
+        }
+
+        tileProgressTopics.setOnClickListener {
+            startActivity(Intent(this, TopicsMasteryActivity::class.java))
+        }
+
         findViewById<CardView>(R.id.cvAskAi).setOnClickListener {
             startActivity(Intent(this, ChatActivity::class.java))
         }
@@ -464,5 +502,59 @@ class MainActivity : AppCompatActivity() {
 
     private fun showToast(message: String) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun showStreakDetailsBottomSheet() {
+        val details = ContinueLearningPrefs.readStudyStreakDetails(this)
+        val dialog = BottomSheetDialog(this)
+        val content = layoutInflater.inflate(R.layout.bottom_sheet_streak_details, null)
+
+        content.findViewById<TextView>(R.id.tvStreakValue).text = "🔥 ${details.dayStreak} days"
+        content.findViewById<TextView>(R.id.tvLastActive).text = buildLastActiveText(details.lastActiveDaysAgo)
+        content.findViewById<TextView>(R.id.tvStreakHint).text =
+            if (details.lastActiveDaysAgo == 0) "Great work today. Keep it going tomorrow!"
+            else "Study today to keep streak"
+
+        val dotContainer = content.findViewById<LinearLayout>(R.id.llStreakDots)
+        details.recentSevenDaysActive.forEach { isActive ->
+            dotContainer.addView(createStreakDot(isActive))
+        }
+
+        content.findViewById<View>(R.id.btnStreakStartQuiz).setOnClickListener {
+            dialog.dismiss()
+            startActivity(Intent(this, QuizSetupActivity::class.java))
+        }
+
+        content.findViewById<View>(R.id.btnStreakReviewFlashcards).setOnClickListener {
+            dialog.dismiss()
+            startActivity(Intent(this, FlashcardSetupActivity::class.java))
+        }
+
+        dialog.setContentView(content)
+        dialog.show()
+    }
+
+    private fun buildLastActiveText(daysAgo: Int?): String {
+        return when (daysAgo) {
+            null -> "Last active: Never"
+            0 -> "Last active: Today"
+            1 -> "Last active: Yesterday"
+            else -> "Last active: $daysAgo days ago"
+        }
+    }
+
+    private fun createStreakDot(isActive: Boolean): View {
+        val size = resources.getDimensionPixelSize(R.dimen.space_12)
+        val margin = resources.getDimensionPixelSize(R.dimen.space_4)
+
+        return View(this).apply {
+            layoutParams = LinearLayout.LayoutParams(size, size).apply {
+                marginEnd = margin
+            }
+            background = ContextCompat.getDrawable(
+                this@MainActivity,
+                if (isActive) R.drawable.bg_streak_dot_active else R.drawable.bg_streak_dot_inactive
+            )
+        }
     }
 }

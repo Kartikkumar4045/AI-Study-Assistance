@@ -253,7 +253,13 @@ class QuizActivity : AppCompatActivity() {
 
         quizCompleted = true
         val summaryTopic = topicText.ifBlank { selectedNoteId }.ifBlank { "General Quiz" }
-        ContinueLearningPrefs.saveQuizActivity(this, summaryTopic, correctAnswers)
+        ContinueLearningPrefs.saveQuizActivity(
+            context = this,
+            topic = summaryTopic,
+            score = correctAnswers,
+            source = if (quizSource == ContinueLearningPrefs.SOURCE_NOTES) ContinueLearningPrefs.SOURCE_NOTES else ContinueLearningPrefs.SOURCE_TOPIC,
+            noteName = selectedNoteId
+        )
         ContinueLearningPrefs.markQuizCompleted(this)
 
         // Navigate to result
@@ -288,5 +294,4 @@ class QuizActivity : AppCompatActivity() {
         persistQuizProgress()
     }
 }
-
 
