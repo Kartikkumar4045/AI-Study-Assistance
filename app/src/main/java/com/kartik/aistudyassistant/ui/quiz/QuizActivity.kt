@@ -260,6 +260,7 @@ class QuizActivity : AppCompatActivity() {
             context = this,
             topic = summaryTopic,
             score = correctAnswers,
+            totalQuestions = quizQuestions.size,
             source = if (quizSource == ContinueLearningPrefs.SOURCE_NOTES) ContinueLearningPrefs.SOURCE_NOTES else ContinueLearningPrefs.SOURCE_TOPIC,
             noteName = selectedNoteId
         )
@@ -294,9 +295,11 @@ class QuizActivity : AppCompatActivity() {
 
     override fun onPause() {
         val now = SystemClock.elapsedRealtime()
-        val elapsed = (now - sessionStartElapsedRealtime).coerceAtLeast(0L)
-        ContinueLearningPrefs.addStudyTime(this, elapsed)
-        sessionStartElapsedRealtime = 0L
+        if (sessionStartElapsedRealtime > 0L) {
+            val elapsed = (now - sessionStartElapsedRealtime).coerceAtLeast(0L)
+            ContinueLearningPrefs.addStudyTime(this, elapsed)
+            sessionStartElapsedRealtime = 0L
+        }
         super.onPause()
         persistQuizProgress()
     }
@@ -306,4 +309,3 @@ class QuizActivity : AppCompatActivity() {
         sessionStartElapsedRealtime = SystemClock.elapsedRealtime()
     }
 }
-

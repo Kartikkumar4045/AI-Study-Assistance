@@ -5,17 +5,19 @@
     android:layout_height="match_parent"
     android:background="@color/background"
     android:orientation="vertical"
-    android:paddingStart="@dimen/space_16"
-    android:paddingTop="@dimen/space_20"
-    android:paddingEnd="@dimen/space_16"
-    android:paddingBottom="@dimen/space_12"
     android:fitsSystemWindows="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:background="@color/card_bg"
+        android:elevation="2dp"
         android:gravity="center_vertical"
-        android:orientation="horizontal">
+        android:orientation="horizontal"
+        android:paddingStart="@dimen/space_16"
+        android:paddingTop="@dimen/space_20"
+        android:paddingEnd="@dimen/space_16"
+        android:paddingBottom="@dimen/space_16">
 
         <ImageView
             android:id="@+id/ivQuizPerformanceBack"
@@ -31,132 +33,233 @@
 
         <TextView
             style="@style/TextAppearance.AIStudyAssistance.Title"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="@dimen/space_12"
+            android:layout_weight="1"
             android:text="Quiz Performance"
-            android:textSize="@dimen/text_subtitle" />
+            android:textSize="@dimen/text_title" />
+
     </LinearLayout>
-
-    <androidx.cardview.widget.CardView
-        style="@style/Widget.AIStudyAssistance.Card"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/space_16"
-        app:cardBackgroundColor="@color/primary_light"
-        app:cardElevation="0dp">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="@dimen/space_16">
-
-            <TextView
-                style="@style/TextAppearance.AIStudyAssistance.Section"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Overview"
-                android:textColor="@color/primary" />
-
-            <TextView
-                android:id="@+id/tvPerfTotal"
-                style="@style/TextAppearance.AIStudyAssistance.Body"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_12"
-                android:text="Total Quizzes: 0"
-                android:textColor="@color/primary"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/tvPerfAverage"
-                style="@style/TextAppearance.AIStudyAssistance.Small"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_8"
-                android:text="Average Score: 0" />
-
-            <TextView
-                android:id="@+id/tvPerfBest"
-                style="@style/TextAppearance.AIStudyAssistance.Small"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_4"
-                android:text="Best Score: 0" />
-        </LinearLayout>
-    </androidx.cardview.widget.CardView>
-
-    <androidx.cardview.widget.CardView
-        style="@style/Widget.AIStudyAssistance.Card"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/space_12">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:padding="@dimen/space_12">
-
-            <Spinner
-                android:id="@+id/spinnerTimeRange"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1" />
-
-            <Spinner
-                android:id="@+id/spinnerTopicFilter"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="@dimen/space_8"
-                android:layout_weight="1" />
-        </LinearLayout>
-    </androidx.cardview.widget.CardView>
-
-    <TextView
-        style="@style/TextAppearance.AIStudyAssistance.Section"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/space_16"
-        android:text="Recent Attempts" />
-
-    <TextView
-        android:id="@+id/tvPerfEmpty"
-        style="@style/TextAppearance.AIStudyAssistance.Small"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/space_8"
-        android:background="@color/primary_light"
-        android:paddingHorizontal="@dimen/space_12"
-        android:paddingVertical="@dimen/space_16"
-        android:gravity="center"
-        android:text="No quiz attempts for selected filters"
-        android:textColor="@color/primary"
-        android:visibility="gone" />
 
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_marginTop="@dimen/space_8"
         android:layout_weight="1"
         android:clipToPadding="false"
-        android:paddingBottom="@dimen/space_20"
-        android:fillViewport="true">
+        android:fillViewport="true"
+        android:paddingStart="@dimen/space_16"
+        android:paddingTop="@dimen/space_16"
+        android:paddingEnd="@dimen/space_16"
+        android:paddingBottom="@dimen/space_20">
 
         <LinearLayout
-            android:id="@+id/llQuizAttempts"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical" />
+            android:orientation="vertical">
+
+            <!-- Overview Card -->
+            <androidx.cardview.widget.CardView
+                style="@style/Widget.AIStudyAssistance.Card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/space_16"
+                app:cardBackgroundColor="@color/primary_light"
+                app:cardElevation="0dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="@dimen/space_16">
+
+                    <TextView
+                        style="@style/TextAppearance.AIStudyAssistance.Section"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Overview"
+                        android:textColor="@color/primary"
+                        android:textSize="@dimen/text_section" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_12"
+                        android:orientation="horizontal">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/tvPerfTotal"
+                                style="@style/TextAppearance.AIStudyAssistance.Title"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="0"
+                                android:textColor="@color/primary"
+                                android:textSize="@dimen/text_display"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                style="@style/TextAppearance.AIStudyAssistance.Small"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="@dimen/space_4"
+                                android:text="Total Quizzes"
+                                android:textColor="@color/text_secondary" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/tvPerfAverage"
+                                style="@style/TextAppearance.AIStudyAssistance.Title"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="0%"
+                                android:textColor="@color/accent_green"
+                                android:textSize="@dimen/text_display"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                style="@style/TextAppearance.AIStudyAssistance.Small"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="@dimen/space_4"
+                                android:text="Average Score"
+                                android:textColor="@color/text_secondary" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/tvPerfBest"
+                                style="@style/TextAppearance.AIStudyAssistance.Title"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="0%"
+                                android:textColor="@color/accent_orange"
+                                android:textSize="@dimen/text_display"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                style="@style/TextAppearance.AIStudyAssistance.Small"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="@dimen/space_4"
+                                android:text="Best Score"
+                                android:textColor="@color/text_secondary" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- Filters Card -->
+            <androidx.cardview.widget.CardView
+                style="@style/Widget.AIStudyAssistance.Card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/space_16"
+                app:cardElevation="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="@dimen/space_12">
+
+                    <TextView
+                        style="@style/TextAppearance.AIStudyAssistance.Small"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="@dimen/space_8"
+                        android:text="Filter by"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="@dimen/text_caption" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <Spinner
+                            android:id="@+id/spinnerTimeRange"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:background="@drawable/bg_spinner"
+                            android:padding="@dimen/space_12" />
+
+                        <Spinner
+                            android:id="@+id/spinnerTopicFilter"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="@dimen/space_8"
+                            android:layout_weight="1"
+                            android:background="@drawable/bg_spinner"
+                            android:padding="@dimen/space_12" />
+                    </LinearLayout>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- Recent Attempts Section -->
+            <TextView
+                style="@style/TextAppearance.AIStudyAssistance.Section"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/space_12"
+                android:text="Recent Attempts"
+                android:textSize="@dimen/text_section" />
+
+            <!-- Empty State -->
+            <TextView
+                android:id="@+id/tvPerfEmpty"
+                style="@style/TextAppearance.AIStudyAssistance.Body"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_input_field"
+                android:drawablePadding="@dimen/space_8"
+                android:drawableStart="@android:drawable/ic_dialog_info"
+                android:gravity="center"
+                android:paddingHorizontal="@dimen/space_20"
+                android:paddingVertical="@dimen/space_24"
+                android:text="No quiz attempts for selected filters"
+                android:textColor="@color/text_secondary"
+                android:visibility="gone" />
+
+            <!-- Quiz Attempts Container -->
+            <LinearLayout
+                android:id="@+id/llQuizAttempts"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+
+        </LinearLayout>
     </ScrollView>
 
+    <!-- Bottom Button -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnTakeAnotherQuiz"
         style="@style/Widget.AIStudyAssistance.Button.Primary"
         android:layout_width="match_parent"
         android:layout_height="@dimen/button_height"
-        android:layout_marginTop="@dimen/space_12"
+        android:layout_marginStart="@dimen/space_16"
+        android:layout_marginEnd="@dimen/space_16"
+        android:layout_marginBottom="@dimen/space_12"
         android:text="Take another quiz" />
 
 </LinearLayout>

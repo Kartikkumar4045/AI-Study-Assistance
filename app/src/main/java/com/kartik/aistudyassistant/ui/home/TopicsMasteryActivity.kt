@@ -10,7 +10,9 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.kartik.aistudyassistant.R
 import com.kartik.aistudyassistant.data.local.ContinueLearningPrefs
 import com.kartik.aistudyassistant.data.local.TopicMasteryRecord
@@ -44,7 +46,11 @@ class TopicsMasteryActivity : AppCompatActivity() {
 
     private fun render() {
         val topics = ContinueLearningPrefs.readTopicMastery(this)
-        tvTopicMasteryCount.text = "${topics.size} unique topics"
+        tvTopicMasteryCount.text = if (topics.size == 1) {
+            "1 unique topic"
+        } else {
+            "${topics.size} unique topics"
+        }
 
         llTopicMastery.removeAllViews()
         if (topics.isEmpty()) {
@@ -67,17 +73,35 @@ class TopicsMasteryActivity : AppCompatActivity() {
 
         val safeTopic = item.displayTopic.trim().ifBlank { item.topicKey }
         val isNoteBased = item.lastSource == ContinueLearningPrefs.SOURCE_NOTES && item.lastNoteName.isNotBlank()
+        val progress = calculateMasteryProgress(item)
+        val level = masteryLevel(progress)
 
         view.findViewById<TextView>(R.id.tvMasteryTopicTitle).text = safeTopic
-        view.findViewById<TextView>(R.id.tvMasteryTopicStats).text =
-            "Quiz ${item.quizCount} • Flashcards ${item.flashcardCount} • Chat ${item.chatCount}"
-        view.findViewById<TextView>(R.id.tvMasteryTopicLast).text =
-            "Last active: " + DateUtils.getRelativeTimeSpanString(
-                item.lastActivityTimestamp,
-                System.currentTimeMillis(),
-                DateUtils.MINUTE_IN_MILLIS,
-                DateUtils.FORMAT_ABBREV_RELATIVE
-            )
+        view.findViewById<TextView>(R.id.tvMasteryTopicLevel).apply {
+            text = level
+            setTextColor(ContextCompat.getColor(this@TopicsMasteryActivity, levelColorRes(progress)))
+        }
+        view.findViewById<TextView>(R.id.tvMasteryQuizCount).text = item.quizCount.toString()
+        view.findViewById<TextView>(R.id.tvMasteryFlashcardCount).text = item.flashcardCount.toString()
+        view.findViewById<TextView>(R.id.tvMasteryChatCount).text = item.chatCount.toString()
+        view.findViewById<LinearProgressIndicator>(R.id.progressMasteryLevel).apply {
+            setProgressCompat(progress, true)
+            setIndicatorColor(ContextCompat.getColor(this@TopicsMasteryActivity, levelColorRes(progress)))
+            contentDescription = getString(R.string.topic_mastery_progress_a11y, progress)
+        }
+        view.findViewById<TextView>(R.id.tvMasteryProgressLabel).text =
+            getString(R.string.topic_mastery_progress_label, progress)
+        view.findViewById<TextView>(R.id.tvMasteryLastActive).text =
+            if (item.lastActivityTimestamp > 0L) {
+                "Last active: " + DateUtils.getRelativeTimeSpanString(
+                    item.lastActivityTimestamp,
+                    System.currentTimeMillis(),
+                    DateUtils.MINUTE_IN_MILLIS,
+                    DateUtils.FORMAT_ABBREV_RELATIVE
+                )
+            } else {
+                "Last active: Never"
+            }
 
         view.findViewById<MaterialButton>(R.id.btnMasteryPracticeQuiz).setOnClickListener {
             openQuizFromMastery(item, safeTopic, isNoteBased)
@@ -118,5 +142,40 @@ class TopicsMasteryActivity : AppCompatActivity() {
                 }
             }
         )
+    }
+
+    private fun calculateMasteryProgress(item: TopicMasteryRecord): Int {
+        val quizContribution = (item.quizCount * 12).coerceAtMost(50)
+        val flashcardContribution = (item.flashcardCount * 9).coerceAtMost(35)
+        val chatContribution = (item.chatCount * 2).coerceAtMost(10)
+
+        val totalSessions = item.quizCount + item.flashcardCount + item.chatCount
+        val engagementBonus = (totalSessions / 3).coerceAtMost(5)
+        val mixedPracticeBonus = if (
+            item.quizCount > 0 &&
+            item.flashcardCount > 0 &&
+            item.chatCount > 0
+        ) 5 else 0
+
+        return (quizContribution + flashcardContribution + chatContribution + engagementBonus + mixedPracticeBonus)
+            .coerceIn(0, 100)
+    }
+
+    private fun masteryLevel(progress: Int): String {
+        return when {
+            progress >= 80 -> getString(R.string.topic_mastery_level_expert)
+            progress >= 55 -> getString(R.string.topic_mastery_level_advanced)
+            progress >= 25 -> getString(R.string.topic_mastery_level_intermediate)
+            else -> getString(R.string.topic_mastery_level_beginner)
+        }
+    }
+
+    private fun levelColorRes(progress: Int): Int {
+        return when {
+            progress >= 80 -> R.color.accent_green
+            progress >= 55 -> R.color.primary
+            progress >= 25 -> R.color.accent_orange
+            else -> R.color.text_hint
+        }
     }
 }

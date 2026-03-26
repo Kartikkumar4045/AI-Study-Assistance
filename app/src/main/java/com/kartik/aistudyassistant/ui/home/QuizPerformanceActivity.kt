@@ -13,7 +13,9 @@ import android.widget.Spinner
 import android.widget.TextView
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.kartik.aistudyassistant.R
 import com.kartik.aistudyassistant.data.local.ContinueLearningPrefs
 import com.kartik.aistudyassistant.data.local.QuizAttemptRecord
@@ -114,9 +116,9 @@ class QuizPerformanceActivity : AppCompatActivity() {
             topicFilter = selectedTopicFilter
         )
 
-        tvPerfTotal.text = "Total Quizzes: ${snapshot.totalQuizzes}"
-        tvPerfAverage.text = "Average Score: ${snapshot.averageScore}"
-        tvPerfBest.text = "Best Score: ${snapshot.bestScore}"
+        tvPerfTotal.text = snapshot.totalQuizzes.toString()
+        tvPerfAverage.text = "${snapshot.averageScore}%"
+        tvPerfBest.text = "${snapshot.bestScore}%"
 
         llQuizAttempts.removeAllViews()
         if (snapshot.recentAttempts.isEmpty()) {
@@ -137,14 +139,39 @@ class QuizPerformanceActivity : AppCompatActivity() {
             false
         )
 
+        val percentScore = if (attempt.totalQuestions > 0) {
+            ((attempt.score.toFloat() / attempt.totalQuestions) * 100f).toInt().coerceIn(0, 100)
+        } else {
+            attempt.score.coerceIn(0, 100)
+        }
+        val scoreColorRes = when {
+            percentScore >= 80 -> R.color.accent_green
+            percentScore >= 50 -> R.color.accent_orange
+            else -> R.color.red
+        }
+
         item.findViewById<TextView>(R.id.tvAttemptTopic).text = attempt.topic
-        item.findViewById<TextView>(R.id.tvAttemptScore).text = "Score: ${attempt.score}"
+        item.findViewById<TextView>(R.id.tvAttemptScore).apply {
+            text = "$percentScore%"
+            setTextColor(ContextCompat.getColor(this@QuizPerformanceActivity, scoreColorRes))
+        }
+        item.findViewById<TextView>(R.id.tvAttemptQuestions).text = if (attempt.totalQuestions > 0) {
+            "${attempt.score}/${attempt.totalQuestions}"
+        } else {
+            "${attempt.score}"
+        }
+        item.findViewById<LinearLayout>(R.id.llAttemptDuration).visibility = View.GONE
+        item.findViewById<LinearLayout>(R.id.llAttemptMetaRow).weightSum = 2f
         item.findViewById<TextView>(R.id.tvAttemptTime).text = DateUtils.getRelativeTimeSpanString(
             attempt.timestamp,
             System.currentTimeMillis(),
             DateUtils.MINUTE_IN_MILLIS,
             DateUtils.FORMAT_ABBREV_RELATIVE
         )
+        item.findViewById<LinearProgressIndicator>(R.id.progressAttemptScore).apply {
+            setProgressCompat(percentScore, false)
+            setIndicatorColor(ContextCompat.getColor(this@QuizPerformanceActivity, scoreColorRes))
+        }
 
         return item
     }

@@ -1,6 +1,7 @@
 ﻿package com.kartik.aistudyassistant.data.local
 
 import android.content.Context
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
@@ -41,6 +42,7 @@ data class RecentActivityItem(
     val type: RecentActivityType,
     val topic: String,
     val scoreOrCount: Int,
+    val totalCount: Int = 0, // Added to store total questions/cards for percentage
     val timestamp: Long,
     val id: String = "",
     val sessionId: String = ""
@@ -71,6 +73,7 @@ data class ProfileLearningSnapshot(
 data class QuizAttemptRecord(
     val topic: String,
     val score: Int,
+    val totalQuestions: Int = 0, // Added for percentage calculation
     val timestamp: Long
 )
 
@@ -157,6 +160,14 @@ object ContinueLearningPrefs {
 
     private val json = Json { ignoreUnknownKeys = true }
 
+    private fun prefs(context: Context) =
+        context.getSharedPreferences(resolvePrefsFileName(), Context.MODE_PRIVATE)
+
+    private fun resolvePrefsFileName(): String {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid.orEmpty().trim()
+        return if (uid.isBlank()) PREF_FILE else "${PREF_FILE}_$uid"
+    }
+
     data class QuizProgressSnapshot(
         val topic: String,
         val source: String,
@@ -190,7 +201,7 @@ object ContinueLearningPrefs {
     ) {
         val safeTopic = topic.ifBlank { "General Study" }
         val now = System.currentTimeMillis()
-        context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+        prefs(context)
             .edit()
             .putString(KEY_LAST_FLASHCARD_TOPIC, safeTopic)
             .putInt(KEY_LAST_FLASHCARD_COUNT, cardCount.coerceAtLeast(0))
@@ -219,6 +230,7 @@ object ContinueLearningPrefs {
                 type = RecentActivityType.FLASHCARD,
                 topic = safeTopic,
                 scoreOrCount = cardCount.coerceAtLeast(0),
+                totalCount = cardCount.coerceAtLeast(0),
                 timestamp = now,
                 id = UUID.randomUUID().toString()
             )
@@ -229,12 +241,13 @@ object ContinueLearningPrefs {
         context: Context,
         topic: String,
         score: Int,
+        totalQuestions: Int = 0,
         source: String = SOURCE_TOPIC,
         noteName: String = ""
     ) {
         val safeTopic = topic.ifBlank { "General Quiz" }
         val now = System.currentTimeMillis()
-        context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+        prefs(context)
             .edit()
             .putString(KEY_LAST_QUIZ_TOPIC, safeTopic)
             .putInt(KEY_LAST_QUIZ_SCORE, score.coerceAtLeast(0))
@@ -253,6 +266,7 @@ object ContinueLearningPrefs {
             attempt = QuizAttemptRecord(
                 topic = safeTopic,
                 score = score.coerceAtLeast(0),
+                totalQuestions = totalQuestions.coerceAtLeast(0),
                 timestamp = now
             )
         )
@@ -272,6 +286,7 @@ object ContinueLearningPrefs {
                 type = RecentActivityType.QUIZ,
                 topic = safeTopic,
                 scoreOrCount = score.coerceAtLeast(0),
+                totalCount = totalQuestions.coerceAtLeast(0),
                 timestamp = now,
                 id = UUID.randomUUID().toString()
             )
@@ -315,7 +330,7 @@ object ContinueLearningPrefs {
             sessionId = sessionId
         )
 
-        val prefs = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+        val prefs = prefs(context)
         val existing = readRawRecentActivities(prefs)
 
         val updated = if (sessionId.isBlank()) {
@@ -356,7 +371,7 @@ object ContinueLearningPrefs {
     }
 
     fun readStudyProgress(context: Context): StudyProgressSnapshot {
-        val prefs = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+        val prefs = prefs(context)
         val topics = decodeStringList(prefs.getString(KEY_PROGRESS_TOPICS_JSON, "[]").orEmpty())
 
         return StudyProgressSnapshot(
@@ -370,7 +385,7 @@ object ContinueLearningPrefs {
         val safeDuration = durationMs.coerceAtLeast(0L)
         if (safeDuration == 0L) return
 
-        val prefs = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+        val prefs = prefs(context)
         val existingTotal = prefs.getLong(KEY_PROGRESS_TOTAL_STUDY_TIME_MS, 0L)
         prefs.edit()
             .putLong(KEY_PROGRESS_TOTAL_STUDY_TIME_MS, existingTotal + safeDuration)
@@ -386,7 +401,7 @@ object ContinueLearningPrefs {
     }
 
     fun readProfileLearningSnapshot(context: Context): ProfileLearningSnapshot {
-        val prefs = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+        val prefs = prefs(context)
         val progress = readStudyProgress(context)
         val details = readStudyStreakDetails(context)
         val lastActivityTs = readRawRecentActivities(prefs)
@@ -401,7 +416,7 @@ object ContinueLearningPrefs {
     }
 
     fun readStudyStreakDetails(context: Context, nowMillis: Long = System.currentTimeMillis()): StudyStreakDetails {
-        val prefs = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+        val prefs = prefs(context)
         val streak = prefs.getInt(KEY_PROGRESS_DAY_STREAK, 0).coerceAtLeast(0)
         val today = localDayNumber(nowMillis)
         val lastActiveDay = prefs.getLong(KEY_PROGRESS_LAST_ACTIVE_DAY, UNSET_DAY)
@@ -445,8 +460,19 @@ object ContinueLearningPrefs {
             .sortedByDescending { it.timestamp }
 
         val total = filtered.size
-        val average = if (total > 0) filtered.sumOf { it.score } / total else 0
-        val best = filtered.maxOfOrNull { it.score } ?: 0
+        
+        // Correct percentage-wise average calculation
+        val average = if (total > 0) {
+            val totalPercentage = filtered.sumOf { 
+                if (it.totalQuestions > 0) (it.score.toFloat() / it.totalQuestions * 100).toInt() else 0 
+            }
+            totalPercentage / total
+        } else 0
+        
+        // Correct best percentage calculation
+        val best = filtered.maxOfOrNull { 
+            if (it.totalQuestions > 0) (it.score.toFloat() / it.totalQuestions * 100).toInt() else 0 
+        } ?: 0
 
         val topics = attempts
             .map { it.topic.trim() }
@@ -464,7 +490,7 @@ object ContinueLearningPrefs {
     }
 
     fun readTopicMastery(context: Context): List<TopicMasteryRecord> {
-        val prefs = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+        val prefs = prefs(context)
         return decodeTopicMasteryList(
             prefs.getString(KEY_PROGRESS_TOPIC_MASTERY_JSON, "[]").orEmpty()
         ).sortedByDescending { it.lastActivityTimestamp }
@@ -491,7 +517,7 @@ object ContinueLearningPrefs {
 
     fun readRecentActivities(context: Context, limit: Int = MAX_RECENT_ACTIVITY_ITEMS): List<RecentActivityItem> {
         if (limit <= 0) return emptyList()
-        val prefs = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+        val prefs = prefs(context)
         return readRawRecentActivities(prefs)
             .sortedByDescending { it.timestamp }
             .take(limit)
@@ -499,7 +525,7 @@ object ContinueLearningPrefs {
 
     fun removeRecentActivity(context: Context, activityId: String): Boolean {
         if (activityId.isBlank()) return false
-        val prefs = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+        val prefs = prefs(context)
         val existing = readRawRecentActivities(prefs)
         val updated = existing.filterNot { it.id == activityId }
         if (updated.size == existing.size) return false
@@ -509,7 +535,7 @@ object ContinueLearningPrefs {
     }
 
     fun clearRecentActivities(context: Context) {
-        val prefs = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+        val prefs = prefs(context)
         prefs.edit().putString(KEY_RECENT_ACTIVITY_JSON, "[]").apply()
     }
 
@@ -524,7 +550,7 @@ object ContinueLearningPrefs {
         questionsJson: String,
         inProgress: Boolean
     ) {
-        context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+        prefs(context)
             .edit()
             .putString(KEY_QUIZ_TOPIC, topic)
             .putString(KEY_QUIZ_SOURCE, source)
@@ -542,7 +568,7 @@ object ContinueLearningPrefs {
     }
 
     fun readQuizProgress(context: Context): QuizProgressSnapshot {
-        val prefs = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+        val prefs = prefs(context)
         return QuizProgressSnapshot(
             topic = prefs.getString(KEY_QUIZ_TOPIC, "").orEmpty(),
             source = prefs.getString(KEY_QUIZ_SOURCE, DEFAULT_SOURCE_TOPIC)
@@ -558,7 +584,7 @@ object ContinueLearningPrefs {
     }
 
     fun clearQuizProgress(context: Context) {
-        context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+        prefs(context)
             .edit()
             .remove(KEY_QUIZ_TOPIC)
             .remove(KEY_QUIZ_SOURCE)
@@ -573,7 +599,7 @@ object ContinueLearningPrefs {
     }
 
     fun markQuizCompleted(context: Context) {
-        val prefs = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+        val prefs = prefs(context)
         val totalQuestions = prefs.getInt(KEY_QUIZ_TOTAL_QUESTIONS, 0)
         prefs.edit()
             .putInt(KEY_QUIZ_CURRENT_INDEX, totalQuestions.coerceAtLeast(0))
@@ -597,7 +623,7 @@ object ContinueLearningPrefs {
         flashcardsJson: String,
         inProgress: Boolean
     ) {
-        context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+        prefs(context)
             .edit()
             .putString(KEY_FLASHCARD_TOPIC, topic)
             .putString(KEY_FLASHCARD_SOURCE, source)
@@ -617,7 +643,7 @@ object ContinueLearningPrefs {
     }
 
     fun readFlashcardProgress(context: Context): FlashcardProgressSnapshot {
-        val prefs = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+        val prefs = prefs(context)
         return FlashcardProgressSnapshot(
             topic = prefs.getString(KEY_FLASHCARD_TOPIC, "").orEmpty(),
             source = prefs.getString(KEY_FLASHCARD_SOURCE, DEFAULT_SOURCE_TOPIC)
@@ -641,7 +667,7 @@ object ContinueLearningPrefs {
     }
 
     fun clearFlashcardProgress(context: Context) {
-        context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+        prefs(context)
             .edit()
             .remove(KEY_FLASHCARD_TOPIC)
             .remove(KEY_FLASHCARD_SOURCE)
@@ -658,7 +684,7 @@ object ContinueLearningPrefs {
     }
 
     fun markFlashcardCompleted(context: Context) {
-        val prefs = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+        val prefs = prefs(context)
         val totalCards = prefs.getInt(KEY_FLASHCARD_TOTAL, 0)
         prefs.edit()
             .putInt(KEY_FLASHCARD_CURRENT_INDEX, totalCards.coerceAtLeast(0))
@@ -672,7 +698,7 @@ object ContinueLearningPrefs {
     }
 
     fun readActiveSessions(context: Context): List<SessionOverview> {
-        val prefs = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+        val prefs = prefs(context)
         val sessions = mutableListOf<SessionOverview>()
 
         val flashStatus = parseStatus(
@@ -719,7 +745,7 @@ object ContinueLearningPrefs {
     }
 
     private fun appendRecentActivity(context: Context, item: RecentActivityItem) {
-        val prefs = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+        val prefs = prefs(context)
         val existing = readRawRecentActivities(prefs)
         val updated = listOf(item) + existing
         persistRecentActivities(prefs, updated.take(MAX_RECENT_ACTIVITY_ITEMS))
@@ -732,7 +758,7 @@ object ContinueLearningPrefs {
         trackTopic: Boolean,
         timestamp: Long = System.currentTimeMillis()
     ) {
-        val prefs = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+        val prefs = prefs(context)
         val currentDay = localDayNumber(timestamp)
         val previousDay = prefs.getLong(KEY_PROGRESS_LAST_ACTIVE_DAY, UNSET_DAY)
             .takeIf { it != UNSET_DAY }
@@ -772,7 +798,7 @@ object ContinueLearningPrefs {
     }
 
     private fun appendQuizAttempt(context: Context, attempt: QuizAttemptRecord) {
-        val prefs = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+        val prefs = prefs(context)
         val existing = decodeQuizAttemptList(
             prefs.getString(KEY_PROGRESS_QUIZ_ATTEMPTS_JSON, "[]").orEmpty()
         )
@@ -786,7 +812,7 @@ object ContinueLearningPrefs {
     }
 
     private fun readQuizAttempts(context: Context): List<QuizAttemptRecord> {
-        val prefs = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+        val prefs = prefs(context)
         return decodeQuizAttemptList(
             prefs.getString(KEY_PROGRESS_QUIZ_ATTEMPTS_JSON, "[]").orEmpty()
         )
@@ -801,7 +827,7 @@ object ContinueLearningPrefs {
         noteName: String = ""
     ) {
         val normalizedKey = normalizedTopicForProgress(topic) ?: return
-        val prefs = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+        val prefs = prefs(context)
         val entries = decodeTopicMasteryList(
             prefs.getString(KEY_PROGRESS_TOPIC_MASTERY_JSON, "[]").orEmpty()
         ).toMutableList()

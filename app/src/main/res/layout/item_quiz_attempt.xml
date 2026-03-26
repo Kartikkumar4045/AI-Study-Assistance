@@ -1,44 +1,145 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     style="@style/Widget.AIStudyAssistance.Card"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="@dimen/space_8"
+    android:layout_marginBottom="@dimen/space_12"
     app:cardElevation="1dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="@dimen/space_12">
+        android:padding="@dimen/space_16">
 
-        <TextView
-            android:id="@+id/tvAttemptTopic"
-            style="@style/TextAppearance.AIStudyAssistance.Section"
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Topic"
-            android:textSize="@dimen/text_body" />
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
-        <TextView
-            android:id="@+id/tvAttemptScore"
-            style="@style/TextAppearance.AIStudyAssistance.Small"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_4"
-            android:text="Score: 0" />
+            <TextView
+                android:id="@+id/tvAttemptTopic"
+                style="@style/TextAppearance.AIStudyAssistance.Section"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="2"
+                android:text="Topic"
+                android:textSize="@dimen/text_body"
+                tools:text="Machine Learning Fundamentals" />
 
-        <TextView
-            android:id="@+id/tvAttemptTime"
-            style="@style/TextAppearance.AIStudyAssistance.Small"
-            android:layout_width="wrap_content"
+            <TextView
+                android:id="@+id/tvAttemptScore"
+                style="@style/TextAppearance.AIStudyAssistance.Title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0%"
+                android:textColor="@color/accent_green"
+                android:textSize="@dimen/text_title"
+                android:textStyle="bold"
+                tools:text="85%" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/llAttemptMetaRow"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_2"
-            android:text="Just now"
-            android:textSize="12sp" />
+            android:layout_marginTop="@dimen/space_8"
+            android:orientation="horizontal"
+            android:weightSum="3">
+
+            <LinearLayout
+                android:id="@+id/llAttemptQuestions"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:layout_width="@dimen/icon_size_s"
+                    android:layout_height="@dimen/icon_size_s"
+                    android:layout_gravity="center_vertical"
+                    android:src="@android:drawable/ic_menu_agenda"
+                    app:tint="@color/text_secondary" />
+
+                <TextView
+                    android:id="@+id/tvAttemptQuestions"
+                    style="@style/TextAppearance.AIStudyAssistance.Small"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="@dimen/space_4"
+                    android:text="10 Q"
+                    android:textColor="@color/text_secondary"
+                    tools:text="20 Q" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/llAttemptDuration"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:layout_width="@dimen/icon_size_s"
+                    android:layout_height="@dimen/icon_size_s"
+                    android:layout_gravity="center_vertical"
+                    android:src="@android:drawable/ic_lock_idle_alarm"
+                    app:tint="@color/text_secondary" />
+
+                <TextView
+                    android:id="@+id/tvAttemptDuration"
+                    style="@style/TextAppearance.AIStudyAssistance.Small"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="@dimen/space_4"
+                    android:text="5 min"
+                    android:textColor="@color/text_secondary"
+                    tools:text="12 min" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:layout_width="@dimen/icon_size_s"
+                    android:layout_height="@dimen/icon_size_s"
+                    android:layout_gravity="center_vertical"
+                    android:src="@android:drawable/ic_menu_today"
+                    app:tint="@color/text_secondary" />
+
+                <TextView
+                    android:id="@+id/tvAttemptTime"
+                    style="@style/TextAppearance.AIStudyAssistance.Small"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="@dimen/space_4"
+                    android:text="Just now"
+                    android:textColor="@color/text_secondary"
+                    tools:text="2 days ago" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Progress Bar for Score Visualization -->
+        <com.google.android.material.progressindicator.LinearProgressIndicator
+            android:id="@+id/progressAttemptScore"
+            style="@style/Widget.Material3.LinearProgressIndicator"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_12"
+            android:max="100"
+            android:progress="0"
+            app:indicatorColor="@color/accent_green"
+            app:trackColor="@color/primary_light"
+            tools:progress="85" />
+
     </LinearLayout>
 
 </androidx.cardview.widget.CardView>
-
-

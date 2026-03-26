@@ -1,24 +1,40 @@
 package com.kartik.aistudyassistant.ui.profile
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.text.format.DateUtils
+import android.view.ViewGroup
 import android.view.View
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import coil.load
 import com.kartik.aistudyassistant.R
 import com.kartik.aistudyassistant.data.local.ContinueLearningPrefs
+import com.kartik.aistudyassistant.data.local.RecentActivityItem
+import com.kartik.aistudyassistant.data.local.RecentActivityType
 import com.kartik.aistudyassistant.data.local.UserProfilePrefs
 import com.kartik.aistudyassistant.data.repository.AuthManager
 import com.kartik.aistudyassistant.ui.auth.SignInActivity
+import com.kartik.aistudyassistant.ui.chat.ChatActivity
+import com.kartik.aistudyassistant.ui.flashcard.FlashcardSetupActivity
+import com.kartik.aistudyassistant.ui.home.RecentActivitySubtitleFormatter
+import com.kartik.aistudyassistant.ui.home.TopicsMasteryActivity
+import com.kartik.aistudyassistant.ui.quiz.QuizSetupActivity
+import com.kartik.aistudyassistant.ui.upload.UploadActivity
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.textfield.TextInputEditText
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 import java.text.DateFormat
 import java.util.Date
 import kotlin.math.max
@@ -34,12 +50,30 @@ class ProfileActivity : AppCompatActivity() {
     private lateinit var tvLearningStudyTimeValue: TextView
     private lateinit var tvLearningQuizValue: TextView
     private lateinit var tvLearningLastActiveValue: TextView
+    private lateinit var tvLearningInsight: TextView
+    
+    private lateinit var tvPerformanceAvgScore: TextView
+    private lateinit var tvPerformanceHighScore: TextView
+    private lateinit var tvPerformanceTopicsMastered: TextView
+    private lateinit var tvPerformanceScoreHelper: TextView
+    private lateinit var tvPerformanceGuidance: TextView
+    private lateinit var tvPerformanceWeeklyInsight: TextView
+    private lateinit var btnPracticeQuiz: MaterialButton
+    private lateinit var btnReviewFlashcards: MaterialButton
+    private lateinit var tvMaterialsCount: TextView
+    private lateinit var btnManageMaterials: MaterialButton
+    private lateinit var tvProfileRecentActivityEmpty: TextView
+    private lateinit var llProfileRecentActivity: LinearLayout
+
+    private lateinit var llConsistencyDots: LinearLayout
 
     private lateinit var authManager: AuthManager
     private var currentDisplayName: String = ""
     private var currentEmail: String = ""
     private var currentPhone: String = ""
     private var currentPhotoUri: String = ""
+    
+    private var materialsListener: ListenerRegistration? = null
 
     private val photoPicker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri == null) return@registerForActivityResult
@@ -50,10 +84,13 @@ class ProfileActivity : AppCompatActivity() {
                 Intent.FLAG_GRANT_READ_URI_PERMISSION
             )
         } catch (_: SecurityException) {
-            // Some providers do not grant persistable permission; use the URI while it remains valid.
         }
 
+        val previousPhotoUri = currentPhotoUri
         currentPhotoUri = uri.toString()
+        if (previousPhotoUri.isNotBlank() && previousPhotoUri != currentPhotoUri) {
+            revokePersistedPhotoPermission(previousPhotoUri)
+        }
         persistCachedProfile()
         updateAvatarView(currentDisplayName)
     }
@@ -74,12 +111,38 @@ class ProfileActivity : AppCompatActivity() {
         tvLearningStudyTimeValue = findViewById(R.id.tvLearningStudyTimeValue)
         tvLearningQuizValue = findViewById(R.id.tvLearningQuizValue)
         tvLearningLastActiveValue = findViewById(R.id.tvLearningLastActiveValue)
+        tvLearningInsight = findViewById(R.id.tvLearningInsight)
+        
+        tvPerformanceAvgScore = findViewById(R.id.tvPerformanceAvgScore)
+        tvPerformanceHighScore = findViewById(R.id.tvPerformanceHighScore)
+        tvPerformanceTopicsMastered = findViewById(R.id.tvPerformanceTopicsMastered)
+        tvPerformanceScoreHelper = findViewById(R.id.tvPerformanceScoreHelper)
+        tvPerformanceGuidance = findViewById(R.id.tvPerformanceGuidance)
+        tvPerformanceWeeklyInsight = findViewById(R.id.tvPerformanceWeeklyInsight)
+        btnPracticeQuiz = findViewById(R.id.btnPracticeQuiz)
+        btnReviewFlashcards = findViewById(R.id.btnReviewFlashcards)
+        tvMaterialsCount = findViewById(R.id.tvMaterialsCount)
+        btnManageMaterials = findViewById(R.id.btnManageMaterials)
+        tvProfileRecentActivityEmpty = findViewById(R.id.tvProfileRecentActivityEmpty)
+        llProfileRecentActivity = findViewById(R.id.llProfileRecentActivity)
+
+        llConsistencyDots = findViewById(R.id.llConsistencyDots)
 
         findViewById<ImageView>(R.id.ivBack).setOnClickListener { finish() }
         findViewById<MaterialCardView>(R.id.cardAvatar).setOnClickListener { showPhotoActionsDialog() }
         findViewById<View>(R.id.layoutNameEdit).setOnClickListener { showEditNameDialog() }
         findViewById<ImageView>(R.id.ivEditName).setOnClickListener { showEditNameDialog() }
+        findViewById<View>(R.id.layoutPerformanceTopicsMastered).setOnClickListener {
+            startActivity(Intent(this, TopicsMasteryActivity::class.java))
+        }
+        tvPerformanceTopicsMastered.setOnClickListener {
+            startActivity(Intent(this, TopicsMasteryActivity::class.java))
+        }
+        tvMaterialsCount.setOnClickListener { startActivity(Intent(this, UploadActivity::class.java)) }
+        btnPracticeQuiz.setOnClickListener { startActivity(Intent(this, QuizSetupActivity::class.java)) }
+        btnReviewFlashcards.setOnClickListener { startActivity(Intent(this, FlashcardSetupActivity::class.java)) }
         findViewById<MaterialButton>(R.id.btnLogout).setOnClickListener { showLogoutConfirmationDialog() }
+        btnManageMaterials.setOnClickListener { startActivity(Intent(this, UploadActivity::class.java)) }
 
         if (!authManager.isUserLoggedIn()) {
             logoutUser()
@@ -88,11 +151,23 @@ class ProfileActivity : AppCompatActivity() {
 
         bindUserProfile()
         bindLearningSnapshot()
+        bindPerformance()
+        observeMaterialsCount()
+        bindConsistencyHeatmap()
+        bindRecentActivity()
     }
 
     override fun onResume() {
         super.onResume()
         bindLearningSnapshot()
+        bindPerformance()
+        bindConsistencyHeatmap()
+        bindRecentActivity()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        materialsListener?.remove()
     }
 
     private fun bindUserProfile() {
@@ -148,6 +223,201 @@ class ProfileActivity : AppCompatActivity() {
         tvLearningStudyTimeValue.text = formatStudyTime(snapshot.totalStudyTimeMs)
         tvLearningQuizValue.text = getString(R.string.profile_learning_quizzes_value, snapshot.totalQuizzes)
         tvLearningLastActiveValue.text = resolveLastActiveDate(snapshot.lastActiveTimestamp, streakDetails.lastActiveDaysAgo)
+
+        tvLearningInsight.text = when {
+            snapshot.dayStreak == 0 -> getString(R.string.profile_learning_insight_start)
+            (streakDetails.lastActiveDaysAgo ?: 0) >= 1 -> getString(R.string.profile_learning_insight_risk)
+            else -> getString(R.string.profile_learning_insight_safe)
+        }
+    }
+
+    private fun bindPerformance() {
+        val perf = ContinueLearningPrefs.readQuizPerformance(this, null, null)
+        val weeklyPerf = ContinueLearningPrefs.readQuizPerformance(this, 7, null)
+        val progress = ContinueLearningPrefs.readStudyProgress(this)
+        val hasQuizData = perf.totalQuizzes > 0
+        
+        tvPerformanceAvgScore.text = if (hasQuizData) {
+            getString(R.string.profile_performance_score_format, perf.averageScore)
+        } else {
+            getString(R.string.profile_performance_score_empty)
+        }
+        tvPerformanceHighScore.text = if (hasQuizData) {
+            getString(R.string.profile_performance_score_format, perf.bestScore)
+        } else {
+            getString(R.string.profile_performance_score_empty)
+        }
+        tvPerformanceTopicsMastered.text = progress.totalTopics.toString()
+        tvPerformanceScoreHelper.text = getString(R.string.profile_performance_score_helper, perf.totalQuizzes)
+        tvPerformanceGuidance.text = if (hasQuizData) {
+            getString(R.string.profile_performance_guidance_with_data)
+        } else {
+            getString(R.string.profile_performance_guidance_empty)
+        }
+        tvPerformanceWeeklyInsight.text = if (weeklyPerf.totalQuizzes > 0) {
+            getString(R.string.profile_performance_weekly_insight_positive, weeklyPerf.totalQuizzes)
+        } else {
+            getString(R.string.profile_performance_weekly_insight_zero)
+        }
+    }
+
+    private fun bindRecentActivity() {
+        val activities = ContinueLearningPrefs.readRecentActivities(this, limit = 3)
+        llProfileRecentActivity.removeAllViews()
+
+        if (activities.isEmpty()) {
+            tvProfileRecentActivityEmpty.visibility = View.VISIBLE
+            llProfileRecentActivity.visibility = View.GONE
+            return
+        }
+
+        tvProfileRecentActivityEmpty.visibility = View.GONE
+        llProfileRecentActivity.visibility = View.VISIBLE
+
+        activities.forEachIndexed { index, item ->
+            llProfileRecentActivity.addView(createRecentActivityRow(item))
+            if (index < activities.lastIndex) {
+                llProfileRecentActivity.addView(createRecentActivityDivider())
+            }
+        }
+    }
+
+    private fun createRecentActivityRow(item: RecentActivityItem): View {
+        val topic = resolveRecentTopic(item)
+        val title = TextView(this).apply {
+            text = buildRecentTitle(item, topic)
+            setTextColor(ContextCompat.getColor(this@ProfileActivity, R.color.text_main))
+            textSize = 14f
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+        }
+
+        val subtitle = TextView(this).apply {
+            text = buildRecentSubtitle(item)
+            setTextColor(ContextCompat.getColor(this@ProfileActivity, R.color.text_secondary))
+            textSize = 12f
+        }
+
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, resources.getDimensionPixelSize(R.dimen.space_4), 0, resources.getDimensionPixelSize(R.dimen.space_4))
+            addView(title)
+            addView(subtitle)
+            setOnClickListener {
+                when (item.type) {
+                    RecentActivityType.QUIZ -> {
+                        startActivity(Intent(this@ProfileActivity, QuizSetupActivity::class.java).apply {
+                            putExtra(QuizSetupActivity.EXTRA_PREFILL_TOPIC, topic)
+                        })
+                    }
+                    RecentActivityType.FLASHCARD -> {
+                        startActivity(Intent(this@ProfileActivity, FlashcardSetupActivity::class.java).apply {
+                            putExtra(FlashcardSetupActivity.EXTRA_TOPIC_TEXT, topic)
+                        })
+                    }
+                    RecentActivityType.CHAT -> {
+                        startActivity(Intent(this@ProfileActivity, ChatActivity::class.java).apply {
+                            if (item.sessionId.isNotBlank()) {
+                                putExtra(ChatActivity.EXTRA_SESSION_ID, item.sessionId)
+                            }
+                        })
+                    }
+                    RecentActivityType.UPLOAD -> {
+                        startActivity(Intent(this@ProfileActivity, UploadActivity::class.java))
+                    }
+                }
+            }
+        }
+    }
+
+    private fun createRecentActivityDivider(): View {
+        return View(this).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                1
+            ).apply {
+                topMargin = resources.getDimensionPixelSize(R.dimen.space_8)
+                bottomMargin = resources.getDimensionPixelSize(R.dimen.space_8)
+            }
+            setBackgroundColor(ContextCompat.getColor(this@ProfileActivity, R.color.divider))
+        }
+    }
+
+    private fun resolveRecentTopic(item: RecentActivityItem): String {
+        return item.topic.ifBlank {
+            when (item.type) {
+                RecentActivityType.QUIZ -> getString(R.string.home_general_quiz)
+                RecentActivityType.FLASHCARD -> getString(R.string.home_general_study)
+                RecentActivityType.CHAT -> getString(R.string.home_general_chat)
+                RecentActivityType.UPLOAD -> getString(R.string.home_study_file)
+            }
+        }
+    }
+
+    private fun buildRecentTitle(item: RecentActivityItem, topic: String): String {
+        return when (item.type) {
+            RecentActivityType.QUIZ -> getString(R.string.home_recent_quiz_title, topic)
+            RecentActivityType.FLASHCARD -> getString(R.string.home_recent_flashcards_title, topic)
+            RecentActivityType.CHAT -> getString(R.string.home_recent_chat_title, topic)
+            RecentActivityType.UPLOAD -> getString(R.string.home_recent_upload_title, topic)
+        }
+    }
+
+    private fun buildRecentSubtitle(item: RecentActivityItem): String {
+        val relativeTime = DateUtils.getRelativeTimeSpanString(
+            item.timestamp,
+            System.currentTimeMillis(),
+            DateUtils.MINUTE_IN_MILLIS,
+            DateUtils.FORMAT_ABBREV_RELATIVE
+        ).toString()
+        val contextualText = RecentActivitySubtitleFormatter.buildContextualText(item)
+        return getString(R.string.home_recent_subtitle_format, contextualText, relativeTime)
+    }
+
+    private fun observeMaterialsCount() {
+        val userId = FirebaseAuth.getInstance().currentUser?.uid
+        if (userId.isNullOrBlank()) {
+            tvMaterialsCount.text = getString(R.string.profile_materials_unavailable)
+            return
+        }
+        val firestore = FirebaseFirestore.getInstance()
+        materialsListener?.remove()
+        
+        materialsListener = firestore.collection("Notes").document(userId).collection("UserNotes")
+            .addSnapshotListener { value, error ->
+                if (error != null) {
+                    tvMaterialsCount.text = getString(R.string.profile_materials_unavailable)
+                    return@addSnapshotListener
+                }
+                val count = value?.size() ?: 0
+                tvMaterialsCount.text = resources.getQuantityString(
+                    R.plurals.profile_materials_count,
+                    count,
+                    count
+                )
+            }
+    }
+
+    private fun bindConsistencyHeatmap() {
+        val streakDetails = ContinueLearningPrefs.readStudyStreakDetails(this)
+        llConsistencyDots.removeAllViews()
+        streakDetails.recentSevenDaysActive.forEach { isActive ->
+            llConsistencyDots.addView(createStreakDot(isActive))
+        }
+    }
+
+    private fun createStreakDot(isActive: Boolean): View {
+        val size = resources.getDimensionPixelSize(R.dimen.space_16)
+        val margin = resources.getDimensionPixelSize(R.dimen.space_8)
+
+        return View(this).apply {
+            layoutParams = LinearLayout.LayoutParams(size, size).apply {
+                marginEnd = margin
+            }
+            background = ContextCompat.getDrawable(
+                this@ProfileActivity,
+                if (isActive) R.drawable.bg_streak_dot_active else R.drawable.bg_streak_dot_inactive
+            )
+        }
     }
 
     private fun formatStudyTime(totalStudyTimeMs: Long): String {
@@ -240,6 +510,7 @@ class ProfileActivity : AppCompatActivity() {
         }
 
         btnRemovePhoto.setOnClickListener {
+            revokePersistedPhotoPermission(currentPhotoUri)
             currentPhotoUri = ""
             persistCachedProfile()
             updateAvatarView(currentDisplayName)
@@ -302,6 +573,12 @@ class ProfileActivity : AppCompatActivity() {
     }
 
     private fun logoutUser() {
+        val cachedPhotoUri = UserProfilePrefs.read(this).photoUri
+        revokePersistedPhotoPermission(currentPhotoUri)
+        if (cachedPhotoUri != currentPhotoUri) {
+            revokePersistedPhotoPermission(cachedPhotoUri)
+        }
+
         authManager.signOut()
         authManager.clearCache()
         ContinueLearningPrefs.clearFlashcardProgress(this)
@@ -326,7 +603,15 @@ class ProfileActivity : AppCompatActivity() {
             .setNegativeButton(R.string.profile_logout_cancel_action, null)
             .show()
     }
+
+    private fun revokePersistedPhotoPermission(uriString: String) {
+        if (uriString.isBlank()) return
+        try {
+            contentResolver.releasePersistableUriPermission(
+                Uri.parse(uriString),
+                Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+        } catch (_: Exception) {
+        }
+    }
 }
-
-
-

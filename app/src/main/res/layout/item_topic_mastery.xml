@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     style="@style/Widget.AIStudyAssistance.Card"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -11,37 +12,174 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="@dimen/space_12">
+        android:padding="@dimen/space_16">
 
-        <TextView
-            android:id="@+id/tvMasteryTopicTitle"
-            style="@style/TextAppearance.AIStudyAssistance.Section"
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Topic"
-            android:textSize="@dimen/text_body" />
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
-        <TextView
-            android:id="@+id/tvMasteryTopicStats"
-            style="@style/TextAppearance.AIStudyAssistance.Small"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_4"
-            android:text="Quiz 0 • Flashcards 0 • Chat 0" />
+            <TextView
+                android:id="@+id/tvMasteryTopicTitle"
+                style="@style/TextAppearance.AIStudyAssistance.Section"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="2"
+                android:text="Topic"
+                android:textSize="@dimen/text_section"
+                tools:text="Machine Learning Fundamentals" />
 
-        <TextView
-            android:id="@+id/tvMasteryTopicLast"
-            style="@style/TextAppearance.AIStudyAssistance.Small"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_2"
-            android:text="Last active: Never"
-            android:textSize="12sp" />
+            <View
+                android:layout_width="@dimen/space_4"
+                android:layout_height="match_parent" />
+
+            <TextView
+                android:id="@+id/tvMasteryTopicLevel"
+                style="@style/TextAppearance.AIStudyAssistance.Small"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_chip"
+                android:paddingHorizontal="@dimen/space_8"
+                android:paddingVertical="@dimen/space_4"
+                android:text="Beginner"
+                android:textColor="@color/primary"
+                android:textSize="@dimen/text_caption"
+                tools:text="Intermediate" />
+        </LinearLayout>
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/space_12"
+            android:orientation="horizontal">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tvMasteryQuizCount"
+                    style="@style/TextAppearance.AIStudyAssistance.Section"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="0"
+                    android:textColor="@color/accent_purple"
+                    android:textSize="@dimen/text_title"
+                    tools:text="12" />
+
+                <TextView
+                    style="@style/TextAppearance.AIStudyAssistance.Small"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Quizzes"
+                    android:textColor="@color/text_secondary" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tvMasteryFlashcardCount"
+                    style="@style/TextAppearance.AIStudyAssistance.Section"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="0"
+                    android:textColor="@color/accent_green"
+                    android:textSize="@dimen/text_title"
+                    tools:text="24" />
+
+                <TextView
+                    style="@style/TextAppearance.AIStudyAssistance.Small"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Flashcards"
+                    android:textColor="@color/text_secondary" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tvMasteryChatCount"
+                    style="@style/TextAppearance.AIStudyAssistance.Section"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="0"
+                    android:textColor="@color/accent_orange"
+                    android:textSize="@dimen/text_title"
+                    tools:text="8" />
+
+                <TextView
+                    style="@style/TextAppearance.AIStudyAssistance.Small"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Chats"
+                    android:textColor="@color/text_secondary" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <com.google.android.material.progressindicator.LinearProgressIndicator
+            android:id="@+id/progressMasteryLevel"
+            style="@style/Widget.Material3.LinearProgressIndicator"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_12"
+            android:max="100"
+            android:progress="0"
+            app:indicatorColor="@color/primary"
+            app:trackColor="@color/primary_light"
+            tools:progress="65" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_8"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tvMasteryProgressLabel"
+                style="@style/TextAppearance.AIStudyAssistance.Small"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Mastery Progress"
+                android:textColor="@color/text_secondary"
+                tools:text="65% Mastered" />
+
+            <TextView
+                android:id="@+id/tvMasteryLastActive"
+                style="@style/TextAppearance.AIStudyAssistance.Small"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Last active: Never"
+                android:textColor="@color/text_hint"
+                tools:text="Last active: Today" />
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="@dimen/space_12"
+            android:layout_marginBottom="@dimen/space_12"
+            android:background="@color/divider" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
             android:orientation="horizontal">
 
             <com.google.android.material.button.MaterialButton
@@ -50,6 +188,9 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:icon="@android:drawable/ic_menu_edit"
+                app:iconGravity="textStart"
+                app:iconPadding="@dimen/space_4"
                 android:text="Practice Quiz" />
 
             <com.google.android.material.button.MaterialButton
@@ -59,11 +200,12 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="@dimen/space_8"
                 android:layout_weight="1"
-                android:text="Open Flashcards" />
+                android:icon="@android:drawable/ic_menu_gallery"
+                app:iconGravity="textStart"
+                app:iconPadding="@dimen/space_4"
+                android:text="Flashcards" />
         </LinearLayout>
 
     </LinearLayout>
 
 </androidx.cardview.widget.CardView>
-
-

@@ -43,6 +43,46 @@
     <string name="profile_learning_last_active_never">Never</string>
     <string name="profile_learning_last_active_today">Today</string>
     <string name="profile_learning_last_active_yesterday">Yesterday</string>
+    <string name="profile_learning_insight_start">Start your first study streak today.</string>
+    <string name="profile_learning_insight_risk">Streak at risk today - study now to keep it.</string>
+    <string name="profile_learning_insight_safe">Great work today. Keep your streak alive tomorrow.</string>
+
+    <string name="profile_performance_title">Quiz Performance</string>
+    <string name="profile_performance_avg_score">Avg Score</string>
+    <string name="profile_performance_high_score">High Score</string>
+    <string name="profile_performance_topics_mastered">Topics Mastered</string>
+    <string name="profile_performance_topics_mastered_action">Open topic mastery details</string>
+    <string name="profile_performance_score_format">%1$d%%</string>
+    <string name="profile_performance_score_empty">--</string>
+    <string name="profile_performance_score_helper">Based on %1$d completed quizzes</string>
+    <string name="profile_performance_guidance_empty">Start a quiz to see your performance trends.</string>
+    <string name="profile_performance_guidance_with_data">Tap Topics Mastered for topic-level practice options.</string>
+    <string name="profile_performance_weekly_insight_positive">+%1$d quizzes this week</string>
+    <string name="profile_performance_weekly_insight_zero">No quizzes this week yet</string>
+    <string name="profile_cta_practice_quiz">Practice Quiz</string>
+    <string name="profile_cta_review_flashcards">Review Flashcards</string>
+
+    <string name="profile_materials_title">My Study Materials</string>
+    <string name="profile_materials_btn">Manage Materials</string>
+    <plurals name="profile_materials_count">
+        <item quantity="one">%1$d file uploaded</item>
+        <item quantity="other">%1$d files uploaded</item>
+    </plurals>
+    <string name="profile_materials_unavailable">Unable to load materials</string>
+
+    <string name="profile_consistency_title">Weekly Consistency</string>
+    <string name="profile_consistency_subtitle">Your activity over the last 7 days.</string>
+    <string name="profile_recent_activity_title">Recent Activity</string>
+    <string name="profile_recent_activity_empty">No recent activity found.</string>
+    <string name="profile_topic_mastery_title">Topic Mastery</string>
+    <string name="profile_topic_mastery_empty">Start learning to see your mastery here.</string>
+    <string name="profile_topic_mastery_stats">Quiz %1$d • Flashcards %2$d • Chat %3$d</string>
+    <string name="topic_mastery_progress_label">%1$d%% mastered</string>
+    <string name="topic_mastery_progress_a11y">Mastery progress: %1$d percent</string>
+    <string name="topic_mastery_level_beginner">Beginner</string>
+    <string name="topic_mastery_level_intermediate">Intermediate</string>
+    <string name="topic_mastery_level_advanced">Advanced</string>
+    <string name="topic_mastery_level_expert">Expert</string>
 
     <string name="common_back">Back</string>
     <string name="common_previous">Previous</string>

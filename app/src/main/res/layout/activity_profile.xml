@@ -45,283 +45,589 @@
         android:id="@+id/scrollProfileContent"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:fillViewport="true"
         android:clipToPadding="false"
+        android:fillViewport="true"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/toolbar"
-        app:layout_constraintBottom_toBottomOf="parent">
+        app:layout_constraintTop_toBottomOf="@id/toolbar">
 
         <LinearLayout
             android:id="@+id/layoutProfileContent"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginHorizontal="@dimen/space_24"
-            android:layout_marginTop="@dimen/space_24"
-            android:layout_marginBottom="@dimen/space_24"
             android:gravity="center_horizontal"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:paddingHorizontal="@dimen/space_24"
+            android:paddingTop="@dimen/space_24"
+            android:paddingBottom="@dimen/space_32">
 
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/cardAvatar"
-            android:layout_width="88dp"
-            android:layout_height="88dp"
-            android:clickable="true"
-            android:focusable="true"
-            android:foreground="?attr/selectableItemBackgroundBorderless"
-            app:cardBackgroundColor="@color/primary_light"
-            app:cardCornerRadius="44dp"
-            app:strokeWidth="0dp">
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardAvatar"
+                android:layout_width="88dp"
+                android:layout_height="88dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackgroundBorderless"
+                app:cardBackgroundColor="@color/primary_light"
+                app:cardCornerRadius="44dp"
+                app:strokeWidth="0dp">
 
-            <ImageView
-                android:id="@+id/ivAvatarPhoto"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:contentDescription="@string/profile_photo"
-                android:scaleType="centerCrop"
-                android:visibility="gone"
-                tools:src="@drawable/graduationcap201" />
+                <ImageView
+                    android:id="@+id/ivAvatarPhoto"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:contentDescription="@string/profile_photo"
+                    android:scaleType="centerCrop"
+                    android:visibility="gone"
+                    tools:src="@drawable/graduationcap201" />
 
-            <TextView
-                android:id="@+id/tvAvatarInitial"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:gravity="center"
-                android:text="@string/profile_default_initial"
-                android:textColor="@color/primary"
-                android:textSize="32sp"
-                android:textStyle="bold" />
-        </com.google.android.material.card.MaterialCardView>
-
-        <TextView
-            android:id="@+id/tvPhotoActionHint"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_8"
-            android:text="@string/profile_photo_action_hint"
-            android:textColor="@color/text_secondary"
-            android:textSize="@dimen/text_caption" />
-
-        <LinearLayout
-            android:id="@+id/layoutNameEdit"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_8"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:clickable="true"
-            android:focusable="true"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingHorizontal="@dimen/space_8"
-            android:paddingVertical="@dimen/space_4">
+                <TextView
+                    android:id="@+id/tvAvatarInitial"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center"
+                    android:text="@string/profile_default_initial"
+                    android:textColor="@color/primary"
+                    android:textSize="32sp"
+                    android:textStyle="bold" />
+            </com.google.android.material.card.MaterialCardView>
 
             <TextView
-                android:id="@+id/tvUserName"
-                style="@style/TextAppearance.AIStudyAssistance.Title"
+                android:id="@+id/tvPhotoActionHint"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="@color/text_main"
-                tools:text="Student" />
-
-            <ImageView
-                android:id="@+id/ivEditName"
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:layout_marginStart="@dimen/space_8"
-                android:contentDescription="@string/profile_edit_name_title"
-                android:src="@android:drawable/ic_menu_edit"
-                app:tint="@color/text_secondary" />
-        </LinearLayout>
-
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_24"
-            app:cardBackgroundColor="@color/card_bg"
-            app:cardCornerRadius="@dimen/radius_m"
-            app:cardElevation="2dp">
+                android:layout_marginTop="@dimen/space_8"
+                android:text="@string/profile_photo_action_hint"
+                android:textColor="@color/text_secondary"
+                android:textSize="@dimen/text_caption" />
 
             <LinearLayout
+                android:id="@+id/layoutNameEdit"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_8"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingHorizontal="@dimen/space_8"
+                android:paddingVertical="@dimen/space_4">
+
+                <TextView
+                    android:id="@+id/tvUserName"
+                    style="@style/TextAppearance.AIStudyAssistance.Title"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/text_main"
+                    tools:text="Student" />
+
+                <ImageView
+                    android:id="@+id/ivEditName"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_marginStart="@dimen/space_8"
+                    android:contentDescription="@string/profile_edit_name_title"
+                    android:src="@android:drawable/ic_menu_edit"
+                    app:tint="@color/text_secondary" />
+            </LinearLayout>
+
+            <!-- Learning Snapshot Card -->
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="@dimen/space_16">
+                android:layout_marginTop="@dimen/space_24"
+                app:cardBackgroundColor="@color/card_bg"
+                app:cardCornerRadius="@dimen/radius_m"
+                app:cardElevation="2dp">
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/profile_learning_snapshot_title"
-                    android:textColor="@color/text_main"
-                    android:textSize="@dimen/text_body"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/space_4"
-                    android:text="@string/profile_learning_snapshot_subtitle"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="@dimen/text_caption" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/space_16"
-                    android:text="@string/profile_learning_streak_label"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="@dimen/text_caption" />
-
-                <TextView
-                    android:id="@+id/tvLearningStreakValue"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/space_4"
-                    android:textColor="@color/text_main"
-                    android:textSize="@dimen/text_body"
-                    android:textStyle="bold"
-                    tools:text="12 days" />
-
-                <View
+                <LinearLayout
                     android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:layout_marginTop="@dimen/space_16"
-                    android:layout_marginBottom="@dimen/space_16"
-                    android:background="@color/divider" />
-
-                <TextView
-                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/profile_learning_time_label"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="@dimen/text_caption" />
+                    android:orientation="vertical"
+                    android:padding="@dimen/space_16">
 
-                <TextView
-                    android:id="@+id/tvLearningStudyTimeValue"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/space_4"
-                    android:textColor="@color/text_main"
-                    android:textSize="@dimen/text_body"
-                    android:textStyle="bold"
-                    tools:text="2h 15m" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/profile_learning_snapshot_title"
+                        android:textColor="@color/text_main"
+                        android:textSize="@dimen/text_body"
+                        android:textStyle="bold" />
 
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:layout_marginTop="@dimen/space_16"
-                    android:layout_marginBottom="@dimen/space_16"
-                    android:background="@color/divider" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_4"
+                        android:text="@string/profile_learning_snapshot_subtitle"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="@dimen/text_caption" />
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/profile_learning_quizzes_label"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="@dimen/text_caption" />
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_16"
+                        android:baselineAligned="false"
+                        android:orientation="horizontal">
 
-                <TextView
-                    android:id="@+id/tvLearningQuizValue"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/space_4"
-                    android:textColor="@color/text_main"
-                    android:textSize="@dimen/text_body"
-                    android:textStyle="bold"
-                    tools:text="24" />
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/profile_learning_streak_label"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="@dimen/text_overline" />
+                            <TextView
+                                android:id="@+id/tvLearningStreakValue"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textColor="@color/text_main"
+                                android:textSize="@dimen/text_body"
+                                android:textStyle="bold"
+                                tools:text="12 days" />
+                        </LinearLayout>
 
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:layout_marginTop="@dimen/space_16"
-                    android:layout_marginBottom="@dimen/space_16"
-                    android:background="@color/divider" />
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/profile_learning_quizzes_label"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="@dimen/text_overline" />
+                            <TextView
+                                android:id="@+id/tvLearningQuizValue"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textColor="@color/text_main"
+                                android:textSize="@dimen/text_body"
+                                android:textStyle="bold"
+                                tools:text="24" />
+                        </LinearLayout>
+                    </LinearLayout>
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/profile_learning_last_active_label"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="@dimen/text_caption" />
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginTop="@dimen/space_12"
+                        android:layout_marginBottom="@dimen/space_12"
+                        android:background="@color/divider" />
 
-                <TextView
-                    android:id="@+id/tvLearningLastActiveValue"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/space_4"
-                    android:textColor="@color/text_main"
-                    android:textSize="@dimen/text_body"
-                    android:textStyle="bold"
-                    tools:text="Mar 26, 2026" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/profile_learning_time_label"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="@dimen/text_overline" />
 
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_24"
-            app:cardBackgroundColor="@color/card_bg"
-            app:cardCornerRadius="@dimen/radius_m"
-            app:cardElevation="2dp">
+                    <TextView
+                        android:id="@+id/tvLearningStudyTimeValue"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/text_main"
+                        android:textSize="@dimen/text_body"
+                        android:textStyle="bold"
+                        tools:text="2h 15m" />
 
-            <LinearLayout
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginTop="@dimen/space_12"
+                        android:layout_marginBottom="@dimen/space_12"
+                        android:background="@color/divider" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/profile_learning_last_active_label"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="@dimen/text_overline" />
+
+                    <TextView
+                        android:id="@+id/tvLearningLastActiveValue"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/text_main"
+                        android:textSize="@dimen/text_body"
+                        android:textStyle="bold"
+                        tools:text="Mar 26, 2026" />
+
+                    <TextView
+                        android:id="@+id/tvLearningInsight"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_8"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="@dimen/text_caption"
+                        tools:text="Streak at risk today - study now to keep it." />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Quiz Performance Card -->
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="@dimen/space_16">
+                android:layout_marginTop="@dimen/space_16"
+                app:cardBackgroundColor="@color/card_bg"
+                app:cardCornerRadius="@dimen/radius_m"
+                app:cardElevation="2dp">
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/profile_label_email"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="@dimen/text_caption" />
-
-                <TextView
-                    android:id="@+id/tvUserEmail"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/space_8"
-                    android:textColor="@color/text_main"
-                    android:textSize="@dimen/text_body"
-                    android:textStyle="bold"
-                    tools:text="student@example.com" />
-
-                <View
+                <LinearLayout
                     android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:layout_marginTop="@dimen/space_16"
-                    android:layout_marginBottom="@dimen/space_16"
-                    android:background="@color/divider" />
-
-                <TextView
-                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/profile_label_phone"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="@dimen/text_caption" />
+                    android:orientation="vertical"
+                    android:padding="@dimen/space_16">
 
-                <TextView
-                    android:id="@+id/tvUserPhone"
-                    android:layout_width="wrap_content"
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/profile_performance_title"
+                        android:textColor="@color/text_main"
+                        android:textSize="@dimen/text_body"
+                        android:textStyle="bold" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_16"
+                        android:baselineAligned="false"
+                        android:orientation="horizontal">
+
+                        <LinearLayout
+                            android:id="@+id/layoutPerformanceTopicsMastered"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:clickable="true"
+                            android:contentDescription="@string/profile_performance_topics_mastered_action"
+                            android:focusable="true"
+                            android:orientation="vertical">
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/profile_performance_avg_score"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="@dimen/text_overline" />
+                            <TextView
+                                android:id="@+id/tvPerformanceAvgScore"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textColor="@color/accent_purple"
+                                android:textSize="@dimen/text_body"
+                                android:textStyle="bold"
+                                tools:text="78%" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/profile_performance_high_score"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="@dimen/text_overline" />
+                            <TextView
+                                android:id="@+id/tvPerformanceHighScore"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textColor="@color/accent_green"
+                                android:textSize="@dimen/text_body"
+                                android:textStyle="bold"
+                                tools:text="100%" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/profile_performance_topics_mastered"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="@dimen/text_overline" />
+                            <TextView
+                                android:id="@+id/tvPerformanceTopicsMastered"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:background="?attr/selectableItemBackgroundBorderless"
+                                android:clickable="true"
+                                android:contentDescription="@string/profile_performance_topics_mastered_action"
+                                android:focusable="true"
+                                android:paddingTop="@dimen/space_4"
+                                android:textColor="@color/accent_orange"
+                                android:textSize="@dimen/text_body"
+                                android:textStyle="bold"
+                                tools:text="15" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/tvPerformanceScoreHelper"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_12"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="@dimen/text_caption"
+                        tools:text="Based on 12 completed quizzes" />
+
+                    <TextView
+                        android:id="@+id/tvPerformanceGuidance"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_4"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="@dimen/text_caption"
+                        tools:text="Start a quiz to see your performance trends." />
+
+                    <TextView
+                        android:id="@+id/tvPerformanceWeeklyInsight"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_4"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="@dimen/text_caption"
+                        tools:text="+3 quizzes this week" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_12"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnPracticeQuiz"
+                            style="@style/Widget.AIStudyAssistance.Button.Secondary"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/profile_cta_practice_quiz"
+                            android:textSize="@dimen/text_overline" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnReviewFlashcards"
+                            style="@style/Widget.AIStudyAssistance.Button.Secondary"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="@dimen/space_8"
+                            android:layout_weight="1"
+                            android:text="@string/profile_cta_review_flashcards"
+                            android:textSize="@dimen/text_overline" />
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- My Materials Card -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_16"
+                app:cardBackgroundColor="@color/card_bg"
+                app:cardCornerRadius="@dimen/radius_m"
+                app:cardElevation="2dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/space_8"
-                    android:textColor="@color/text_main"
-                    android:textSize="@dimen/text_body"
-                    android:textStyle="bold"
-                    tools:text="9876543210" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:padding="@dimen/space_16">
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnLogout"
-            style="@style/Widget.AIStudyAssistance.Button.Secondary"
-            android:layout_width="match_parent"
-            android:layout_height="@dimen/button_height"
-            android:layout_marginTop="@dimen/space_24"
-            android:text="@string/profile_logout" />
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/profile_materials_title"
+                            android:textColor="@color/text_main"
+                            android:textSize="@dimen/text_body"
+                            android:textStyle="bold" />
+                        <TextView
+                            android:id="@+id/tvMaterialsCount"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/space_4"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="@dimen/text_caption"
+                            tools:text="5 files uploaded" />
+                    </LinearLayout>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnManageMaterials"
+                        style="@style/Widget.AIStudyAssistance.Button.Secondary"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/profile_materials_btn"
+                        android:textSize="@dimen/text_overline" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Recent Activity Card -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_16"
+                app:cardBackgroundColor="@color/card_bg"
+                app:cardCornerRadius="@dimen/radius_m"
+                app:cardElevation="2dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="@dimen/space_16">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/profile_recent_activity_title"
+                        android:textColor="@color/text_main"
+                        android:textSize="@dimen/text_body"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvProfileRecentActivityEmpty"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_8"
+                        android:text="@string/profile_recent_activity_empty"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="@dimen/text_caption" />
+
+                    <LinearLayout
+                        android:id="@+id/llProfileRecentActivity"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_8"
+                        android:orientation="vertical" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Weekly Consistency (Heatmap) Card -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_16"
+                app:cardBackgroundColor="@color/card_bg"
+                app:cardCornerRadius="@dimen/radius_m"
+                app:cardElevation="2dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="@dimen/space_16">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/profile_consistency_title"
+                        android:textColor="@color/text_main"
+                        android:textSize="@dimen/text_body"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_4"
+                        android:text="@string/profile_consistency_subtitle"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="@dimen/text_caption" />
+
+                    <LinearLayout
+                        android:id="@+id/llConsistencyDots"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_16"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Contact Info Card -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_24"
+                app:cardBackgroundColor="@color/card_bg"
+                app:cardCornerRadius="@dimen/radius_m"
+                app:cardElevation="2dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="@dimen/space_16">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/profile_label_email"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="@dimen/text_caption" />
+
+                    <TextView
+                        android:id="@+id/tvUserEmail"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_8"
+                        android:textColor="@color/text_main"
+                        android:textSize="@dimen/text_body"
+                        android:textStyle="bold"
+                        tools:text="student@example.com" />
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginTop="@dimen/space_16"
+                        android:layout_marginBottom="@dimen/space_16"
+                        android:background="@color/divider" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/profile_label_phone"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="@dimen/text_caption" />
+
+                    <TextView
+                        android:id="@+id/tvUserPhone"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_8"
+                        android:textColor="@color/text_main"
+                        android:textSize="@dimen/text_body"
+                        android:textStyle="bold"
+                        tools:text="9876543210" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnLogout"
+                style="@style/Widget.AIStudyAssistance.Button.Secondary"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/button_height"
+                android:layout_marginTop="@dimen/space_32"
+                android:text="@string/profile_logout" />
         </LinearLayout>
-
     </androidx.core.widget.NestedScrollView>
-
 </androidx.constraintlayout.widget.ConstraintLayout>
-
