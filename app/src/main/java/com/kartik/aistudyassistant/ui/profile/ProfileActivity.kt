@@ -15,6 +15,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import coil.load
+import com.kartik.aistudyassistant.AIStudyAssistanceApp
 import com.kartik.aistudyassistant.R
 import com.kartik.aistudyassistant.data.local.ContinueLearningPrefs
 import com.kartik.aistudyassistant.data.local.RecentActivityItem
@@ -491,6 +492,7 @@ class ProfileActivity : AppCompatActivity() {
         val root = findViewById<android.view.ViewGroup>(android.R.id.content)
         val content = layoutInflater.inflate(R.layout.bottom_sheet_profile_photo, root, false)
         dialog.setContentView(content)
+        (application as? AIStudyAssistanceApp)?.bindSensorUiToBottomSheet(this, dialog)
 
         val btnUploadChange = content.findViewById<MaterialButton>(R.id.btnUploadChange)
         val btnRemovePhoto = content.findViewById<MaterialButton>(R.id.btnRemovePhoto)
@@ -526,6 +528,7 @@ class ProfileActivity : AppCompatActivity() {
         val root = findViewById<android.view.ViewGroup>(android.R.id.content)
         val content = layoutInflater.inflate(R.layout.bottom_sheet_edit_name, root, false)
         dialog.setContentView(content)
+        (application as? AIStudyAssistanceApp)?.bindSensorUiToBottomSheet(this, dialog)
 
         val etProfileName = content.findViewById<TextInputEditText>(R.id.etProfileName)
         val btnSaveName = content.findViewById<MaterialButton>(R.id.btnSaveName)

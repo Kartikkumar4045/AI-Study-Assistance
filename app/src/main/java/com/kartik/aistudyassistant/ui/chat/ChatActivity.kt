@@ -27,6 +27,7 @@ import androidx.recyclerview.widget.RecyclerView
 import coil.ImageLoader
 import coil.request.ImageRequest
 import coil.request.SuccessResult
+import com.kartik.aistudyassistant.AIStudyAssistanceApp
 import com.kartik.aistudyassistant.BuildConfig
 import com.kartik.aistudyassistant.core.utils.GeminiHelper
 import com.kartik.aistudyassistant.data.local.ChatSessionPrefs
@@ -329,6 +330,7 @@ class ChatActivity : AppCompatActivity() {
         val dialog = BottomSheetDialog(this)
         val view = layoutInflater.inflate(R.layout.bottom_sheet_chat_actions, null)
         dialog.setContentView(view)
+        (application as? AIStudyAssistanceApp)?.bindSensorUiToBottomSheet(this, dialog)
 
         val btnNewChat = view.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnStartNewChat)
         val btnOpenPrevious = view.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnOpenPreviousChats)
@@ -372,6 +374,7 @@ class ChatActivity : AppCompatActivity() {
         val dialog = BottomSheetDialog(this)
         val view = layoutInflater.inflate(R.layout.bottom_sheet_chat_sessions, null)
         dialog.setContentView(view)
+        (application as? AIStudyAssistanceApp)?.bindSensorUiToBottomSheet(this, dialog)
 
         val rvSessions = view.findViewById<RecyclerView>(R.id.rvSessionChooser)
         val tvEmpty = view.findViewById<TextView>(R.id.tvSessionChooserEmpty)
@@ -433,6 +436,7 @@ class ChatActivity : AppCompatActivity() {
         val dialog = BottomSheetDialog(this)
         val view = layoutInflater.inflate(R.layout.bottom_sheet_chat_resume, null)
         dialog.setContentView(view)
+        (application as? AIStudyAssistanceApp)?.bindSensorUiToBottomSheet(this, dialog)
         dialog.setCancelable(false)
         dialog.setCanceledOnTouchOutside(false)
 
@@ -1170,6 +1174,7 @@ Keep answers concise.
         val dialog = BottomSheetDialog(this)
         val view = layoutInflater.inflate(R.layout.bottom_sheet_mode_prompt, null)
         dialog.setContentView(view)
+        (application as? AIStudyAssistanceApp)?.bindSensorUiToBottomSheet(this, dialog)
 
         val tvTitle = view.findViewById<TextView>(R.id.tvModeTitle)
         val tvMessage = view.findViewById<TextView>(R.id.tvModeMessage)
@@ -1315,6 +1320,7 @@ $response
         val bottomSheetDialog = BottomSheetDialog(this)
         val view = layoutInflater.inflate(R.layout.bottom_sheet_attachment, null)
         bottomSheetDialog.setContentView(view)
+        (application as? AIStudyAssistanceApp)?.bindSensorUiToBottomSheet(this, bottomSheetDialog)
 
         view.findViewById<CardView>(R.id.cardUploadPdf).setOnClickListener {
             pickFile("application/pdf")
@@ -1338,6 +1344,7 @@ $response
         val bottomSheetDialog = BottomSheetDialog(this)
         val view = layoutInflater.inflate(R.layout.bottom_sheet_notes, null)
         bottomSheetDialog.setContentView(view)
+        (application as? AIStudyAssistanceApp)?.bindSensorUiToBottomSheet(this, bottomSheetDialog)
 
         val rvNotes = view.findViewById<RecyclerView>(R.id.rvNotes)
         val notesList = mutableListOf<StudyNote>()

@@ -249,16 +249,26 @@
     <string name="upload_badge_image">IMAGE</string>
     <string name="upload_option_view_file">View File</string>
     <string name="upload_option_summarize">Summarize with AI</string>
-    <string name="upload_option_exam_questions">Generate Exam Questions</string>
     <string name="upload_option_short_notes">Create Short Notes</string>
+    <string name="upload_option_quiz">Test with Quiz</string>
+    <string name="upload_option_flashcards">Practice Flashcards</string>
     <string name="upload_option_delete">Delete Material</string>
+    <string name="upload_actions_title">Study Material Actions</string>
+    <string name="upload_actions_default_note_label">Selected material</string>
     <string name="upload_delete_confirm_title">Delete study material?</string>
     <string name="upload_delete_confirm_message">This will permanently delete "%1$s" from your library and Firebase. This action cannot be undone.</string>
     <string name="upload_delete_confirm_action">Delete</string>
     <string name="upload_delete_success">Study material deleted</string>
     <string name="upload_delete_error_auth">Please sign in again to delete this file</string>
+    <string name="upload_error_no_viewer_found">No app found to open this file</string>
     <string name="upload_delete_error_storage">Could not delete file from Firebase Storage: %1$s</string>
     <string name="upload_delete_error_metadata">Could not delete note metadata: %1$s</string>
     <string name="upload_delete_error_not_found">Could not find this note to delete</string>
     <string name="upload_deleting_inline">Deleting…</string>
+
+    <!-- Smart Sensors -->
+    <string name="sensor_focus_mode_on">Focus Mode Active: Keep studying! ✍️</string>
+    <string name="sensor_focus_mode_off">Welcome back! Ready to continue?</string>
+    <string name="sensor_low_light_detected">Low light detected. Switching to Eye Care mode…</string>
+    <string name="sensor_eye_care_on">Eye Care active</string>
 </resources>

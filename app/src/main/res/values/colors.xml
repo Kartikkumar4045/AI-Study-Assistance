@@ -25,6 +25,7 @@
     <color name="accent_orange">@color/ds_warning</color>
     <color name="accent_green">@color/ds_success</color>
     <color name="accent_purple">@color/ds_primary</color>
+    <color name="sensor_eye_care_overlay">#33EFC589</color>
     <color name="green">@color/ds_success</color>
     <color name="red">@color/ds_error</color>
     <color name="gray_light">@color/ds_border</color>

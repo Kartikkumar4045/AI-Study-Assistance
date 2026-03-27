@@ -5,9 +5,11 @@ import android.content.res.ColorStateList
 import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.text.format.DateUtils
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -22,6 +24,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.DrawableCompat
 import androidx.core.view.MenuItemCompat
 import com.kartik.aistudyassistant.R
+import com.kartik.aistudyassistant.core.utils.SmartSensorManager
 import com.kartik.aistudyassistant.data.local.ContinueLearningPrefs
 import com.kartik.aistudyassistant.data.local.RecentActivityItem
 import com.kartik.aistudyassistant.data.local.RecentActivityType
@@ -44,8 +47,15 @@ import com.google.firebase.database.FirebaseDatabase
 import coil.imageLoader
 import coil.request.ImageRequest
 import coil.transform.CircleCropTransformation
+import java.util.WeakHashMap
 
 class MainActivity : AppCompatActivity() {
+
+    private data class BottomSheetSensorUi(
+        val eyeCareOverlay: View,
+        val focusBanner: TextView,
+        var hideFocusRunnable: Runnable? = null
+    )
 
     private lateinit var auth: FirebaseAuth
     private lateinit var authManager: AuthManager
@@ -70,6 +80,14 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tileProgressQuizzes: LinearLayout
     private lateinit var tileProgressTopics: LinearLayout
 
+    private lateinit var sensorManager: SmartSensorManager
+    private lateinit var cardSensorStatus: CardView
+    private lateinit var tvSensorStatus: TextView
+    private lateinit var viewEyeCareOverlay: View
+    private val bottomSheetSensorUi = WeakHashMap<BottomSheetDialog, BottomSheetSensorUi>()
+    private var isFocusModeActive = false
+    private var isEyeCareActive = false
+
     private var flashcardInProgress = false
     private var flashcardCurrentIndex = 0
     private var flashcardTotal = 0
@@ -88,10 +106,16 @@ class MainActivity : AppCompatActivity() {
         authManager = AuthManager(this)
         tvWelcome = findViewById(R.id.tvWelcome)
         ivProfileImage = findViewById(R.id.ivProfileImage)
+        
+        cardSensorStatus = findViewById(R.id.cardSensorStatus)
+        tvSensorStatus = findViewById(R.id.tvSensorStatus)
+        viewEyeCareOverlay = findViewById(R.id.viewEyeCareOverlay)
+
         initContinueLearningViews()
         initRecentActivityViews()
         initStudyProgressViews()
 
+        setupSensors()
         loadUserData()
         updateContinueLearningSection()
         updateRecentActivitySection()
@@ -99,6 +123,143 @@ class MainActivity : AppCompatActivity() {
         setupClickListeners()
         setupBottomNavigation()
         enforceVerificationGate()
+    }
+
+    private fun setupSensors() {
+        sensorManager = SmartSensorManager(this)
+        sensorManager.onFocusModeChanged = { isFocusActive ->
+            isFocusModeActive = isFocusActive
+            runOnUiThread {
+                if (isFocusActive) {
+                    cardSensorStatus.visibility = View.VISIBLE
+                    cardSensorStatus.setCardBackgroundColor(ContextCompat.getColor(this, R.color.accent_purple))
+                    tvSensorStatus.text = getString(R.string.sensor_focus_mode_on)
+                    tvSensorStatus.setCompoundDrawablesWithIntrinsicBounds(android.R.drawable.ic_lock_idle_lock, 0, 0, 0)
+                } else {
+                    cardSensorStatus.visibility = View.VISIBLE
+                    cardSensorStatus.setCardBackgroundColor(ContextCompat.getColor(this, R.color.accent_green))
+                    tvSensorStatus.text = getString(R.string.sensor_focus_mode_off)
+                    tvSensorStatus.setCompoundDrawablesWithIntrinsicBounds(android.R.drawable.ic_lock_idle_alarm, 0, 0, 0)
+                    
+                    // Hide after 3 seconds
+                    cardSensorStatus.postDelayed({
+                        cardSensorStatus.visibility = View.GONE
+                    }, 3000)
+                }
+                tvSensorStatus.compoundDrawableTintList = ColorStateList.valueOf(ContextCompat.getColor(this, R.color.white))
+                applyBottomSheetSensorUi(fromSensorEvent = true)
+            }
+        }
+
+        sensorManager.onEyeCareChanged = { isEyeCareActive ->
+            this.isEyeCareActive = isEyeCareActive
+            runOnUiThread {
+                viewEyeCareOverlay.visibility = if (isEyeCareActive) View.VISIBLE else View.GONE
+                if (isEyeCareActive) {
+                    Toast.makeText(this, getString(R.string.sensor_low_light_detected), Toast.LENGTH_SHORT).show()
+                }
+                applyBottomSheetSensorUi(fromSensorEvent = true)
+            }
+        }
+    }
+
+    private fun bindSensorUiToBottomSheet(dialog: BottomSheetDialog) {
+        dialog.setOnShowListener {
+            val ui = ensureBottomSheetSensorUi(dialog) ?: return@setOnShowListener
+            bottomSheetSensorUi[dialog] = ui
+            applyBottomSheetSensorUi(dialog, ui, fromSensorEvent = false)
+        }
+        dialog.setOnDismissListener {
+            removeBottomSheetSensorUi(dialog)
+        }
+    }
+
+    private fun ensureBottomSheetSensorUi(dialog: BottomSheetDialog): BottomSheetSensorUi? {
+        bottomSheetSensorUi[dialog]?.let { return it }
+
+        val decorView = dialog.window?.decorView as? FrameLayout ?: return null
+        val eyeCareOverlay = View(this).apply {
+            layoutParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+            setBackgroundColor(ContextCompat.getColor(this@MainActivity, R.color.sensor_eye_care_overlay))
+            visibility = View.GONE
+            isClickable = false
+            isFocusable = false
+            elevation = dpToPx(80).toFloat()
+        }
+
+        val focusBanner = TextView(this).apply {
+            layoutParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+                topMargin = dpToPx(24)
+            }
+            setPadding(dpToPx(16), dpToPx(10), dpToPx(16), dpToPx(10))
+            setTextColor(ContextCompat.getColor(this@MainActivity, R.color.white))
+            elevation = dpToPx(82).toFloat()
+            visibility = View.GONE
+        }
+
+        decorView.addView(eyeCareOverlay)
+        decorView.addView(focusBanner)
+        return BottomSheetSensorUi(eyeCareOverlay = eyeCareOverlay, focusBanner = focusBanner)
+    }
+
+    private fun applyBottomSheetSensorUi(fromSensorEvent: Boolean) {
+        val entries = bottomSheetSensorUi.entries.toList()
+        entries.forEach { (dialog, ui) ->
+            if (!dialog.isShowing) return@forEach
+            applyBottomSheetSensorUi(dialog, ui, fromSensorEvent)
+        }
+    }
+
+    private fun applyBottomSheetSensorUi(
+        dialog: BottomSheetDialog,
+        ui: BottomSheetSensorUi,
+        fromSensorEvent: Boolean
+    ) {
+        if (!dialog.isShowing) return
+
+        ui.eyeCareOverlay.visibility = if (isEyeCareActive) View.VISIBLE else View.GONE
+
+        ui.hideFocusRunnable?.let { ui.focusBanner.removeCallbacks(it) }
+        ui.hideFocusRunnable = null
+
+        if (isFocusModeActive) {
+            ui.focusBanner.visibility = View.VISIBLE
+            ui.focusBanner.text = getString(R.string.sensor_focus_mode_on)
+            ui.focusBanner.setBackgroundColor(ContextCompat.getColor(this, R.color.accent_purple))
+            return
+        }
+
+        if (!fromSensorEvent) {
+            ui.focusBanner.visibility = View.GONE
+            return
+        }
+
+        ui.focusBanner.visibility = View.VISIBLE
+        ui.focusBanner.text = getString(R.string.sensor_focus_mode_off)
+        ui.focusBanner.setBackgroundColor(ContextCompat.getColor(this, R.color.accent_green))
+        val hideRunnable = Runnable {
+            ui.focusBanner.visibility = View.GONE
+        }
+        ui.hideFocusRunnable = hideRunnable
+        ui.focusBanner.postDelayed(hideRunnable, 3000)
+    }
+
+    private fun removeBottomSheetSensorUi(dialog: BottomSheetDialog) {
+        val ui = bottomSheetSensorUi.remove(dialog) ?: return
+        ui.hideFocusRunnable?.let { ui.focusBanner.removeCallbacks(it) }
+        (ui.eyeCareOverlay.parent as? ViewGroup)?.removeView(ui.eyeCareOverlay)
+        (ui.focusBanner.parent as? ViewGroup)?.removeView(ui.focusBanner)
+    }
+
+    private fun dpToPx(value: Int): Int {
+        return (value * resources.displayMetrics.density).toInt()
     }
 
     private fun enforceVerificationGate() {
@@ -122,10 +283,16 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        sensorManager.start()
         loadUserData()
         updateContinueLearningSection()
         updateRecentActivitySection()
         updateProfileAvatarUi()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        sensorManager.stop()
     }
 
     private fun initContinueLearningViews() {
@@ -644,6 +811,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         dialog.setContentView(content)
+        bindSensorUiToBottomSheet(dialog)
         dialog.show()
     }
 

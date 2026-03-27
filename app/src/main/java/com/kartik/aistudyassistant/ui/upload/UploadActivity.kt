@@ -27,11 +27,15 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import coil.load
 import coil.request.ImageResult
+import com.kartik.aistudyassistant.AIStudyAssistanceApp
 import com.kartik.aistudyassistant.R
 import com.kartik.aistudyassistant.data.local.ContinueLearningPrefs
 import com.kartik.aistudyassistant.ui.chat.ChatActivity
+import com.kartik.aistudyassistant.ui.flashcard.FlashcardSetupActivity
+import com.kartik.aistudyassistant.ui.quiz.QuizSetupActivity
 import com.facebook.shimmer.ShimmerFrameLayout
 import com.google.android.material.appbar.MaterialToolbar
+import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
 import com.google.android.material.progressindicator.LinearProgressIndicator
@@ -346,25 +350,41 @@ class UploadActivity : AppCompatActivity() {
     }
 
     private fun showNoteOptions(note: StudyNote) {
-        val options = arrayOf(
-            getString(R.string.upload_option_view_file),
-            getString(R.string.upload_option_summarize),
-            getString(R.string.upload_option_exam_questions),
-            getString(R.string.upload_option_short_notes),
-            getString(R.string.upload_option_delete)
-        )
-        AlertDialog.Builder(this)
-            .setTitle(note.name)
-            .setItems(options) { _, which ->
-                when (which) {
-                    0 -> openFile(note.url)
-                    1 -> openChatWithFile(note, "Summarize the key concepts from the study material: ${note.name}. Provide clear bullet points for exam revision.")
-                    2 -> openChatWithFile(note, "Generate important exam questions with answers based on the study material: ${note.name}.")
-                    3 -> openChatWithFile(note, "Create short revision notes in bullet points based on the study material: ${note.name}.")
-                    4 -> showDeleteConfirmation(note)
-                }
+        if (isNoteDeleting(note)) return
+
+        val sheetView = layoutInflater.inflate(R.layout.bottom_sheet_upload_note_actions, null)
+        val bottomSheet = BottomSheetDialog(this)
+        bottomSheet.setContentView(sheetView)
+        (application as? AIStudyAssistanceApp)?.bindSensorUiToBottomSheet(this, bottomSheet)
+
+        sheetView.findViewById<TextView>(R.id.tvActionNoteName)?.text = note.name
+
+        fun bindAction(actionId: Int, action: () -> Unit) {
+            sheetView.findViewById<View>(actionId)?.setOnClickListener {
+                if (isNoteDeleting(note)) return@setOnClickListener
+                bottomSheet.dismiss()
+                action()
             }
-            .show()
+        }
+
+        bindAction(R.id.cardActionViewFile) { openFile(note.url) }
+        bindAction(R.id.cardActionSummarize) {
+            openChatWithFile(
+                note,
+                "Summarize the key concepts from the study material: ${note.name}. Provide clear bullet points for exam revision."
+            )
+        }
+        bindAction(R.id.cardActionShortNotes) {
+            openChatWithFile(
+                note,
+                "Create short revision notes in bullet points based on the study material: ${note.name}."
+            )
+        }
+        bindAction(R.id.cardActionQuiz) { openQuizWithNote(note) }
+        bindAction(R.id.cardActionFlashcards) { openFlashcardsWithNote(note) }
+        bindAction(R.id.cardActionDelete) { showDeleteConfirmation(note) }
+
+        bottomSheet.show()
     }
 
     private fun showDeleteConfirmation(note: StudyNote) {
@@ -525,9 +545,17 @@ class UploadActivity : AppCompatActivity() {
     }
 
     private fun openFile(url: String) {
-        val intent = Intent(Intent.ACTION_VIEW)
-        intent.data = Uri.parse(url)
-        startActivity(intent)
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+        val canHandleIntent = intent.resolveActivity(packageManager) != null
+        if (!canHandleIntent) {
+            Toast.makeText(this, getString(R.string.upload_error_no_viewer_found), Toast.LENGTH_LONG).show()
+            return
+        }
+        try {
+            startActivity(intent)
+        } catch (_: Exception) {
+            Toast.makeText(this, getString(R.string.upload_error_no_viewer_found), Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun openChatWithFile(note: StudyNote, prompt: String) {
@@ -536,6 +564,26 @@ class UploadActivity : AppCompatActivity() {
             putExtra("FILE_URL", note.url)
             putExtra("FILE_TYPE", note.type)
             putExtra("FILE_NAME", note.name)
+        }
+        startActivity(intent)
+    }
+
+    private fun openQuizWithNote(note: StudyNote) {
+        val prefillTopic = note.name.substringBeforeLast('.', note.name)
+        val intent = Intent(this, QuizSetupActivity::class.java).apply {
+            putExtra(QuizSetupActivity.EXTRA_PREFILL_SOURCE, "notes")
+            putExtra(QuizSetupActivity.EXTRA_PREFILL_NOTE_NAME, note.name)
+            putExtra(QuizSetupActivity.EXTRA_PREFILL_TOPIC, prefillTopic)
+        }
+        startActivity(intent)
+    }
+
+    private fun openFlashcardsWithNote(note: StudyNote) {
+        val prefillTopic = note.name.substringBeforeLast('.', note.name)
+        val intent = Intent(this, FlashcardSetupActivity::class.java).apply {
+            putExtra(FlashcardSetupActivity.EXTRA_SOURCE, FlashcardSetupActivity.SOURCE_NOTES)
+            putExtra(FlashcardSetupActivity.EXTRA_PREFILL_NOTE_NAME, note.name)
+            putExtra(FlashcardSetupActivity.EXTRA_TOPIC_TEXT, prefillTopic)
         }
         startActivity(intent)
     }

@@ -22,6 +22,32 @@
             android:orientation="vertical"
             android:padding="@dimen/space_20">
 
+            <!-- SENSOR STATUS BANNER -->
+            <androidx.cardview.widget.CardView
+                android:id="@+id/cardSensorStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/space_16"
+                android:visibility="gone"
+                app:cardCornerRadius="@dimen/radius_m"
+                app:cardElevation="4dp"
+                app:cardBackgroundColor="@color/accent_purple">
+
+                <TextView
+                    android:id="@+id/tvSensorStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:padding="@dimen/space_12"
+                    app:drawableStartCompat="@android:drawable/ic_lock_idle_lock"
+                    android:drawablePadding="@dimen/space_12"
+                    app:drawableTint="@color/white"
+                    android:text="@string/sensor_focus_mode_on"
+                    android:textColor="@color/white"
+                    android:textSize="@dimen/text_caption"
+                    android:textStyle="bold" />
+            </androidx.cardview.widget.CardView>
+
             <!-- HEADER SECTION -->
             <RelativeLayout
                 android:layout_width="match_parent"
@@ -607,6 +633,17 @@
 
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
+
+    <!-- EYE CARE OVERLAY -->
+    <View
+        android:id="@+id/viewEyeCareOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/sensor_eye_care_overlay"
+        android:visibility="gone"
+        android:elevation="100dp"
+        android:clickable="false"
+        android:focusable="false" />
 
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/bottomNavigation"
