@@ -73,6 +73,7 @@ dependencies {
     // Images and PDF Support
     implementation(libs.coil)
     implementation("com.tom-roush:pdfbox-android:2.0.27.0")
+    implementation(libs.facebook.shimmer)
 
     // ML Kit for OCR
     implementation("com.google.mlkit:text-recognition:16.0.0")

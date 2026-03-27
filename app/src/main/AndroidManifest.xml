@@ -19,17 +19,21 @@
             android:exported="true" />
 
         <activity
-            android:name=".ui.auth.PhoneVerificationActivity"
-            android:exported="false" />
-
-        <activity
-            android:name=".ui.auth.SignInActivity"
+            android:name=".ui.launcher.LaunchLoaderActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".ui.auth.PhoneVerificationActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.auth.SignInActivity"
+            android:exported="true" />
 
         <activity
             android:name=".ui.home.MainActivity"
