@@ -737,15 +737,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateProfileAvatarUi() {
         val photoUri = UserProfilePrefs.read(this).photoUri
-        if (photoUri.isNotBlank()) {
-            ivProfileImage.load(photoUri) {
-                crossfade(true)
-                transformations(CircleCropTransformation())
-                error(R.drawable.graduationcap201)
-            }
-        } else {
-            ivProfileImage.setImageResource(R.drawable.graduationcap201)
-        }
+        
+        // Ensure ivProfileImage remains the graduation cap image
+        ivProfileImage.setImageResource(R.drawable.graduationcap201)
 
         if (::bottomNav.isInitialized) {
             updateBottomNavProfileIcon(photoUri)

@@ -108,25 +108,39 @@ class ProfileActivity : AppCompatActivity() {
         val storageRef = com.google.firebase.storage.FirebaseStorage.getInstance().reference.child("profile_photos/$userId")
         
         showToast("Uploading photo...")
-        storageRef.putFile(uri).addOnSuccessListener {
-            storageRef.downloadUrl.addOnSuccessListener { downloadUrl ->
-                val request = com.google.firebase.auth.UserProfileChangeRequest.Builder()
-                    .setPhotoUri(downloadUrl)
-                    .build()
-
-                auth.currentUser?.updateProfile(request)?.addOnSuccessListener {
-                    val previousPhotoUri = currentPhotoUri
-                    currentPhotoUri = downloadUrl.toString()
-                    if (previousPhotoUri.isNotBlank() && previousPhotoUri != currentPhotoUri && !previousPhotoUri.startsWith("http")) {
-                        revokePersistedPhotoPermission(previousPhotoUri)
-                    }
-                    persistCachedProfile()
-                    updateAvatarView(currentDisplayName)
-                    showToast("Profile photo updated")
-                }
+        try {
+            val inputStream = contentResolver.openInputStream(uri)
+            val bytes = inputStream?.readBytes()
+            inputStream?.close()
+            
+            if (bytes == null) {
+                showToast("Failed to read photo")
+                return
             }
-        }.addOnFailureListener {
-            showToast("Failed to upload photo")
+            
+            storageRef.putBytes(bytes).addOnSuccessListener {
+                storageRef.downloadUrl.addOnSuccessListener { downloadUrl ->
+                    val request = com.google.firebase.auth.UserProfileChangeRequest.Builder()
+                        .setPhotoUri(downloadUrl)
+                        .build()
+
+                    auth.currentUser?.updateProfile(request)?.addOnSuccessListener {
+                        val previousPhotoUri = currentPhotoUri
+                        currentPhotoUri = downloadUrl.toString()
+                        if (previousPhotoUri.isNotBlank() && previousPhotoUri != currentPhotoUri && !previousPhotoUri.startsWith("http")) {
+                            revokePersistedPhotoPermission(previousPhotoUri)
+                        }
+                        persistCachedProfile()
+                        updateAvatarView(currentDisplayName)
+                        showToast("Profile photo updated")
+                    }
+                }
+            }.addOnFailureListener {
+                showToast("Failed to upload photo")
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            showToast("Failed to read photo")
         }
     }
 
@@ -618,6 +632,10 @@ class ProfileActivity : AppCompatActivity() {
         auth.currentUser?.updateProfile(request)?.addOnSuccessListener {
             if (currentPhotoUri.isNotBlank() && !currentPhotoUri.startsWith("http")) {
                 revokePersistedPhotoPermission(currentPhotoUri)
+            }
+            val userId = auth.currentUser?.uid
+            if (userId != null) {
+                com.google.firebase.storage.FirebaseStorage.getInstance().reference.child("profile_photos/$userId").delete()
             }
             currentPhotoUri = ""
             persistCachedProfile()
