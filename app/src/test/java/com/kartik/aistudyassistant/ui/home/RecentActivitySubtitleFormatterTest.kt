@@ -9,7 +9,7 @@ class RecentActivitySubtitleFormatterTest {
 
     @Test
     fun quiz_withPositiveScore_returnsScoreSubtitle() {
-        val item = RecentActivityItem(RecentActivityType.QUIZ, "DSA", 8, 0L)
+        val item = RecentActivityItem(type = RecentActivityType.QUIZ, topic = "DSA", scoreOrCount = 8, timestamp = 0L)
 
         val subtitle = RecentActivitySubtitleFormatter.buildContextualText(item)
 
@@ -18,7 +18,7 @@ class RecentActivitySubtitleFormatterTest {
 
     @Test
     fun quiz_withZeroScore_returnsAttemptedSubtitle() {
-        val item = RecentActivityItem(RecentActivityType.QUIZ, "DSA", 0, 0L)
+        val item = RecentActivityItem(type = RecentActivityType.QUIZ, topic = "DSA", scoreOrCount = 0, timestamp = 0L)
 
         val subtitle = RecentActivitySubtitleFormatter.buildContextualText(item)
 
@@ -27,7 +27,7 @@ class RecentActivitySubtitleFormatterTest {
 
     @Test
     fun flashcard_withPositiveCount_returnsReviewedSubtitle() {
-        val item = RecentActivityItem(RecentActivityType.FLASHCARD, "Trees", 12, 0L)
+        val item = RecentActivityItem(type = RecentActivityType.FLASHCARD, topic = "Trees", scoreOrCount = 12, timestamp = 0L)
 
         val subtitle = RecentActivitySubtitleFormatter.buildContextualText(item)
 
@@ -36,7 +36,7 @@ class RecentActivitySubtitleFormatterTest {
 
     @Test
     fun chat_withSpecificTopic_returnsAskedAboutSubtitle() {
-        val item = RecentActivityItem(RecentActivityType.CHAT, "Binary Search", 0, 0L)
+        val item = RecentActivityItem(type = RecentActivityType.CHAT, topic = "Binary Search", scoreOrCount = 0, timestamp = 0L)
 
         val subtitle = RecentActivitySubtitleFormatter.buildContextualText(item)
 
@@ -45,7 +45,7 @@ class RecentActivitySubtitleFormatterTest {
 
     @Test
     fun chat_withGeneralTopic_returnsFallbackSubtitle() {
-        val item = RecentActivityItem(RecentActivityType.CHAT, "General Chat", 0, 0L)
+        val item = RecentActivityItem(type = RecentActivityType.CHAT, topic = "General Chat", scoreOrCount = 0, timestamp = 0L)
 
         val subtitle = RecentActivitySubtitleFormatter.buildContextualText(item)
 
@@ -54,7 +54,7 @@ class RecentActivitySubtitleFormatterTest {
 
     @Test
     fun upload_pdf_returnsPdfSubtitle() {
-        val item = RecentActivityItem(RecentActivityType.UPLOAD, "notes.pdf", 0, 0L)
+        val item = RecentActivityItem(type = RecentActivityType.UPLOAD, topic = "notes.pdf", scoreOrCount = 0, timestamp = 0L)
 
         val subtitle = RecentActivitySubtitleFormatter.buildContextualText(item)
 
@@ -63,7 +63,7 @@ class RecentActivitySubtitleFormatterTest {
 
     @Test
     fun upload_docx_returnsDocumentSubtitle() {
-        val item = RecentActivityItem(RecentActivityType.UPLOAD, "syllabus.docx", 0, 0L)
+        val item = RecentActivityItem(type = RecentActivityType.UPLOAD, topic = "syllabus.docx", scoreOrCount = 0, timestamp = 0L)
 
         val subtitle = RecentActivitySubtitleFormatter.buildContextualText(item)
 

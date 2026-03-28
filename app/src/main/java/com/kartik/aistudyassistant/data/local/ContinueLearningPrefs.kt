@@ -45,7 +45,9 @@ data class RecentActivityItem(
     val totalCount: Int = 0, // Added to store total questions/cards for percentage
     val timestamp: Long,
     val id: String = "",
-    val sessionId: String = ""
+    val sessionId: String = "",
+    val source: String = "",
+    val noteName: String = ""
 )
 
 data class SessionOverview(
@@ -232,7 +234,9 @@ object ContinueLearningPrefs {
                 scoreOrCount = cardCount.coerceAtLeast(0),
                 totalCount = cardCount.coerceAtLeast(0),
                 timestamp = now,
-                id = UUID.randomUUID().toString()
+                id = UUID.randomUUID().toString(),
+                source = source,
+                noteName = noteName
             )
         )
     }
@@ -288,7 +292,9 @@ object ContinueLearningPrefs {
                 scoreOrCount = score.coerceAtLeast(0),
                 totalCount = totalQuestions.coerceAtLeast(0),
                 timestamp = now,
-                id = UUID.randomUUID().toString()
+                id = UUID.randomUUID().toString(),
+                source = source,
+                noteName = noteName
             )
         )
     }
@@ -327,7 +333,9 @@ object ContinueLearningPrefs {
             scoreOrCount = messageCount.coerceAtLeast(0),
             timestamp = now,
             id = UUID.randomUUID().toString(),
-            sessionId = sessionId
+            sessionId = sessionId,
+            source = source,
+            noteName = noteName
         )
 
         val prefs = prefs(context)

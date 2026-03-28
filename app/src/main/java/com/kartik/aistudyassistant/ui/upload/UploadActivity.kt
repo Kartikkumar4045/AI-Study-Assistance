@@ -51,6 +51,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.Executors
 import java.util.concurrent.RejectedExecutionException
+import com.kartik.aistudyassistant.core.utils.StorageManager
 
 class UploadActivity : AppCompatActivity() {
 
@@ -67,6 +68,9 @@ class UploadActivity : AppCompatActivity() {
     private lateinit var chipAll: Chip
     private lateinit var chipPdf: Chip
     private lateinit var chipImages: Chip
+    private lateinit var tvStorageUsage: TextView
+    private lateinit var progressStorage: LinearProgressIndicator
+    private lateinit var tvStorageWarning: TextView
     private lateinit var notesAdapter: NotesAdapter
     private val notesList = mutableListOf<StudyNote>()
     private val filteredNotesList = mutableListOf<StudyNote>()
@@ -119,6 +123,9 @@ class UploadActivity : AppCompatActivity() {
         chipAll = findViewById(R.id.chipAll)
         chipPdf = findViewById(R.id.chipPdf)
         chipImages = findViewById(R.id.chipImages)
+        tvStorageUsage = findViewById(R.id.tvStorageUsage)
+        progressStorage = findViewById(R.id.progressStorage)
+        tvStorageWarning = findViewById(R.id.tvStorageWarning)
 
         findViewById<MaterialToolbar>(R.id.toolbar).setNavigationOnClickListener { finish() }
 
@@ -133,6 +140,26 @@ class UploadActivity : AppCompatActivity() {
         btnUploadFirst.setOnClickListener {
             pickFile("application/pdf")
         }
+        
+        updateStorageUI()
+    }
+    
+    private fun updateStorageUI() {
+        val userId = auth.currentUser?.uid ?: return
+        StorageManager.getStorageUsed(userId, { usedBytes ->
+            val usedMB = String.format(Locale.getDefault(), "%.2f", usedBytes / (1024f * 1024f))
+            val maxMB = String.format(Locale.getDefault(), "%.2f", StorageManager.MAX_STORAGE_BYTES / (1024f * 1024f))
+            tvStorageUsage.text = "$usedMB MB / $maxMB MB"
+            
+            val progress = ((usedBytes.toDouble() / StorageManager.MAX_STORAGE_BYTES) * 100).toInt()
+            progressStorage.setProgressCompat(progress, true)
+            
+            if (progress >= 80) {
+                tvStorageWarning.visibility = View.VISIBLE
+            } else {
+                tvStorageWarning.visibility = View.GONE
+            }
+        }, {})
     }
 
     private fun setupLazyLoading() {
@@ -148,7 +175,8 @@ class UploadActivity : AppCompatActivity() {
 
     private fun setupRecyclerView() {
         notesAdapter = NotesAdapter(filteredNotesList) { note ->
-            showNoteOptions(note)
+            showNoteOptions(note
+            )
         }
         rvNotes.adapter = notesAdapter
         rvNotes.layoutManager = GridLayoutManager(this, 2)
@@ -182,55 +210,69 @@ class UploadActivity : AppCompatActivity() {
         val fileName = getFileName(uri)
         val userId = auth.currentUser?.uid ?: return
         
-        showProgress(getString(R.string.upload_progress_uploading, fileName))
-        progressBar.setProgressCompat(0, true)
+        val fileSize = StorageManager.getFileSize(this, uri)
 
-        val fileRef = storage.child("user_uploads/$userId/$fileName")
-        
-        fileRef.putFile(uri)
-            .addOnSuccessListener {
-                fileRef.downloadUrl.addOnSuccessListener { downloadUrl ->
-                    saveNoteMetadata(fileName, downloadUrl.toString())
+        StorageManager.getStorageUsed(userId, { currentUsed ->
+            if (currentUsed + fileSize > StorageManager.MAX_STORAGE_BYTES) {
+                Toast.makeText(this, "Storage limit exceeded. You can upload up to 5 MB total.", Toast.LENGTH_LONG).show()
+                return@getStorageUsed
+            }
+
+            showProgress(getString(R.string.upload_progress_uploading, fileName))
+            progressBar.setProgressCompat(0, true)
+
+            val fileRef = storage.child("user_uploads/$userId/$fileName")
+
+            fileRef.putFile(uri)
+                .addOnSuccessListener {
+                    fileRef.downloadUrl.addOnSuccessListener { downloadUrl ->
+                        saveNoteMetadata(fileName, downloadUrl.toString(), fileSize)
+                    }
                 }
-            }
-            .addOnFailureListener { e ->
-                hideProgress()
-                Toast.makeText(
-                    this,
-                    getString(R.string.upload_error_upload_failed, e.message ?: getString(R.string.upload_unknown_error)),
-                    Toast.LENGTH_LONG
-                ).show()
-            }
-            .addOnProgressListener { taskSnapshot ->
-                val progress = if (taskSnapshot.totalByteCount > 0) {
-                    (100.0 * taskSnapshot.bytesTransferred / taskSnapshot.totalByteCount).toInt()
-                } else 0
-                tvProgressStatus.text = getString(R.string.upload_progress_percent, fileName, progress)
-                progressBar.setProgressCompat(progress, true)
-            }
+                .addOnFailureListener { e ->
+                    hideProgress()
+                    Toast.makeText(
+                        this,
+                        getString(R.string.upload_error_upload_failed, e.message ?: getString(R.string.upload_unknown_error)),
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+                .addOnProgressListener { taskSnapshot ->
+                    val progress = if (taskSnapshot.totalByteCount > 0) {
+                        (100.0 * taskSnapshot.bytesTransferred / taskSnapshot.totalByteCount).toInt()
+                    } else 0
+                    tvProgressStatus.text = getString(R.string.upload_progress_percent, fileName, progress)
+                    progressBar.setProgressCompat(progress, true)
+                }
+        }, {
+            Toast.makeText(this, "Failed to check storage limit.", Toast.LENGTH_SHORT).show()
+        })
     }
 
-    private fun saveNoteMetadata(fileName: String, downloadUrl: String) {
+    private fun saveNoteMetadata(fileName: String, downloadUrl: String, fileSize: Long = 0) {
         val userId = auth.currentUser?.uid ?: return
         val noteId = UUID.randomUUID().toString()
-        
+
         val note = StudyNote(
             id = noteId,
             name = fileName,
             type = if (fileName.lowercase().endsWith(".pdf")) "pdf" else "image",
             url = downloadUrl,
             timestamp = System.currentTimeMillis(),
-            userId = userId
+            userId = userId,
+            sizeBytes = fileSize
         )
 
         firestore.collection("Notes").document(userId).collection("UserNotes").document(noteId)
             .set(note)
             .addOnSuccessListener {
+                StorageManager.addStorageUsed(userId, fileSize)
                 ContinueLearningPrefs.saveUploadActivity(this, fileName)
                 notesList.removeAll { it.id == note.id }
                 notesList.add(0, note)
                 applyFilters()
                 hideProgress()
+                updateStorageUI()
                 Toast.makeText(this, getString(R.string.upload_success), Toast.LENGTH_SHORT).show()
             }
             .addOnFailureListener { e ->
@@ -299,7 +341,7 @@ class UploadActivity : AppCompatActivity() {
             }
 
             val matchesSearch = loweredQuery.isBlank() ||
-                note.name.lowercase(Locale.getDefault()).contains(loweredQuery)
+                    note.name.lowercase(Locale.getDefault()).contains(loweredQuery)
 
             matchesType && matchesSearch
         }
@@ -508,6 +550,11 @@ class UploadActivity : AppCompatActivity() {
         }
 
         if (removed) {
+            val userId = auth.currentUser?.uid
+            if (userId != null) {
+                StorageManager.removeStorageUsed(userId, note.sizeBytes)
+                updateStorageUI()
+            }
             pdfThumbnailCache.remove(note.url)
             pendingPdfThumbnails.remove(note.url)
             applyFilters()
@@ -749,7 +796,8 @@ class UploadActivity : AppCompatActivity() {
         val type: String = "",
         val url: String = "",
         val timestamp: Long = 0,
-        val userId: String = ""
+        val userId: String = "",
+        val sizeBytes: Long = 0
     )
 
     inner class NotesAdapter(private val notes: List<StudyNote>, private val onClick: (StudyNote) -> Unit) :
@@ -833,3 +881,8 @@ class UploadActivity : AppCompatActivity() {
         IMAGE
     }
 }
+
+
+
+
+

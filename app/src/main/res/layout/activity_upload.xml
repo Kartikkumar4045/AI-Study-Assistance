@@ -41,6 +41,60 @@
             android:orientation="vertical"
             android:padding="@dimen/space_20">
 
+            <!-- STORAGE usage -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/space_16"
+                app:cardCornerRadius="@dimen/radius_m"
+                app:cardElevation="2dp"
+                app:cardBackgroundColor="@color/card_bg">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="@dimen/space_16">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Storage Used"
+                        android:textColor="@color/text_main"
+                        android:textStyle="bold"
+                        android:textSize="16sp"/>
+
+                    <TextView
+                        android:id="@+id/tvStorageUsage"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="0 MB / 5 MB"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="14sp"/>
+
+                    <com.google.android.material.progressindicator.LinearProgressIndicator
+                        android:id="@+id/progressStorage"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        app:trackCornerRadius="4dp"
+                        app:indicatorColor="@color/primary"
+                        app:trackThickness="8dp"/>
+
+                    <TextView
+                        android:id="@+id/tvStorageWarning"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="Storage almost full"
+                        android:textColor="@android:color/holo_red_dark"
+                        android:visibility="gone"
+                        android:textSize="12sp"/>
+
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
             <!-- UPLOAD OPTIONS -->
             <LinearLayout
                 android:layout_width="match_parent"

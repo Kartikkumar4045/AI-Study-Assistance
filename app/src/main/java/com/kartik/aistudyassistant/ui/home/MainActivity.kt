@@ -45,6 +45,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import coil.imageLoader
+import coil.load
 import coil.request.ImageRequest
 import coil.transform.CircleCropTransformation
 import java.util.WeakHashMap
@@ -426,6 +427,12 @@ class MainActivity : AppCompatActivity() {
                     startActivity(
                         Intent(this, QuizSetupActivity::class.java).apply {
                             putExtra(QuizSetupActivity.EXTRA_PREFILL_TOPIC, topic)
+                            if (item.source.isNotEmpty()) {
+                                putExtra(QuizSetupActivity.EXTRA_PREFILL_SOURCE, item.source)
+                            }
+                            if (item.noteName.isNotEmpty()) {
+                                putExtra(QuizSetupActivity.EXTRA_PREFILL_NOTE_NAME, item.noteName)
+                            }
                         }
                     )
                 }
@@ -438,6 +445,12 @@ class MainActivity : AppCompatActivity() {
                     startActivity(
                         Intent(this, FlashcardSetupActivity::class.java).apply {
                             putExtra(FlashcardSetupActivity.EXTRA_TOPIC_TEXT, topic)
+                            if (item.source.isNotEmpty()) {
+                                putExtra(FlashcardSetupActivity.EXTRA_SOURCE, item.source)
+                            }
+                            if (item.noteName.isNotEmpty()) {
+                                putExtra(FlashcardSetupActivity.EXTRA_PREFILL_NOTE_NAME, item.noteName)
+                            }
                         }
                     )
                 }
@@ -724,7 +737,15 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateProfileAvatarUi() {
         val photoUri = UserProfilePrefs.read(this).photoUri
-        ivProfileImage.setImageResource(R.drawable.graduationcap201)
+        if (photoUri.isNotBlank()) {
+            ivProfileImage.load(photoUri) {
+                crossfade(true)
+                transformations(CircleCropTransformation())
+                error(R.drawable.graduationcap201)
+            }
+        } else {
+            ivProfileImage.setImageResource(R.drawable.graduationcap201)
+        }
 
         if (::bottomNav.isInitialized) {
             updateBottomNavProfileIcon(photoUri)

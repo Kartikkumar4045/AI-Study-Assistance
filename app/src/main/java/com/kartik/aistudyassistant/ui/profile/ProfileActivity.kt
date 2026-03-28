@@ -18,6 +18,7 @@ import coil.load
 import com.kartik.aistudyassistant.AIStudyAssistanceApp
 import com.kartik.aistudyassistant.R
 import com.kartik.aistudyassistant.data.local.ContinueLearningPrefs
+import com.kartik.aistudyassistant.core.utils.StorageManager
 import com.kartik.aistudyassistant.data.local.RecentActivityItem
 import com.kartik.aistudyassistant.data.local.RecentActivityType
 import com.kartik.aistudyassistant.data.local.UserProfilePrefs
@@ -34,8 +35,11 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.textfield.TextInputEditText
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.PhoneAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
+import com.kartik.aistudyassistant.data.model.AuthResult
 import com.google.firebase.firestore.ListenerRegistration
+import android.os.CountDownTimer
 import java.text.DateFormat
 import java.util.Date
 import kotlin.math.max
@@ -47,6 +51,10 @@ class ProfileActivity : AppCompatActivity() {
     private lateinit var tvUserName: TextView
     private lateinit var tvUserEmail: TextView
     private lateinit var tvUserPhone: TextView
+    private lateinit var tvEmailVerified: TextView
+    private lateinit var tvPhoneVerified: TextView
+    private lateinit var tvPhoneVerifyAction: TextView
+    private lateinit var ivEditPhone: ImageView
     private lateinit var tvLearningStreakValue: TextView
     private lateinit var tvLearningStudyTimeValue: TextView
     private lateinit var tvLearningQuizValue: TextView
@@ -69,11 +77,16 @@ class ProfileActivity : AppCompatActivity() {
     private lateinit var llConsistencyDots: LinearLayout
 
     private lateinit var authManager: AuthManager
+    private val auth by lazy { FirebaseAuth.getInstance() }
     private var currentDisplayName: String = ""
     private var currentEmail: String = ""
     private var currentPhone: String = ""
     private var currentPhotoUri: String = ""
     
+    private var phoneVerificationId: String? = null
+    private var resendToken: PhoneAuthProvider.ForceResendingToken? = null
+    private var otpTimer: CountDownTimer? = null
+
     private var materialsListener: ListenerRegistration? = null
 
     private val photoPicker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -87,13 +100,34 @@ class ProfileActivity : AppCompatActivity() {
         } catch (_: SecurityException) {
         }
 
-        val previousPhotoUri = currentPhotoUri
-        currentPhotoUri = uri.toString()
-        if (previousPhotoUri.isNotBlank() && previousPhotoUri != currentPhotoUri) {
-            revokePersistedPhotoPermission(previousPhotoUri)
+        uploadProfilePhotoToFirebase(uri)
+    }
+
+    private fun uploadProfilePhotoToFirebase(uri: Uri) {
+        val userId = auth.currentUser?.uid ?: return
+        val storageRef = com.google.firebase.storage.FirebaseStorage.getInstance().reference.child("profile_photos/$userId")
+        
+        showToast("Uploading photo...")
+        storageRef.putFile(uri).addOnSuccessListener {
+            storageRef.downloadUrl.addOnSuccessListener { downloadUrl ->
+                val request = com.google.firebase.auth.UserProfileChangeRequest.Builder()
+                    .setPhotoUri(downloadUrl)
+                    .build()
+
+                auth.currentUser?.updateProfile(request)?.addOnSuccessListener {
+                    val previousPhotoUri = currentPhotoUri
+                    currentPhotoUri = downloadUrl.toString()
+                    if (previousPhotoUri.isNotBlank() && previousPhotoUri != currentPhotoUri && !previousPhotoUri.startsWith("http")) {
+                        revokePersistedPhotoPermission(previousPhotoUri)
+                    }
+                    persistCachedProfile()
+                    updateAvatarView(currentDisplayName)
+                    showToast("Profile photo updated")
+                }
+            }
+        }.addOnFailureListener {
+            showToast("Failed to upload photo")
         }
-        persistCachedProfile()
-        updateAvatarView(currentDisplayName)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -108,6 +142,10 @@ class ProfileActivity : AppCompatActivity() {
         tvUserName = findViewById(R.id.tvUserName)
         tvUserEmail = findViewById(R.id.tvUserEmail)
         tvUserPhone = findViewById(R.id.tvUserPhone)
+        tvEmailVerified = findViewById(R.id.tvEmailVerified)
+        tvPhoneVerified = findViewById(R.id.tvPhoneVerified)
+        tvPhoneVerifyAction = findViewById(R.id.tvPhoneVerifyAction)
+        ivEditPhone = findViewById(R.id.ivEditPhone)
         tvLearningStreakValue = findViewById(R.id.tvLearningStreakValue)
         tvLearningStudyTimeValue = findViewById(R.id.tvLearningStudyTimeValue)
         tvLearningQuizValue = findViewById(R.id.tvLearningQuizValue)
@@ -128,6 +166,13 @@ class ProfileActivity : AppCompatActivity() {
         llProfileRecentActivity = findViewById(R.id.llProfileRecentActivity)
 
         llConsistencyDots = findViewById(R.id.llConsistencyDots)
+
+        tvStorageUsage = findViewById(R.id.tvStorageUsage)
+        progressStorage = findViewById(R.id.progressStorage)
+        tvStorageWarning = findViewById(R.id.tvStorageWarning)
+
+        ivEditPhone.setOnClickListener { showEditPhoneDialog() }
+        tvPhoneVerifyAction.setOnClickListener { showEditPhoneDialog() }
 
         findViewById<ImageView>(R.id.ivBack).setOnClickListener { finish() }
         findViewById<MaterialCardView>(R.id.cardAvatar).setOnClickListener { showPhotoActionsDialog() }
@@ -156,6 +201,7 @@ class ProfileActivity : AppCompatActivity() {
         observeMaterialsCount()
         bindConsistencyHeatmap()
         bindRecentActivity()
+        updateStorageUI()
     }
 
     override fun onResume() {
@@ -169,6 +215,7 @@ class ProfileActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         materialsListener?.remove()
+        otpTimer?.cancel()
     }
 
     private fun bindUserProfile() {
@@ -198,6 +245,30 @@ class ProfileActivity : AppCompatActivity() {
         tvUserName.text = displayName
         tvUserEmail.text = email
         tvUserPhone.text = phone
+
+        val isEmailVerified = user?.isEmailVerified == true
+        if (isEmailVerified) {
+            tvEmailVerified.visibility = View.VISIBLE
+            tvEmailVerified.text = "Verified"
+            tvEmailVerified.setTextColor(ContextCompat.getColor(this, android.R.color.holo_green_dark))
+        } else {
+            tvEmailVerified.visibility = View.VISIBLE
+            tvEmailVerified.text = "Not Verified"
+            tvEmailVerified.setTextColor(ContextCompat.getColor(this, R.color.ds_error))
+        }
+
+        val isPhoneVerified = !user?.phoneNumber.isNullOrBlank()
+        if (isPhoneVerified) {
+            tvPhoneVerified.visibility = View.VISIBLE
+            tvPhoneVerified.text = "Verified"
+            tvPhoneVerified.setTextColor(ContextCompat.getColor(this, android.R.color.holo_green_dark))
+            tvPhoneVerifyAction.visibility = View.GONE
+        } else {
+            tvPhoneVerified.visibility = View.VISIBLE
+            tvPhoneVerified.text = "Not Verified"
+            tvPhoneVerified.setTextColor(ContextCompat.getColor(this, R.color.ds_error))
+            tvPhoneVerifyAction.visibility = View.VISIBLE
+        }
 
         currentDisplayName = displayName
         currentEmail = email
@@ -308,11 +379,23 @@ class ProfileActivity : AppCompatActivity() {
                     RecentActivityType.QUIZ -> {
                         startActivity(Intent(this@ProfileActivity, QuizSetupActivity::class.java).apply {
                             putExtra(QuizSetupActivity.EXTRA_PREFILL_TOPIC, topic)
+                            if (item.source.isNotEmpty()) {
+                                putExtra(QuizSetupActivity.EXTRA_PREFILL_SOURCE, item.source)
+                            }
+                            if (item.noteName.isNotEmpty()) {
+                                putExtra(QuizSetupActivity.EXTRA_PREFILL_NOTE_NAME, item.noteName)
+                            }
                         })
                     }
                     RecentActivityType.FLASHCARD -> {
                         startActivity(Intent(this@ProfileActivity, FlashcardSetupActivity::class.java).apply {
                             putExtra(FlashcardSetupActivity.EXTRA_TOPIC_TEXT, topic)
+                            if (item.source.isNotEmpty()) {
+                                putExtra(FlashcardSetupActivity.EXTRA_SOURCE, item.source)
+                            }
+                            if (item.noteName.isNotEmpty()) {
+                                putExtra(FlashcardSetupActivity.EXTRA_PREFILL_NOTE_NAME, item.noteName)
+                            }
                         })
                     }
                     RecentActivityType.CHAT -> {
@@ -494,9 +577,17 @@ class ProfileActivity : AppCompatActivity() {
         dialog.setContentView(content)
         (application as? AIStudyAssistanceApp)?.bindSensorUiToBottomSheet(this, dialog)
 
+        val btnViewPhoto = content.findViewById<MaterialButton>(R.id.btnViewPhoto)
         val btnUploadChange = content.findViewById<MaterialButton>(R.id.btnUploadChange)
         val btnRemovePhoto = content.findViewById<MaterialButton>(R.id.btnRemovePhoto)
         val tvCancel = content.findViewById<TextView>(R.id.tvCancel)
+
+        btnViewPhoto.visibility = if (currentPhotoUri.isBlank()) View.GONE else View.VISIBLE
+
+        btnViewPhoto.setOnClickListener {
+            dialog.dismiss()
+            showFullScreenPhoto()
+        }
 
         btnUploadChange.text = if (currentPhotoUri.isBlank()) {
             getString(R.string.profile_photo_upload)
@@ -512,14 +603,45 @@ class ProfileActivity : AppCompatActivity() {
         }
 
         btnRemovePhoto.setOnClickListener {
-            revokePersistedPhotoPermission(currentPhotoUri)
-            currentPhotoUri = ""
-            persistCachedProfile()
-            updateAvatarView(currentDisplayName)
+            removeProfilePhoto()
             dialog.dismiss()
         }
 
         tvCancel.setOnClickListener { dialog.dismiss() }
+        dialog.show()
+    }
+
+    private fun removeProfilePhoto() {
+        val request = com.google.firebase.auth.UserProfileChangeRequest.Builder()
+            .setPhotoUri(null)
+            .build()
+        auth.currentUser?.updateProfile(request)?.addOnSuccessListener {
+            if (currentPhotoUri.isNotBlank() && !currentPhotoUri.startsWith("http")) {
+                revokePersistedPhotoPermission(currentPhotoUri)
+            }
+            currentPhotoUri = ""
+            persistCachedProfile()
+            updateAvatarView(currentDisplayName)
+            showToast("Profile photo removed")
+        }
+    }
+
+    private fun showFullScreenPhoto() {
+        if (currentPhotoUri.isBlank()) return
+        val dialog = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen)
+        val imageView = ImageView(this).apply {
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            setBackgroundColor(android.graphics.Color.BLACK)
+            load(currentPhotoUri) {
+                crossfade(true)
+            }
+            setOnClickListener { dialog.dismiss() }
+        }
+        dialog.setContentView(imageView)
         dialog.show()
     }
 
@@ -575,6 +697,137 @@ class ProfileActivity : AppCompatActivity() {
         android.widget.Toast.makeText(this, message, android.widget.Toast.LENGTH_SHORT).show()
     }
 
+    private fun showEditPhoneDialog() {
+        val dialog = BottomSheetDialog(this)
+        val root = findViewById<android.view.ViewGroup>(android.R.id.content)
+        val content = layoutInflater.inflate(R.layout.bottom_sheet_verify_phone, root, false)
+        dialog.setContentView(content)
+        (application as? AIStudyAssistanceApp)?.bindSensorUiToBottomSheet(this, dialog)
+
+        val etPhone = content.findViewById<TextInputEditText>(R.id.etPhone)
+        val btnSendPhoneOtp = content.findViewById<MaterialButton>(R.id.btnSendPhoneOtp)
+        val btnResendPhoneOtp = content.findViewById<MaterialButton>(R.id.btnResendPhoneOtp)
+        val tvPhoneOtpBlockedCountdown = content.findViewById<TextView>(R.id.tvPhoneOtpBlockedCountdown)
+        val tilPhoneOtp = content.findViewById<View>(R.id.tilPhoneOtp)
+        val etPhoneOtp = content.findViewById<TextInputEditText>(R.id.etPhoneOtp)
+        val btnVerifyPhoneOtp = content.findViewById<MaterialButton>(R.id.btnVerifyPhoneOtp)
+
+        val currentUserPhone = authManager.getCurrentUser()?.phoneNumber?.replace("+91", "")?.trim() ?: ""
+        etPhone.setText(currentUserPhone)
+
+        fun startOtpTimer() {
+            btnResendPhoneOtp.isEnabled = false
+            tvPhoneOtpBlockedCountdown.visibility = View.VISIBLE
+            otpTimer?.cancel()
+            otpTimer = object : CountDownTimer(30000, 1000) {
+                override fun onTick(millisUntilFinished: Long) {
+                    tvPhoneOtpBlockedCountdown.text = "Try again in ${millisUntilFinished / 1000}s"
+                }
+
+                override fun onFinish() {
+                    tvPhoneOtpBlockedCountdown.visibility = View.GONE
+                    btnResendPhoneOtp.isEnabled = true
+                }
+            }.start()
+        }
+
+        fun updateUiForOtpSent() {
+            tilPhoneOtp.visibility = View.VISIBLE
+            btnVerifyPhoneOtp.visibility = View.VISIBLE
+            etPhone.isEnabled = false
+            btnSendPhoneOtp.isEnabled = false
+            startOtpTimer()
+        }
+
+        btnSendPhoneOtp.setOnClickListener {
+            val phone = etPhone.text.toString().trim()
+            if (phone.length < 10) {
+                etPhone.error = "Enter valid phone number"
+                return@setOnClickListener
+            }
+            btnSendPhoneOtp.isEnabled = false
+            btnSendPhoneOtp.text = getString(R.string.common_sending)
+            authManager.startPhoneVerification(this, phone,
+                onCodeSent = { verificationId, token ->
+                    phoneVerificationId = verificationId
+                    resendToken = token
+                    btnSendPhoneOtp.text = "Send Phone OTP"
+                    updateUiForOtpSent()
+                    showToast("OTP Sent")
+                },
+                onVerified = { result ->
+                    btnSendPhoneOtp.text = "Send Phone OTP"
+                    if (result is AuthResult.Success) {
+                        showToast("Phone verified automatically")
+                        dialog.dismiss()
+                        bindUserProfile()
+                    }
+                },
+                onError = { error ->
+                    showToast(error)
+                    btnSendPhoneOtp.isEnabled = true
+                    btnSendPhoneOtp.text = "Send Phone OTP"
+                }
+            )
+        }
+
+        btnResendPhoneOtp.setOnClickListener {
+            val phone = etPhone.text.toString().trim()
+            val token = resendToken
+            if (phone.length < 10) return@setOnClickListener
+            if (token == null) {
+                btnSendPhoneOtp.performClick()
+                return@setOnClickListener
+            }
+            btnResendPhoneOtp.isEnabled = false
+            btnResendPhoneOtp.text = getString(R.string.common_sending)
+            authManager.resendPhoneVerification(this, phone, token,
+                onCodeSent = { verificationId, newToken ->
+                    phoneVerificationId = verificationId
+                    resendToken = newToken
+                    btnResendPhoneOtp.text = "Resend OTP"
+                    showToast("OTP Resent")
+                    startOtpTimer()
+                },
+                onVerified = { result ->
+                    btnResendPhoneOtp.text = "Resend OTP"
+                    if (result is AuthResult.Success) {
+                        showToast("Phone verified automatically")
+                        dialog.dismiss()
+                        bindUserProfile()
+                    }
+                },
+                onError = { error -> 
+                    showToast(error)
+                    btnResendPhoneOtp.isEnabled = true
+                    btnResendPhoneOtp.text = "Resend OTP"
+                }
+            )
+        }
+
+        btnVerifyPhoneOtp.setOnClickListener {
+            val otp = etPhoneOtp.text.toString().trim()
+            val verificationId = phoneVerificationId
+            if (otp.isBlank() || verificationId == null) {
+                showToast("Enter OTP")
+                return@setOnClickListener
+            }
+            btnVerifyPhoneOtp.isEnabled = false
+            authManager.verifyPhoneCode(verificationId, otp) { result ->
+                btnVerifyPhoneOtp.isEnabled = true
+                if (result is AuthResult.Success) {
+                    showToast("Phone Verified successfully")
+                    dialog.dismiss()
+                    bindUserProfile()
+                } else if (result is AuthResult.Error) {
+                    showToast(result.message ?: "Verification failed")
+                }
+            }
+        }
+
+        dialog.show()
+    }
+
     private fun logoutUser() {
         val cachedPhotoUri = UserProfilePrefs.read(this).photoUri
         revokePersistedPhotoPermission(currentPhotoUri)
@@ -608,7 +861,7 @@ class ProfileActivity : AppCompatActivity() {
     }
 
     private fun revokePersistedPhotoPermission(uriString: String) {
-        if (uriString.isBlank()) return
+        if (uriString.isBlank() || uriString.startsWith("http")) return
         try {
             contentResolver.releasePersistableUriPermission(
                 Uri.parse(uriString),
@@ -616,5 +869,27 @@ class ProfileActivity : AppCompatActivity() {
             )
         } catch (_: Exception) {
         }
+    }
+
+    private lateinit var tvStorageUsage: TextView
+    private lateinit var progressStorage: com.google.android.material.progressindicator.LinearProgressIndicator
+    private lateinit var tvStorageWarning: TextView
+
+    private fun updateStorageUI() {
+        val userId = auth.currentUser?.uid ?: return
+        StorageManager.getStorageUsed(userId, { usedBytes ->
+            val usedMB = String.format(java.util.Locale.getDefault(), "%.2f", usedBytes / (1024f * 1024f))
+            val maxMB = String.format(java.util.Locale.getDefault(), "%.2f", StorageManager.MAX_STORAGE_BYTES / (1024f * 1024f))
+            tvStorageUsage.text = "$usedMB MB / $maxMB MB"
+            
+            val progress = ((usedBytes.toDouble() / StorageManager.MAX_STORAGE_BYTES) * 100).toInt()
+            progressStorage.setProgressCompat(progress, true)
+            
+            if (progress >= 80) {
+                tvStorageWarning.visibility = View.VISIBLE
+            } else {
+                tvStorageWarning.visibility = View.GONE
+            }
+        }, {})
     }
 }
