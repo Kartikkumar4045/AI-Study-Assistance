@@ -18,6 +18,7 @@ import coil.load
 import com.kartik.aistudyassistant.AIStudyAssistanceApp
 import com.kartik.aistudyassistant.R
 import com.kartik.aistudyassistant.data.local.ContinueLearningPrefs
+import com.kartik.aistudyassistant.data.local.AppSettingsPrefs
 import com.kartik.aistudyassistant.core.utils.StorageManager
 import com.kartik.aistudyassistant.data.local.RecentActivityItem
 import com.kartik.aistudyassistant.data.local.RecentActivityType
@@ -33,6 +34,7 @@ import com.kartik.aistudyassistant.ui.upload.UploadActivity
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.bottomsheet.BottomSheetDialog
+import com.google.android.material.switchmaterial.SwitchMaterial
 import com.google.android.material.textfield.TextInputEditText
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.PhoneAuthProvider
@@ -75,6 +77,8 @@ class ProfileActivity : AppCompatActivity() {
     private lateinit var llProfileRecentActivity: LinearLayout
 
     private lateinit var llConsistencyDots: LinearLayout
+    private lateinit var switchSensorEnabled: SwitchMaterial
+    private lateinit var switchDarkTheme: SwitchMaterial
 
     private lateinit var authManager: AuthManager
     private val auth by lazy { FirebaseAuth.getInstance() }
@@ -180,6 +184,8 @@ class ProfileActivity : AppCompatActivity() {
         llProfileRecentActivity = findViewById(R.id.llProfileRecentActivity)
 
         llConsistencyDots = findViewById(R.id.llConsistencyDots)
+        switchSensorEnabled = findViewById(R.id.switchSensorEnabled)
+        switchDarkTheme = findViewById(R.id.switchDarkTheme)
 
         tvStorageUsage = findViewById(R.id.tvStorageUsage)
         progressStorage = findViewById(R.id.progressStorage)
@@ -203,6 +209,7 @@ class ProfileActivity : AppCompatActivity() {
         btnReviewFlashcards.setOnClickListener { startActivity(Intent(this, FlashcardSetupActivity::class.java)) }
         findViewById<MaterialButton>(R.id.btnLogout).setOnClickListener { showLogoutConfirmationDialog() }
         btnManageMaterials.setOnClickListener { startActivity(Intent(this, UploadActivity::class.java)) }
+        bindPreferenceToggles()
 
         if (!authManager.isUserLoggedIn()) {
             logoutUser()
@@ -220,10 +227,30 @@ class ProfileActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        bindPreferenceToggles()
         bindLearningSnapshot()
         bindPerformance()
         bindConsistencyHeatmap()
         bindRecentActivity()
+    }
+
+    private fun bindPreferenceToggles() {
+        switchSensorEnabled.setOnCheckedChangeListener(null)
+        switchDarkTheme.setOnCheckedChangeListener(null)
+
+        switchSensorEnabled.isChecked = AppSettingsPrefs.isSensorEnabled(this)
+        switchDarkTheme.isChecked = AppSettingsPrefs.isDarkThemeEnabled(this)
+
+        switchSensorEnabled.setOnCheckedChangeListener { _, isChecked ->
+            AppSettingsPrefs.setSensorEnabled(this, isChecked)
+            (application as? AIStudyAssistanceApp)?.refreshSensorState()
+        }
+
+        switchDarkTheme.setOnCheckedChangeListener { _, isChecked ->
+            if (AppSettingsPrefs.isDarkThemeEnabled(this) == isChecked) return@setOnCheckedChangeListener
+            AppSettingsPrefs.setDarkThemeEnabled(this, isChecked)
+            AppSettingsPrefs.applyTheme(this)
+        }
     }
 
     override fun onDestroy() {

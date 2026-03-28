@@ -12,6 +12,7 @@ import android.widget.Toast
 import androidx.core.content.ContextCompat
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.kartik.aistudyassistant.core.utils.SmartSensorManager
+import com.kartik.aistudyassistant.data.local.AppSettingsPrefs
 import com.kartik.aistudyassistant.ui.auth.SignInActivity
 import com.kartik.aistudyassistant.ui.auth.SignUpActivity
 import com.kartik.aistudyassistant.ui.home.MainActivity
@@ -45,8 +46,16 @@ class AIStudyAssistanceApp : Application(), Application.ActivityLifecycleCallbac
     override fun onCreate() {
         super.onCreate()
 
+        AppSettingsPrefs.applyTheme(this)
+
         smartSensorManager = SmartSensorManager(this)
         smartSensorManager.onFocusModeChanged = focusChanged@{ isFocusActive ->
+            if (!isSensorEnabled()) {
+                isFocusModeActive = false
+                isEyeCareActive = false
+                clearAllSensorUi()
+                return@focusChanged
+            }
             isFocusModeActive = isFocusActive
             val activity = activeSensorActivity?.get() ?: return@focusChanged
             if (activity is MainActivity || isExcludedScreen(activity)) return@focusChanged
@@ -55,6 +64,12 @@ class AIStudyAssistanceApp : Application(), Application.ActivityLifecycleCallbac
             applyBottomSheetSensorUi(activity, fromSensorEvent = true)
         }
         smartSensorManager.onEyeCareChanged = eyeCareChanged@{ isEyeCareActive ->
+            if (!isSensorEnabled()) {
+                isFocusModeActive = false
+                this.isEyeCareActive = false
+                clearAllSensorUi()
+                return@eyeCareChanged
+            }
             this.isEyeCareActive = isEyeCareActive
 
             val activity = activeSensorActivity?.get() ?: return@eyeCareChanged
@@ -84,6 +99,7 @@ class AIStudyAssistanceApp : Application(), Application.ActivityLifecycleCallbac
     }
 
     fun bindSensorUiToBottomSheet(activity: Activity, dialog: BottomSheetDialog) {
+        if (!isSensorEnabled()) return
         if (isExcludedScreen(activity) || isManagedByMainScreen(activity)) return
 
         dialog.setOnShowListener {
@@ -275,7 +291,57 @@ class AIStudyAssistanceApp : Application(), Application.ActivityLifecycleCallbac
         return activity is MainActivity
     }
 
+    private fun isSensorEnabled(): Boolean {
+        return AppSettingsPrefs.isSensorEnabled(this)
+    }
+
+    private fun clearAllSensorUi() {
+        activitySensorUi.values.forEach { ui ->
+            ui.eyeCareOverlay.post {
+                ui.hideFocusRunnable?.let { ui.focusBanner.removeCallbacks(it) }
+                ui.hideFocusRunnable = null
+                ui.eyeCareOverlay.visibility = View.GONE
+                ui.focusBanner.visibility = View.GONE
+            }
+        }
+
+        bottomSheetSensorUi.values.forEach { ui ->
+            ui.eyeCareOverlay.post {
+                ui.hideFocusRunnable?.let { ui.focusBanner.removeCallbacks(it) }
+                ui.hideFocusRunnable = null
+                ui.eyeCareOverlay.visibility = View.GONE
+                ui.focusBanner.visibility = View.GONE
+            }
+        }
+    }
+
+    fun refreshSensorState() {
+        if (!isSensorEnabled()) {
+            smartSensorManager.stop()
+            activeSensorActivity = null
+            isFocusModeActive = false
+            isEyeCareActive = false
+            clearAllSensorUi()
+            return
+        }
+
+        val activity = activeSensorActivity?.get() ?: return
+        if (isExcludedScreen(activity) || isManagedByMainScreen(activity)) return
+        applySensorUi(activity, fromSensorEvent = false, showEyeCareToast = false)
+        applyBottomSheetSensorUi(activity, fromSensorEvent = false)
+        smartSensorManager.start()
+    }
+
     override fun onActivityResumed(activity: Activity) {
+        if (!isSensorEnabled()) {
+            smartSensorManager.stop()
+            activeSensorActivity = null
+            isFocusModeActive = false
+            isEyeCareActive = false
+            clearAllSensorUi()
+            return
+        }
+
         if (isExcludedScreen(activity) || isManagedByMainScreen(activity)) {
             smartSensorManager.stop()
             activeSensorActivity = null

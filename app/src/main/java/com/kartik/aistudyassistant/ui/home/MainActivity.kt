@@ -25,6 +25,7 @@ import androidx.core.graphics.drawable.DrawableCompat
 import androidx.core.view.MenuItemCompat
 import com.kartik.aistudyassistant.R
 import com.kartik.aistudyassistant.core.utils.SmartSensorManager
+import com.kartik.aistudyassistant.data.local.AppSettingsPrefs
 import com.kartik.aistudyassistant.data.local.ContinueLearningPrefs
 import com.kartik.aistudyassistant.data.local.RecentActivityItem
 import com.kartik.aistudyassistant.data.local.RecentActivityType
@@ -128,7 +129,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupSensors() {
         sensorManager = SmartSensorManager(this)
-        sensorManager.onFocusModeChanged = { isFocusActive ->
+        sensorManager.onFocusModeChanged = fun(isFocusActive: Boolean) {
+            if (!isSensorFeatureEnabled()) {
+                updateSensorState()
+                return
+            }
             isFocusModeActive = isFocusActive
             runOnUiThread {
                 if (isFocusActive) {
@@ -152,7 +157,11 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        sensorManager.onEyeCareChanged = { isEyeCareActive ->
+        sensorManager.onEyeCareChanged = fun(isEyeCareActive: Boolean) {
+            if (!isSensorFeatureEnabled()) {
+                updateSensorState()
+                return
+            }
             this.isEyeCareActive = isEyeCareActive
             runOnUiThread {
                 viewEyeCareOverlay.visibility = if (isEyeCareActive) View.VISIBLE else View.GONE
@@ -284,7 +293,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        sensorManager.start()
+        updateSensorState()
         loadUserData()
         updateContinueLearningSection()
         updateRecentActivitySection()
@@ -294,6 +303,26 @@ class MainActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         sensorManager.stop()
+    }
+
+    private fun isSensorFeatureEnabled(): Boolean {
+        return AppSettingsPrefs.isSensorEnabled(this)
+    }
+
+    private fun updateSensorState() {
+        if (isSensorFeatureEnabled()) {
+            sensorManager.start()
+            return
+        }
+
+        sensorManager.stop()
+        isFocusModeActive = false
+        isEyeCareActive = false
+        runOnUiThread {
+            cardSensorStatus.visibility = View.GONE
+            viewEyeCareOverlay.visibility = View.GONE
+            applyBottomSheetSensorUi(fromSensorEvent = false)
+        }
     }
 
     private fun initContinueLearningViews() {

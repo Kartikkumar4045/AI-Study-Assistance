@@ -27,6 +27,10 @@
     <string name="profile_edit_name_save">Save</string>
     <string name="profile_edit_name_subtitle">This name appears on your profile and home welcome text.</string>
     <string name="profile_name_action_hint">Tap your name to edit</string>
+    <string name="profile_setting_sensor_title">Smart Sensor</string>
+    <string name="profile_setting_sensor_subtitle">Use focus and eye-care sensor assistance.</string>
+    <string name="profile_setting_theme_title">Dark Theme</string>
+    <string name="profile_setting_theme_subtitle">Turn on dark appearance. Off keeps light theme.</string>
     <string name="profile_edit_name_success">Name updated</string>
     <string name="profile_edit_name_failed">Could not update name</string>
     <string name="profile_edit_name_empty_error">Name cannot be empty</string>
