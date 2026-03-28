@@ -40,6 +40,18 @@
             android:text="Topics Mastery"
             android:textSize="@dimen/text_title" />
 
+        <ImageView
+            android:id="@+id/ivDeleteAllMastery"
+            android:layout_width="@dimen/icon_size_m"
+            android:layout_height="@dimen/icon_size_m"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:contentDescription="Delete All"
+            android:focusable="true"
+            android:padding="2dp"
+            android:src="@android:drawable/ic_menu_delete"
+            app:tint="#D32F2F" />
+
     </LinearLayout>
 
     <ScrollView

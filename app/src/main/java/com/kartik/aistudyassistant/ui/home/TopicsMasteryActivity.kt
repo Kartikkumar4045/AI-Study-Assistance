@@ -9,6 +9,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.google.android.material.button.MaterialButton
@@ -35,6 +36,21 @@ class TopicsMasteryActivity : AppCompatActivity() {
         llTopicMastery = findViewById(R.id.llTopicMastery)
 
         findViewById<ImageView>(R.id.ivTopicsBack).setOnClickListener { finish() }
+
+        findViewById<ImageView>(R.id.ivDeleteAllMastery).setOnClickListener {
+            val topics = ContinueLearningPrefs.readTopicMastery(this)
+            if (topics.isEmpty()) return@setOnClickListener
+
+            AlertDialog.Builder(this)
+                .setTitle("Delete All Topics")
+                .setMessage("Are you sure you want to delete all mastery records? This cannot be undone.")
+                .setPositiveButton("Delete") { _, _ ->
+                    ContinueLearningPrefs.clearAllTopicMastery(this)
+                    render()
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+        }
 
         render()
     }
@@ -103,12 +119,28 @@ class TopicsMasteryActivity : AppCompatActivity() {
                 "Last active: Never"
             }
 
+        view.findViewById<ImageView>(R.id.ivDeleteTopicMastery).setOnClickListener {
+            AlertDialog.Builder(this@TopicsMasteryActivity)
+                .setTitle("Delete Topic")
+                .setMessage("Are you sure you want to delete the mastery records for \"$safeTopic\"?")
+                .setPositiveButton("Delete") { _, _ ->
+                    ContinueLearningPrefs.removeTopicMastery(this@TopicsMasteryActivity, item.topicKey)
+                    render()
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+        }
+
         view.findViewById<MaterialButton>(R.id.btnMasteryPracticeQuiz).setOnClickListener {
             openQuizFromMastery(item, safeTopic, isNoteBased)
         }
 
         view.findViewById<MaterialButton>(R.id.btnMasteryOpenFlashcards).setOnClickListener {
             openFlashcardsFromMastery(item, safeTopic, isNoteBased)
+        }
+
+        view.findViewById<MaterialButton>(R.id.btnMasteryChat).setOnClickListener {
+            openChatFromMastery(item, safeTopic, isNoteBased)
         }
 
         return view
@@ -139,6 +171,29 @@ class TopicsMasteryActivity : AppCompatActivity() {
                 } else {
                     putExtra(FlashcardSetupActivity.EXTRA_SOURCE, ContinueLearningPrefs.SOURCE_TOPIC)
                     putExtra(FlashcardSetupActivity.EXTRA_TOPIC_TEXT, safeTopic)
+                }
+            }
+        )
+    }
+
+    private fun openChatFromMastery(item: TopicMasteryRecord, safeTopic: String, isNoteBased: Boolean) {
+        startActivity(
+            Intent(this, com.kartik.aistudyassistant.ui.chat.ChatActivity::class.java).apply {
+                val prompt = if (isNoteBased) {
+                    "Let's discuss ${item.lastNoteName} focusing on $safeTopic."
+                } else {
+                    "Let's discuss $safeTopic."
+                }
+                putExtra("PREFILLED_PROMPT", prompt)
+                putExtra("PREFILLED_TOPIC", item.topicKey)
+
+                if (isNoteBased && item.lastNoteUrl.isNotBlank()) {
+                    putExtra("FILE_URL", item.lastNoteUrl)
+                    putExtra("FILE_NAME", item.lastNoteName)
+                    // Depending on logic, assume PDF or omit FILE_TYPE to let handlePrefilledIntentPayload figure it out.
+                    // The standard notes flow generally defaults to pdf or infers from name/type.
+                    val isPdf = item.lastNoteUrl.endsWith(".pdf", ignoreCase = true) || item.lastNoteName.endsWith(".pdf", ignoreCase = true)
+                    putExtra("FILE_TYPE", if (isPdf) "pdf" else "image")
                 }
             }
         )

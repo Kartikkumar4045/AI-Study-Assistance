@@ -12,6 +12,7 @@ import android.widget.LinearLayout
 import android.widget.Spinner
 import android.widget.TextView
 import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.google.android.material.button.MaterialButton
@@ -56,6 +57,19 @@ class QuizPerformanceActivity : AppCompatActivity() {
         findViewById<ImageView>(R.id.ivQuizPerformanceBack).setOnClickListener { finish() }
         findViewById<MaterialButton>(R.id.btnTakeAnotherQuiz).setOnClickListener {
             startActivity(Intent(this, QuizSetupActivity::class.java))
+        }
+
+        findViewById<ImageView>(R.id.ivClearAllQuizAttempts).setOnClickListener {
+            AlertDialog.Builder(this)
+                .setTitle("Clear All Quiz Attempts")
+                .setMessage("Are you sure you want to delete all quiz attempts? This cannot be undone.")
+                .setPositiveButton("Clear") { _, _ ->
+                    ContinueLearningPrefs.clearAllQuizAttempts(this)
+                    refreshTopicFilter()
+                    render()
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
         }
 
         setupFilters()
@@ -173,7 +187,19 @@ class QuizPerformanceActivity : AppCompatActivity() {
             setIndicatorColor(ContextCompat.getColor(this@QuizPerformanceActivity, scoreColorRes))
         }
 
+        item.findViewById<ImageView>(R.id.ivDeleteQuizAttempt).setOnClickListener {
+            AlertDialog.Builder(this@QuizPerformanceActivity)
+                .setTitle("Delete Quiz Attempt")
+                .setMessage("Are you sure you want to delete this quiz attempt?")
+                .setPositiveButton("Delete") { _, _ ->
+                    ContinueLearningPrefs.removeQuizAttempt(this@QuizPerformanceActivity, attempt.timestamp)
+                    refreshTopicFilter()
+                    render()
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+        }
+
         return item
     }
 }
-

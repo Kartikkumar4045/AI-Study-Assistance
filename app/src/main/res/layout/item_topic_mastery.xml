@@ -48,6 +48,18 @@
                 android:textColor="@color/primary"
                 android:textSize="@dimen/text_caption"
                 tools:text="Intermediate" />
+
+            <ImageView
+                android:id="@+id/ivDeleteTopicMastery"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_marginStart="@dimen/space_8"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:contentDescription="Delete Topic"
+                android:focusable="true"
+                android:src="@android:drawable/ic_menu_delete"
+                app:tint="#757575" />
         </LinearLayout>
 
         <LinearLayout
@@ -191,7 +203,9 @@
                 android:icon="@android:drawable/ic_menu_edit"
                 app:iconGravity="textStart"
                 app:iconPadding="@dimen/space_4"
-                android:text="Practice Quiz" />
+                android:textSize="12sp"
+                app:iconSize="16dp"
+                android:text="Quiz" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnMasteryOpenFlashcards"
@@ -199,11 +213,27 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="@dimen/space_8"
-                android:layout_weight="1"
+                android:layout_weight="1.4"
                 android:icon="@android:drawable/ic_menu_gallery"
                 app:iconGravity="textStart"
                 app:iconPadding="@dimen/space_4"
+                android:textSize="12sp"
+                app:iconSize="16dp"
                 android:text="Flashcards" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnMasteryChat"
+                style="@style/Widget.AIStudyAssistance.Button.Secondary"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/space_8"
+                android:layout_weight="1"
+                android:icon="@android:drawable/ic_menu_send"
+                app:iconGravity="textStart"
+                app:iconPadding="@dimen/space_4"
+                android:textSize="12sp"
+                app:iconSize="16dp"
+                android:text="Chat" />
         </LinearLayout>
 
     </LinearLayout>

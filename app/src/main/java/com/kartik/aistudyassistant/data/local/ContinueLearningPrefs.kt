@@ -88,7 +88,8 @@ data class TopicMasteryRecord(
     val chatCount: Int,
     val lastActivityTimestamp: Long,
     val lastSource: String = "topic",
-    val lastNoteName: String = ""
+    val lastNoteName: String = "",
+    val lastNoteUrl: String = ""
 )
 
 data class StudyStreakDetails(
@@ -199,7 +200,8 @@ object ContinueLearningPrefs {
         topic: String,
         cardCount: Int,
         source: String = SOURCE_TOPIC,
-        noteName: String = ""
+        noteName: String = "",
+        noteUrl: String = ""
     ) {
         val safeTopic = topic.ifBlank { "General Study" }
         val now = System.currentTimeMillis()
@@ -223,7 +225,8 @@ object ContinueLearningPrefs {
             type = RecentActivityType.FLASHCARD,
             timestamp = now,
             source = source,
-            noteName = noteName
+            noteName = noteName,
+            noteUrl = noteUrl
         )
 
         appendRecentActivity(
@@ -247,7 +250,8 @@ object ContinueLearningPrefs {
         score: Int,
         totalQuestions: Int = 0,
         source: String = SOURCE_TOPIC,
-        noteName: String = ""
+        noteName: String = "",
+        noteUrl: String = ""
     ) {
         val safeTopic = topic.ifBlank { "General Quiz" }
         val now = System.currentTimeMillis()
@@ -281,7 +285,8 @@ object ContinueLearningPrefs {
             type = RecentActivityType.QUIZ,
             timestamp = now,
             source = source,
-            noteName = noteName
+            noteName = noteName,
+            noteUrl = noteUrl
         )
 
         appendRecentActivity(
@@ -305,27 +310,37 @@ object ContinueLearningPrefs {
         sessionId: String = "",
         messageCount: Int = 0,
         source: String = SOURCE_TOPIC,
-        noteName: String = ""
+        noteName: String = "",
+        noteUrl: String = ""
     ) {
         val safeTopic = topic.ifBlank { "General Chat" }
         val now = System.currentTimeMillis()
+        val isIgnoredTopic = normalizedTopicForProgress(safeTopic) == null
 
-        updateStudyProgress(
-            context = context,
-            topic = safeTopic,
-            incrementQuizCount = false,
-            trackTopic = true,
-            timestamp = now
-        )
+        if (!isIgnoredTopic) {
+            updateStudyProgress(
+                context = context,
+                topic = safeTopic,
+                incrementQuizCount = false,
+                trackTopic = true,
+                timestamp = now
+            )
 
-        updateTopicMastery(
-            context = context,
-            topic = safeTopic,
-            type = RecentActivityType.CHAT,
-            timestamp = now,
-            source = source,
-            noteName = noteName
-        )
+            updateTopicMastery(
+                context = context,
+                topic = safeTopic,
+                type = RecentActivityType.CHAT,
+                timestamp = now,
+                source = source,
+                noteName = noteName,
+                noteUrl = noteUrl
+            )
+        }
+
+        if (isIgnoredTopic) {
+            // Do not record recent activity items for Skipped/General topics
+            return
+        }
 
         val newItem = RecentActivityItem(
             type = RecentActivityType.CHAT,
@@ -545,6 +560,35 @@ object ContinueLearningPrefs {
     fun clearRecentActivities(context: Context) {
         val prefs = prefs(context)
         prefs.edit().putString(KEY_RECENT_ACTIVITY_JSON, "[]").apply()
+    }
+
+    fun removeTopicMastery(context: Context, topicKey: String): Boolean {
+        if (topicKey.isBlank()) return false
+        val prefs = prefs(context)
+        val entries = decodeTopicMasteryList(
+            prefs.getString(KEY_PROGRESS_TOPIC_MASTERY_JSON, "[]").orEmpty()
+        )
+        val updated = entries.filterNot { it.topicKey == topicKey }
+        if (updated.size == entries.size) return false
+
+        // Also remove from progress topics to decrement total topics
+        val topicsList = decodeStringList(prefs.getString(KEY_PROGRESS_TOPICS_JSON, "[]").orEmpty()).toMutableSet()
+        val originalSize = topicsList.size
+        topicsList.removeIf { it.trim().lowercase(Locale.getDefault()) == topicKey }
+
+        val edit = prefs.edit().putString(KEY_PROGRESS_TOPIC_MASTERY_JSON, encodeTopicMasteryList(updated))
+        if(topicsList.size != originalSize) {
+            edit.putString(KEY_PROGRESS_TOPICS_JSON, encodeStringList(topicsList.toList()))
+        }
+        edit.apply()
+        return true
+    }
+
+    fun clearAllTopicMastery(context: Context) {
+        prefs(context).edit()
+            .remove(KEY_PROGRESS_TOPIC_MASTERY_JSON)
+            .remove(KEY_PROGRESS_TOPICS_JSON)
+            .apply()
     }
 
     fun saveQuizProgress(
@@ -826,13 +870,38 @@ object ContinueLearningPrefs {
         )
     }
 
+    fun removeQuizAttempt(context: Context, timestamp: Long): Boolean {
+        val prefs = prefs(context)
+        val existing = readQuizAttempts(context)
+        val updated = existing.filterNot { it.timestamp == timestamp }
+        if (updated.size == existing.size) return false
+
+        val currentTotalQuizzes = prefs.getInt(KEY_PROGRESS_TOTAL_QUIZZES, 0)
+        val newTotalQuizzes = (currentTotalQuizzes - 1).coerceAtLeast(0)
+
+        prefs.edit()
+            .putString(KEY_PROGRESS_QUIZ_ATTEMPTS_JSON, encodeQuizAttemptList(updated))
+            .putInt(KEY_PROGRESS_TOTAL_QUIZZES, newTotalQuizzes)
+            .apply()
+        return true
+    }
+
+    fun clearAllQuizAttempts(context: Context) {
+        val prefs = prefs(context)
+        prefs.edit()
+            .remove(KEY_PROGRESS_QUIZ_ATTEMPTS_JSON)
+            .putInt(KEY_PROGRESS_TOTAL_QUIZZES, 0)
+            .apply()
+    }
+
     private fun updateTopicMastery(
         context: Context,
         topic: String,
         type: RecentActivityType,
         timestamp: Long,
         source: String = SOURCE_TOPIC,
-        noteName: String = ""
+        noteName: String = "",
+        noteUrl: String = ""
     ) {
         val normalizedKey = normalizedTopicForProgress(topic) ?: return
         val prefs = prefs(context)
@@ -848,6 +917,9 @@ object ContinueLearningPrefs {
         val safeNoteName = noteName.trim().ifBlank {
             if (safeSource == SOURCE_NOTES) previous?.lastNoteName.orEmpty() else ""
         }
+        val safeNoteUrl = noteUrl.trim().ifBlank {
+            if (safeSource == SOURCE_NOTES) previous?.lastNoteUrl.orEmpty() else ""
+        }
 
         val updated = TopicMasteryRecord(
             topicKey = normalizedKey,
@@ -857,7 +929,8 @@ object ContinueLearningPrefs {
             chatCount = (previous?.chatCount ?: 0) + if (type == RecentActivityType.CHAT) 1 else 0,
             lastActivityTimestamp = timestamp,
             lastSource = safeSource,
-            lastNoteName = if (safeSource == SOURCE_NOTES) safeNoteName else ""
+            lastNoteName = if (safeSource == SOURCE_NOTES) safeNoteName else "",
+            lastNoteUrl = if (safeSource == SOURCE_NOTES) safeNoteUrl else ""
         )
 
         if (index >= 0) {

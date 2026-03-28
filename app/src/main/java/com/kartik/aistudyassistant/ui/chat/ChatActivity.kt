@@ -77,6 +77,7 @@ class ChatActivity : AppCompatActivity() {
     private lateinit var etMessage: EditText
     private lateinit var btnSend: FloatingActionButton
     private lateinit var btnAttach: ImageButton
+    private lateinit var tvChatSubtitle: TextView
     private lateinit var ivChatMenu: ImageView
     private lateinit var layoutAttachmentBanner: CardView
     private lateinit var tvAttachmentInfo: TextView
@@ -89,6 +90,7 @@ class ChatActivity : AppCompatActivity() {
     private var activeImageBitmap: Bitmap? = null
     private var activeImageSource: String? = null
     private var lastTopicQuery: String? = null
+    private var explicitTopic: String? = null
     private var pendingExamPaperGeneration: Boolean = false
     private var pendingGuidedGenerationMode: StudyMode? = null
     private val auth = FirebaseAuth.getInstance()
@@ -122,6 +124,11 @@ class ChatActivity : AppCompatActivity() {
         val isFirstChatOpenInProcess = !hasOpenedChatInCurrentProcess
         hasOpenedChatInCurrentProcess = true
 
+        explicitTopic = intent.getStringExtra("PREFILLED_TOPIC")
+        if (!explicitTopic.isNullOrBlank()) {
+            lastTopicQuery = explicitTopic
+        }
+
         if (savedInstanceState != null) {
             restoreChatState(savedInstanceState)
             if (messages.isEmpty()) {
@@ -130,6 +137,15 @@ class ChatActivity : AppCompatActivity() {
         } else if (requestedSessionId.isNotBlank()) {
             openRequestedSessionOrFallback(requestedSessionId)
         } else if (hasIntentPrefill) {
+            val topicToSearch = explicitTopic.orEmpty()
+            val existingId = if (topicToSearch.isNotBlank()) ChatSessionPrefs.findSessionIdByTopic(this, topicToSearch) else null
+            
+            if (existingId != null) {
+                openRequestedSessionOrFallback(existingId)
+            } else {
+                startFreshSession(createNewSession = true)
+            }
+            // Populate intent content into the session (new or existing)
             handlePrefilledIntentPayload()
         } else if (isFirstChatOpenInProcess) {
             showSessionChoiceDialogIfNeeded()
@@ -166,6 +182,7 @@ class ChatActivity : AppCompatActivity() {
         etMessage = findViewById(R.id.etMessage)
         btnSend = findViewById(R.id.btnSend)
         btnAttach = findViewById(R.id.btnAttach)
+        tvChatSubtitle = findViewById(R.id.tvChatSubtitle)
         layoutAttachmentBanner = findViewById(R.id.layoutAttachmentBanner)
         tvAttachmentInfo = findViewById(R.id.tvAttachmentInfo)
         ivChatMenu = findViewById(R.id.ivChatMenu)
@@ -226,22 +243,31 @@ class ChatActivity : AppCompatActivity() {
         val fileUrl = intent.getStringExtra("FILE_URL")
         val fileType = intent.getStringExtra("FILE_TYPE")
 
-        if (fileUrl != null && fileType == "pdf") {
-            lifecycleScope.launch {
-                activeDocumentText = extractTextFromPdf(fileUrl)
-                activeDocumentName = intent.getStringExtra("FILE_NAME") ?: "Uploaded PDF"
-                updateAttachmentBanner()
-                persistSessionSnapshot()
+        if (fileUrl != null) {
+            if (fileType == "pdf") {
+                lifecycleScope.launch {
+                    activeDocumentText = extractTextFromPdf(fileUrl)
+                    activeDocumentName = intent.getStringExtra("FILE_NAME") ?: "Uploaded PDF"
+                    activeImageSource = fileUrl // Store the URL reference
+                    updateAttachmentBanner()
+                    persistSessionSnapshot()
+                }
+            } else {
+                lifecycleScope.launch {
+                    activeImageSource = fileUrl
+                    activeDocumentName = intent.getStringExtra("FILE_NAME") ?: "Uploaded Image"
+                    activeImageBitmap = downloadImage(fileUrl)
+                    updateAttachmentBanner()
+                    persistSessionSnapshot()
+                }
             }
         }
 
         if (prompt != null) {
-            if (fileUrl != null) {
-                processFileAndSendMessage(prompt, fileUrl, fileType ?: "")
-            } else {
-                sendMessage(prompt)
-            }
-        } else {
+            etMessage.setText(prompt)
+        } 
+        
+        if (messages.isEmpty()) {
             showInitialGreetingIfNeeded()
         }
     }
@@ -261,7 +287,7 @@ class ChatActivity : AppCompatActivity() {
     private fun showSessionChoiceDialogIfNeeded() {
         val snapshot = ChatSessionPrefs.read(this)
         if (snapshot == null || snapshot.messages.isEmpty()) {
-            startFreshSession(createNewSession = true)
+            askForNewSessionTopic()
             return
         }
 
@@ -292,7 +318,7 @@ class ChatActivity : AppCompatActivity() {
                 restorePersistedSession(snapshot)
             },
             onNewChat = {
-                startFreshSession(createNewSession = true)
+                askForNewSessionTopic()
             }
         )
     }
@@ -302,7 +328,7 @@ class ChatActivity : AppCompatActivity() {
         if (snapshot != null && snapshot.messages.isNotEmpty()) {
             restorePersistedSession(snapshot)
         } else {
-            startFreshSession(createNewSession = true)
+            askForNewSessionTopic()
         }
     }
 
@@ -317,7 +343,10 @@ class ChatActivity : AppCompatActivity() {
         currentMode = StudyMode.EXPLAIN
         pendingExamPaperGeneration = false
         pendingGuidedGenerationMode = null
-        lastTopicQuery = null
+        
+        // Preserve explicitTopic for mastery binding if present
+        lastTopicQuery = if (!explicitTopic.isNullOrBlank()) explicitTopic else null
+        
         etMessage.setText("")
         clearAttachment()
         applySelectedModeChip()
@@ -347,7 +376,7 @@ class ChatActivity : AppCompatActivity() {
 
         btnNewChat.setOnClickListener {
             dialog.dismiss()
-            startFreshSession(createNewSession = true)
+            askForNewSessionTopic()
         }
 
         btnOpenPrevious.setOnClickListener {
@@ -537,8 +566,16 @@ class ChatActivity : AppCompatActivity() {
         persistSessionSnapshot()
     }
 
+    private fun updateChatTopicSubtitle() {
+        if (!::tvChatSubtitle.isInitialized) return
+        val currentTopic = resolveRecentChatTopic(messages.filter { !it.isTyping }.map { it.toPersistedMessage() })
+        tvChatSubtitle.text = currentTopic
+        tvChatSubtitle.visibility = if (currentTopic.isNotBlank()) View.VISIBLE else View.GONE
+    }
+
     private fun persistSessionSnapshot() {
         if (!::chatAdapter.isInitialized) return
+        updateChatTopicSubtitle()
 
         val persistedMessages = messages
             .filter { !it.isTyping }
@@ -573,12 +610,21 @@ class ChatActivity : AppCompatActivity() {
                 sessionId = ChatSessionPrefs.getActiveSessionId(this).orEmpty(),
                 messageCount = persistedMessages.count { it.isUser },
                 source = if (!activeDocumentName.isNullOrBlank()) ContinueLearningPrefs.SOURCE_NOTES else ContinueLearningPrefs.SOURCE_TOPIC,
-                noteName = activeDocumentName.orEmpty()
+                noteName = activeDocumentName.orEmpty(),
+                noteUrl = activeImageSource ?: activeDocumentName.orEmpty()
             )
         }
     }
 
     private fun resolveRecentChatTopic(persistedMessages: List<PersistedChatMessage>): String {
+        if (!lastTopicQuery.isNullOrBlank()) {
+            return lastTopicQuery.orEmpty().trim().take(50)
+        }
+
+        if (!explicitTopic.isNullOrBlank()) {
+            return explicitTopic.orEmpty()
+        }
+
         val firstUserMessage = persistedMessages
             .firstOrNull { it.isUser }
             ?.text
@@ -587,10 +633,6 @@ class ChatActivity : AppCompatActivity() {
 
         if (firstUserMessage.isNotBlank()) {
             return firstUserMessage.take(50)
-        }
-
-        if (!lastTopicQuery.isNullOrBlank()) {
-            return lastTopicQuery.orEmpty().trim().take(50)
         }
 
         if (!activeDocumentName.isNullOrBlank()) {
@@ -659,6 +701,8 @@ class ChatActivity : AppCompatActivity() {
         lastTopicQuery = savedInstanceState.getString(STATE_LAST_TOPIC)
         etMessage.setText(savedInstanceState.getString(STATE_DRAFT_TEXT).orEmpty())
 
+        updateChatTopicSubtitle()
+
         // Bitmap bytes are not persisted in Bundle; restore from source if needed.
         activeImageBitmap = null
         updateAttachmentBanner()
@@ -686,7 +730,7 @@ class ChatActivity : AppCompatActivity() {
             activeImageSource = null
             updateAttachmentBanner()
         }
-        if (text.isNotBlank() && activeDocumentName == null) {
+        if (lastTopicQuery.isNullOrBlank() && text.isNotBlank() && activeDocumentName == null) {
             lastTopicQuery = text
         }
 
@@ -1162,6 +1206,30 @@ Keep answers concise.
         startActivity(intent)
     }
 
+    private fun askForNewSessionTopic() {
+        showModeBottomSheet(
+            title = "New Chat Topic",
+            message = "What topic do you want to learn about? (Used for mastery tracking)",
+            primaryText = "Start",
+            secondaryText = "Skip (General)",
+            showTopicInput = true,
+            onPrimary = { topic ->
+                explicitTopic = topic
+                startFreshSession(createNewSession = true)
+            },
+            onSecondary = {
+                explicitTopic = "General Chat"
+                startFreshSession(createNewSession = true)
+            },
+            onCancel = {
+                if (messages.isEmpty()) {
+                    explicitTopic = "General Chat"
+                    startFreshSession(createNewSession = true)
+                }
+            }
+        )
+    }
+
     private fun showModeBottomSheet(
         title: String,
         message: String,
@@ -1169,7 +1237,8 @@ Keep answers concise.
         secondaryText: String,
         showTopicInput: Boolean = false,
         onPrimary: (String) -> Unit,
-        onSecondary: () -> Unit
+        onSecondary: () -> Unit,
+        onCancel: (() -> Unit)? = null
     ) {
         val dialog = BottomSheetDialog(this)
         val view = layoutInflater.inflate(R.layout.bottom_sheet_mode_prompt, null)
@@ -1205,6 +1274,10 @@ Keep answers concise.
         btnSecondary.setOnClickListener {
             dialog.dismiss()
             onSecondary()
+        }
+
+        dialog.setOnCancelListener {
+            onCancel?.invoke()
         }
 
         dialog.show()

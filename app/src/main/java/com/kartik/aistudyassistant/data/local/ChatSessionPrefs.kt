@@ -37,7 +37,6 @@ object ChatSessionPrefs {
     private const val PREF_FILE = "chat_session_prefs"
     private const val KEY_SESSIONS = "chat_session_list"
     private const val KEY_ACTIVE_SESSION_ID = "chat_active_session_id"
-    private const val MAX_SESSION_COUNT = 5
 
     // Legacy keys from the previous active/previous implementation.
     private const val LEGACY_KEY_ACTIVE_SNAPSHOT = "chat_session_active_snapshot"
@@ -169,6 +168,20 @@ object ChatSessionPrefs {
         return true
     }
 
+    fun findSessionIdByTopic(context: Context, topic: String): String? {
+        if (topic.isBlank()) return null
+        val prefs = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+        migrateLegacyIfNeeded(prefs)
+        val sessions = readSessions(prefs)
+
+        // Sort sessions by updatedAtEpochMs descending
+        val matchedSession = sessions
+            .filter { it.snapshot.lastTopicQuery.equals(topic, ignoreCase = true) }
+            .maxByOrNull { it.snapshot.updatedAtEpochMs }
+
+        return matchedSession?.id
+    }
+
     fun clear(context: Context) {
         val prefs = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
         migrateLegacyIfNeeded(prefs)
@@ -197,14 +210,19 @@ object ChatSessionPrefs {
 
     private fun resolveTitle(snapshot: PersistedChatSession): String {
         val userMessage = snapshot.messages.firstOrNull { it.isUser }?.text.orEmpty().trim()
-        if (userMessage.isNotBlank()) {
-            return userMessage.take(40)
+        val topic = snapshot.lastTopicQuery.trim()
+        
+        if (topic.isNotBlank() && userMessage.isNotBlank()) {
+            return "Topic: ${topic.take(20)} - ${userMessage.take(30)}"
+        }
+        if (topic.isNotBlank()) {
+            return "Topic: ${topic.take(30)}"
         }
         if (snapshot.activeDocumentName.isNotBlank()) {
             return "File: ${snapshot.activeDocumentName.take(30)}"
         }
-        if (snapshot.lastTopicQuery.isNotBlank()) {
-            return "Topic: ${snapshot.lastTopicQuery.take(30)}"
+        if (userMessage.isNotBlank()) {
+            return userMessage.take(40)
         }
         return "Chat session"
     }
@@ -271,9 +289,7 @@ object ChatSessionPrefs {
     }
 
     private fun trimToMaxSize(sessions: MutableList<StoredSession>) {
-        while (sessions.size > MAX_SESSION_COUNT) {
-            sessions.removeAt(sessions.lastIndex)
-        }
+        // No longer limiting session count.
     }
 
     private fun readSessions(prefs: android.content.SharedPreferences): MutableList<StoredSession> {
@@ -379,6 +395,3 @@ object ChatSessionPrefs {
         )
     }
 }
-
-
-

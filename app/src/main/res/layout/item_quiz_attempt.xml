@@ -41,7 +41,19 @@
                 android:textColor="@color/accent_green"
                 android:textSize="@dimen/text_title"
                 android:textStyle="bold"
+                android:layout_marginEnd="@dimen/space_8"
                 tools:text="85%" />
+
+            <ImageView
+                android:id="@+id/ivDeleteQuizAttempt"
+                android:layout_width="@dimen/icon_size_s"
+                android:layout_height="@dimen/icon_size_s"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:contentDescription="Delete"
+                android:focusable="true"
+                android:src="@android:drawable/ic_menu_delete"
+                app:tint="@color/red" />
         </LinearLayout>
 
         <LinearLayout
