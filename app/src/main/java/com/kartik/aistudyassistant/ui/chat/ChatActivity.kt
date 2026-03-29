@@ -880,59 +880,6 @@ Keep answers concise.
         }
     }
 
-    private fun processFileAndSendMessage(prompt: String, url: String, type: String) {
-        addMessage(ChatMessage(prompt, true, messageType = MessageType.USER))
-        val typingMessage = ChatMessage("Reading file and thinking...", false, isTyping = true, messageType = MessageType.SYSTEM)
-        addMessage(typingMessage)
-
-        lifecycleScope.launch {
-            try {
-                val index = messages.indexOf(typingMessage)
-                val systemPrompt = "You are an AI study assistant."
-                val modePrompt = getModePrompt(currentMode, prompt)
-                if (type == "pdf") {
-                    val textContent = activeDocumentText ?: extractTextFromPdf(url)
-                    val fullPrompt = "$systemPrompt\n\nMaterial:\n$textContent\n\nQuestion:\n$modePrompt"
-                    geminiHelper.getResponseStream(fullPrompt).collect { partialResponse ->
-                        val cleaned = cleanResponse(partialResponse)
-                        withContext(Dispatchers.Main) {
-                            messages[index] = ChatMessage(cleaned, false, isTyping = true)
-                            chatAdapter.notifyItemChanged(index)
-                        }
-                    }
-                } else {
-                    val bitmap = downloadImage(url)
-                    if (bitmap != null) {
-                        geminiHelper.getResponseWithImageStream(modePrompt, bitmap).collect { partialResponse ->
-                            val cleaned = cleanResponse(partialResponse)
-                            withContext(Dispatchers.Main) {
-                                messages[index] = ChatMessage(cleaned, false, isTyping = true)
-                                chatAdapter.notifyItemChanged(index)
-                            }
-                        }
-                    } else {
-                        messages[index] = ChatMessage("Error: Could not process image.", false, messageType = MessageType.AI)
-                        chatAdapter.notifyItemChanged(index)
-                        persistSessionSnapshot()
-                        return@launch
-                    }
-                }
-                val finalResponse = messages[index].text
-                messages[index] = ChatMessage(finalResponse, false, messageType = MessageType.AI)
-                chatAdapter.notifyItemChanged(index)
-                rvChat.scrollToPosition(messages.size - 1)
-                persistSessionSnapshot()
-            } catch (e: Exception) {
-                val index = messages.indexOf(typingMessage)
-                if (index != -1) {
-                    messages[index] = ChatMessage("Error: ${e.message}", false, messageType = MessageType.AI)
-                    chatAdapter.notifyItemChanged(index)
-                    persistSessionSnapshot()
-                }
-            }
-        }
-    }
-
     private suspend fun extractTextFromPdf(pdfUrl: String): String = withContext(Dispatchers.IO) {
         try {
             val url = URL(pdfUrl)

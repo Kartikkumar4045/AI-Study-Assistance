@@ -1,6 +1,5 @@
 ﻿package com.kartik.aistudyassistant.ui.auth
 
-import android.content.Context
 import android.content.Intent
 import android.os.CountDownTimer
 import android.net.ConnectivityManager

@@ -254,23 +254,6 @@ class AuthManager(private val context: Context) {
         linkPhoneCredential(credential, callback)
     }
 
-    fun getCurrentUserStoredPhone(callback: (String?) -> Unit) {
-        val currentUser = auth.currentUser
-        if (currentUser == null) {
-            callback(null)
-            return
-        }
-
-        database.reference.child("Users").child(currentUser.uid).child("phone")
-            .get()
-            .addOnSuccessListener { snapshot ->
-                callback(snapshot.getValue(String::class.java))
-            }
-            .addOnFailureListener {
-                callback(null)
-            }
-    }
-
     // Google Sign-In
     fun signInWithGoogle(callback: (AppAuthResult) -> Unit) {
         val googleIdOption = GetGoogleIdOption.Builder()
@@ -375,42 +358,6 @@ class AuthManager(private val context: Context) {
                     callback(AppAuthResult.Error(e.message ?: "GitHub sign-in failed"))
                 }
             }
-    }
-
-    // Email/Password Sign Up
-    fun signUpWithEmail(email: String, password: String, phone: String, callback: (AppAuthResult) -> Unit) {
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                // Check if email exists in our database first
-                val existingUserData = checkEmailExists(email)
-                if (existingUserData != null) {
-                    withContext(Dispatchers.Main) {
-                        callback(AppAuthResult.Error(
-                            "An account already exists with this email using ${existingUserData.provider}."
-                        ))
-                    }
-                    return@launch
-                }
-
-                // Check if phone exists (Problem #5 fix)
-                val phoneExists = checkPhoneExists(phone)
-                if (phoneExists) {
-                    withContext(Dispatchers.Main) {
-                        callback(AppAuthResult.Error("This phone number is already registered with another account."))
-                    }
-                    return@launch
-                }
-
-                // Create new account with password
-                withContext(Dispatchers.Main) {
-                    createEmailAccount(email, password, phone, callback)
-                }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    callback(AppAuthResult.Error(e.message))
-                }
-            }
-        }
     }
 
     // Email/Password Sign In

@@ -3,19 +3,11 @@
 import android.content.Context
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.util.Locale
 import java.util.TimeZone
 import java.util.UUID
-
-data class ContinueLearningSnapshot(
-    val flashcardTopic: String,
-    val flashcardCount: Int,
-    val quizTopic: String,
-    val quizScore: Int
-)
 
 @Serializable
 enum class SessionType {

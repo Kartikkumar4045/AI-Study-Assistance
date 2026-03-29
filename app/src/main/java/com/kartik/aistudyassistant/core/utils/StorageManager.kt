@@ -6,7 +6,7 @@ import android.provider.OpenableColumns
 import com.google.firebase.database.FirebaseDatabase
 
 object StorageManager {
-    const val MAX_STORAGE_BYTES = 5L * 1024L * 1024L // 5 MB
+    const val MAX_STORAGE_BYTES = 20L * 1024L * 1024L // 5 MB
 
     private fun getStorageRef(userId: String) =
         FirebaseDatabase.getInstance().reference.child("Users").child(userId).child("storageUsed")

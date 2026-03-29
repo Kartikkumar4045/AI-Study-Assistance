@@ -46,7 +46,6 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import coil.imageLoader
-import coil.load
 import coil.request.ImageRequest
 import coil.transform.CircleCropTransformation
 import java.util.WeakHashMap
