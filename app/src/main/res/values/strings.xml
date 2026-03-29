@@ -186,6 +186,13 @@
     <string name="signup_email_not_verified">Email not verified</string>
     <string name="signup_phone_otp_blocked_countdown">Phone OTP temporarily blocked. Try again in %1$02d:%2$02d</string>
 
+    <string name="offline_title">No internet connection</string>
+    <string name="offline_subtitle">Please connect to the internet first, then tap Refresh to continue where you left off.</string>
+    <string name="offline_refresh">Refresh</string>
+    <string name="offline_still_disconnected_message">Still offline. Connect to internet and tap Refresh again.</string>
+    <string name="offline_connect_first_message">Connect to the internet first.</string>
+    <string name="offline_logo_content_description">AI Study Assistant logo</string>
+
     <string name="home_progress_day_streak">🔥 %1$d</string>
     <string name="home_progress_quizzes">🧠 %1$d</string>
     <string name="home_progress_topics">📚 %1$d</string>

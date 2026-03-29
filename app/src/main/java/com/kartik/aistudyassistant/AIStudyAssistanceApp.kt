@@ -2,7 +2,17 @@ package com.kartik.aistudyassistant
 
 import android.app.Activity
 import android.app.Application
+import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET
+import android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED
+import android.net.NetworkCapabilities
+import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.util.Log
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -13,6 +23,7 @@ import androidx.core.content.ContextCompat
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.kartik.aistudyassistant.core.utils.SmartSensorManager
 import com.kartik.aistudyassistant.data.local.AppSettingsPrefs
+import com.kartik.aistudyassistant.ui.common.OfflineActivity
 import com.kartik.aistudyassistant.ui.auth.SignInActivity
 import com.kartik.aistudyassistant.ui.auth.SignUpActivity
 import com.kartik.aistudyassistant.ui.home.MainActivity
@@ -21,6 +32,10 @@ import java.lang.ref.WeakReference
 import java.util.WeakHashMap
 
 class AIStudyAssistanceApp : Application(), Application.ActivityLifecycleCallbacks {
+
+    companion object {
+        private const val NETWORK_LOG_TAG = "OfflineRouter"
+    }
 
     private data class ActivitySensorUi(
         val eyeCareOverlay: View,
@@ -36,6 +51,11 @@ class AIStudyAssistanceApp : Application(), Application.ActivityLifecycleCallbac
     )
 
     private lateinit var smartSensorManager: SmartSensorManager
+    private lateinit var connectivityManager: ConnectivityManager
+    private var connectivityCallback: ConnectivityManager.NetworkCallback? = null
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private var isNetworkAvailable = true
+    private var currentResumedActivity: WeakReference<Activity>? = null
     private var activeSensorActivity: WeakReference<Activity>? = null
     private val activitySensorUi = WeakHashMap<Activity, ActivitySensorUi>()
     private val bottomSheetSensorUi = WeakHashMap<BottomSheetDialog, BottomSheetSensorUi>()
@@ -43,10 +63,21 @@ class AIStudyAssistanceApp : Application(), Application.ActivityLifecycleCallbac
     private var isFocusModeActive = false
     private var isEyeCareActive = false
 
+    private inline fun logNetworkDebug(message: () -> String) {
+        if (BuildConfig.DEBUG) {
+            Log.d(NETWORK_LOG_TAG, message())
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
 
         AppSettingsPrefs.applyTheme(this)
+
+        connectivityManager = getSystemService(ConnectivityManager::class.java)
+        isNetworkAvailable = isInternetAvailableNow()
+        logNetworkDebug { "App started; initial internetAvailable=$isNetworkAvailable" }
+        registerNetworkMonitor()
 
         smartSensorManager = SmartSensorManager(this)
         smartSensorManager.onFocusModeChanged = focusChanged@{ isFocusActive ->
@@ -80,6 +111,91 @@ class AIStudyAssistanceApp : Application(), Application.ActivityLifecycleCallbac
         }
 
         registerActivityLifecycleCallbacks(this)
+    }
+
+    private fun registerNetworkMonitor() {
+        if (connectivityCallback != null) return
+
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                // Wait for capability validation before marking internet as reachable.
+            }
+
+            override fun onLost(network: Network) {
+                mainHandler.post {
+                    val previousState = isNetworkAvailable
+                    isNetworkAvailable = isInternetAvailableNow()
+                    logNetworkDebug {
+                        "onLost; previous=$previousState current=$isNetworkAvailable network=$network"
+                    }
+                    if (!isNetworkAvailable) {
+                        showOfflineScreenIfRequired()
+                    }
+                }
+            }
+
+            override fun onUnavailable() {
+                mainHandler.post {
+                    val previousState = isNetworkAvailable
+                    isNetworkAvailable = false
+                    logNetworkDebug { "onUnavailable; previous=$previousState current=$isNetworkAvailable" }
+                    showOfflineScreenIfRequired()
+                }
+            }
+
+            override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
+                mainHandler.post {
+                    val previousState = isNetworkAvailable
+                    val hasInternet = networkCapabilities.hasCapability(NET_CAPABILITY_INTERNET)
+                    val isValidated = networkCapabilities.hasCapability(NET_CAPABILITY_VALIDATED)
+                    val nextState = hasInternet && isValidated
+                    val becameOffline = isNetworkAvailable && !nextState
+                    isNetworkAvailable = nextState
+                    if (previousState != nextState) {
+                        logNetworkDebug {
+                            "onCapabilitiesChanged; previous=$previousState current=$nextState hasInternet=$hasInternet validated=$isValidated network=$network"
+                        }
+                    }
+                    if (becameOffline || !nextState) {
+                        showOfflineScreenIfRequired()
+                    }
+                }
+            }
+        }
+
+        connectivityCallback = callback
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            connectivityManager.registerDefaultNetworkCallback(callback)
+        }
+    }
+
+    private fun isInternetAvailableNow(): Boolean {
+        val activeNetwork = connectivityManager.activeNetwork ?: return false
+        val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork) ?: return false
+        val hasInternet = capabilities.hasCapability(NET_CAPABILITY_INTERNET)
+        val isValidated = capabilities.hasCapability(NET_CAPABILITY_VALIDATED)
+        return hasInternet && isValidated
+    }
+
+    private fun showOfflineScreenIfRequired() {
+        val activity = currentResumedActivity?.get() ?: return
+        if (activity is OfflineActivity) {
+            logNetworkDebug { "Skip offline launch; OfflineActivity already visible" }
+            return
+        }
+        if (activity.isFinishing || activity.isDestroyed) {
+            logNetworkDebug {
+                "Skip offline launch; host invalid activity=${activity::class.java.simpleName} finishing=${activity.isFinishing} destroyed=${activity.isDestroyed}"
+            }
+            return
+        }
+
+        val intent = Intent(activity, OfflineActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        }
+        logNetworkDebug { "Launching OfflineActivity from ${activity::class.java.simpleName}" }
+        activity.startActivity(intent)
     }
 
     private fun applySensorUi(activity: Activity, fromSensorEvent: Boolean, showEyeCareToast: Boolean) {
@@ -284,7 +400,8 @@ class AIStudyAssistanceApp : Application(), Application.ActivityLifecycleCallbac
     private fun isExcludedScreen(activity: Activity): Boolean {
         return activity is SignInActivity ||
             activity is SignUpActivity ||
-            activity is LaunchLoaderActivity
+            activity is LaunchLoaderActivity ||
+            activity is OfflineActivity
     }
 
     private fun isManagedByMainScreen(activity: Activity): Boolean {
@@ -333,6 +450,18 @@ class AIStudyAssistanceApp : Application(), Application.ActivityLifecycleCallbac
     }
 
     override fun onActivityResumed(activity: Activity) {
+        currentResumedActivity = WeakReference(activity)
+        val previousState = isNetworkAvailable
+        isNetworkAvailable = isInternetAvailableNow()
+        if (previousState != isNetworkAvailable) {
+            logNetworkDebug {
+                "onActivityResumed(${activity::class.java.simpleName}); previousInternet=$previousState currentInternet=$isNetworkAvailable"
+            }
+        }
+        if (!isNetworkAvailable && activity !is OfflineActivity) {
+            showOfflineScreenIfRequired()
+        }
+
         if (!isSensorEnabled()) {
             smartSensorManager.stop()
             activeSensorActivity = null
@@ -354,6 +483,10 @@ class AIStudyAssistanceApp : Application(), Application.ActivityLifecycleCallbac
     }
 
     override fun onActivityPaused(activity: Activity) {
+        if (currentResumedActivity?.get() == activity) {
+            currentResumedActivity = null
+        }
+
         if (activeSensorActivity?.get() == activity) {
             smartSensorManager.stop()
             activeSensorActivity = null
