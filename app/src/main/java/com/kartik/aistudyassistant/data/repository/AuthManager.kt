@@ -1048,6 +1048,46 @@ class AuthManager(private val context: Context) {
             .replace("@", "_")
     }
 
+    fun cleanupPendingSignUpAccount(callback: (Boolean, String?) -> Unit) {
+        val currentUser = auth.currentUser
+        if (currentUser == null) {
+            callback(true, null)
+            return
+        }
+
+        val uid = currentUser.uid
+        database.reference.child("Users").child(uid).get()
+            .addOnSuccessListener { snapshot ->
+                if (snapshot.exists()) {
+                    callback(false, "Existing account detected. Please continue with this account or sign in.")
+                    return@addOnSuccessListener
+                }
+
+                val normalizedEmail = currentUser.email?.trim()?.lowercase().orEmpty()
+                currentUser.delete()
+                    .addOnSuccessListener {
+                        if (normalizedEmail.isNotBlank()) {
+                            val encodedEmail = encodeEmail(normalizedEmail)
+                            database.reference.child("Emails").child(encodedEmail).get()
+                                .addOnSuccessListener { emailSnapshot ->
+                                    val mappedUid = emailSnapshot.getValue(String::class.java)
+                                    if (mappedUid == uid) {
+                                        emailSnapshot.ref.removeValue()
+                                    }
+                                }
+                        }
+                        auth.signOut()
+                        callback(true, null)
+                    }
+                    .addOnFailureListener { e ->
+                        callback(false, e.message ?: "Failed to reset pending verification account")
+                    }
+            }
+            .addOnFailureListener { e ->
+                callback(false, e.message ?: "Failed to verify account cleanup state")
+            }
+    }
+
     fun signOut() {
         auth.signOut()
     }

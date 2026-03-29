@@ -61,6 +61,8 @@ class SignUpActivity : AppCompatActivity() {
     private var lastVerifiedEmail: String? = null
     private var lastOtpTargetPhone: String? = null
     private var phoneOtpBlockTimer: CountDownTimer? = null
+    private var activePhoneAttemptId: Int = 0
+    private var activePhoneAttemptPhone: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -108,8 +110,8 @@ class SignUpActivity : AppCompatActivity() {
 
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 val normalizedCurrent = s?.toString()?.trim().orEmpty()
-                val wasBoundToOtp = !lastOtpTargetPhone.isNullOrBlank()
-                if (wasBoundToOtp && normalizedCurrent != lastOtpTargetPhone) {
+                val boundPhone = activePhoneAttemptPhone ?: lastOtpTargetPhone
+                if (!boundPhone.isNullOrBlank() && normalizedCurrent != boundPhone) {
                     resetPhoneVerificationState()
                 }
             }
@@ -157,7 +159,7 @@ class SignUpActivity : AppCompatActivity() {
             }
 
             if (!emailVerified || !phoneVerified) {
-                Toast.makeText(this, "Verify email and phone before creating account", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, getMissingVerificationMessage(emailVerified, phoneVerified), Toast.LENGTH_LONG).show()
                 return@setOnClickListener
             }
 
@@ -222,13 +224,20 @@ class SignUpActivity : AppCompatActivity() {
                     if (verified) "Email verified" else "Email not verified",
                     verified
                 )
+                if (!verified) {
+                    Toast.makeText(
+                        this,
+                        "Email not verified yet. Open your inbox, tap the verification link, then press Check Verified.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
                 updateVerificationUi()
             }
         }
 
         btnSendPhoneOtp.setOnClickListener {
             if (!emailVerified) {
-                Toast.makeText(this, "Verify email first", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Verify your email first, then send phone OTP.", Toast.LENGTH_LONG).show()
                 return@setOnClickListener
             }
 
@@ -245,10 +254,19 @@ class SignUpActivity : AppCompatActivity() {
         btnResendPhoneOtp.setOnClickListener {
             val token = resendToken
             val phone = etPhone.text.toString().trim()
+            if (!isValidIndianPhone(phone)) {
+                etPhone.error = "Enter valid 10-digit Indian phone number"
+                etPhone.requestFocus()
+                return@setOnClickListener
+            }
+
             if (token == null) {
+                Toast.makeText(this, "No active OTP session. Sending a new OTP.", Toast.LENGTH_SHORT).show()
                 sendPhoneOtp(phone)
                 return@setOnClickListener
             }
+
+            val attemptId = beginPhoneAttempt(phone)
 
             btnResendPhoneOtp.isEnabled = false
             btnResendPhoneOtp.text = getString(R.string.signup_resending)
@@ -257,19 +275,23 @@ class SignUpActivity : AppCompatActivity() {
                 rawPhone = phone,
                 token = token,
                 onCodeSent = { newVerificationId, newToken ->
+                    if (!isCurrentPhoneAttempt(attemptId, phone)) return@resendPhoneVerification
                     verificationId = newVerificationId
                     resendToken = newToken
+                    lastOtpTargetPhone = phone
                     clearPhoneOtpBlockCounter()
                     btnResendPhoneOtp.isEnabled = true
                     btnResendPhoneOtp.text = getString(R.string.signup_resend_otp)
                     Toast.makeText(this, getString(R.string.signup_otp_resent), Toast.LENGTH_SHORT).show()
                 },
                 onVerified = { result ->
+                    if (!isCurrentPhoneAttempt(attemptId, phone)) return@resendPhoneVerification
                     btnResendPhoneOtp.isEnabled = true
                     btnResendPhoneOtp.text = getString(R.string.signup_resend_otp)
                     handlePhoneVerificationResult(result)
                 },
                 onError = { message ->
+                    if (!isCurrentPhoneAttempt(attemptId, phone)) return@resendPhoneVerification
                     handlePhoneOtpBlockedErrorIfNeeded(message)
                     btnResendPhoneOtp.isEnabled = true
                     btnResendPhoneOtp.text = getString(R.string.signup_resend_otp)
@@ -285,6 +307,16 @@ class SignUpActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
+            val currentPhone = etPhone.text.toString().trim()
+            val boundPhone = activePhoneAttemptPhone ?: lastOtpTargetPhone
+            if (!boundPhone.isNullOrBlank() && currentPhone != boundPhone) {
+                resetPhoneVerificationState()
+                Toast.makeText(this, "Phone changed. Send OTP again", Toast.LENGTH_LONG).show()
+                return@setOnClickListener
+            }
+
+            val attemptId = activePhoneAttemptId
+
             val otp = etPhoneOtp.text.toString().trim()
             if (otp.length != 6 || !otp.all { it.isDigit() }) {
                 etPhoneOtp.error = "Enter valid 6-digit OTP"
@@ -295,6 +327,11 @@ class SignUpActivity : AppCompatActivity() {
             btnVerifyPhoneOtp.isEnabled = false
             btnVerifyPhoneOtp.text = getString(R.string.signup_verifying)
             authManager.verifyPhoneCode(currentVerificationId, otp) { result ->
+                if (attemptId != activePhoneAttemptId) {
+                    btnVerifyPhoneOtp.isEnabled = true
+                    btnVerifyPhoneOtp.text = getString(R.string.signup_verify_phone_otp)
+                    return@verifyPhoneCode
+                }
                 btnVerifyPhoneOtp.isEnabled = true
                 btnVerifyPhoneOtp.text = getString(R.string.signup_verify_phone_otp)
                 handlePhoneVerificationResult(result)
@@ -309,8 +346,21 @@ class SignUpActivity : AppCompatActivity() {
         }
 
         btnEditVerifiedContacts?.setOnClickListener {
-            resetEmailVerificationState()
-            Toast.makeText(this, "Email and phone unlocked. Verify again to continue", Toast.LENGTH_SHORT).show()
+            btnEditVerifiedContacts?.isEnabled = false
+            authManager.cleanupPendingSignUpAccount { success, error ->
+                btnEditVerifiedContacts?.isEnabled = true
+                if (!success) {
+                    Toast.makeText(
+                        this,
+                        error ?: "Unable to unlock contacts right now. Please try again.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    return@cleanupPendingSignUpAccount
+                }
+
+                resetEmailVerificationState()
+                Toast.makeText(this, "Email and phone unlocked. Verify again to continue", Toast.LENGTH_SHORT).show()
+            }
         }
 
         btnGithub.setOnClickListener {
@@ -402,15 +452,18 @@ class SignUpActivity : AppCompatActivity() {
     }
 
     private fun sendPhoneOtp(phone: String) {
+        val normalizedPhone = phone.trim()
+        val attemptId = beginPhoneAttempt(normalizedPhone)
         btnSendPhoneOtp.isEnabled = false
         btnSendPhoneOtp.text = getString(R.string.common_sending)
         authManager.startPhoneVerification(
             activity = this,
-            rawPhone = phone,
+            rawPhone = normalizedPhone,
             onCodeSent = { sentVerificationId, token ->
+                if (!isCurrentPhoneAttempt(attemptId, normalizedPhone)) return@startPhoneVerification
                 verificationId = sentVerificationId
                 resendToken = token
-                lastOtpTargetPhone = phone.trim()
+                lastOtpTargetPhone = normalizedPhone
                 clearPhoneOtpBlockCounter()
                 btnSendPhoneOtp.isEnabled = true
                 btnSendPhoneOtp.text = getString(R.string.signup_send_phone_otp)
@@ -418,11 +471,13 @@ class SignUpActivity : AppCompatActivity() {
                 setPhoneStatus(false, getString(R.string.signup_phone_otp_sent_status), false)
             },
             onVerified = { result ->
+                if (!isCurrentPhoneAttempt(attemptId, normalizedPhone)) return@startPhoneVerification
                 btnSendPhoneOtp.isEnabled = true
                 btnSendPhoneOtp.text = getString(R.string.signup_send_phone_otp)
                 handlePhoneVerificationResult(result)
             },
             onError = { message ->
+                if (!isCurrentPhoneAttempt(attemptId, normalizedPhone)) return@startPhoneVerification
                 handlePhoneOtpBlockedErrorIfNeeded(message)
                 btnSendPhoneOtp.isEnabled = true
                 btnSendPhoneOtp.text = getString(R.string.signup_send_phone_otp)
@@ -436,7 +491,9 @@ class SignUpActivity : AppCompatActivity() {
             is AuthResult.Success -> {
                 clearPhoneOtpBlockCounter()
                 phoneVerified = true
-                lastOtpTargetPhone = etPhone.text?.toString()?.trim().orEmpty()
+                val verifiedPhone = resolveVerifiedLocalPhone() ?: activePhoneAttemptPhone.orEmpty()
+                lastOtpTargetPhone = verifiedPhone
+                activePhoneAttemptPhone = verifiedPhone
                 setPhoneStatus(true, getString(R.string.signup_phone_verified), true)
                 updateVerificationUi()
             }
@@ -446,7 +503,9 @@ class SignUpActivity : AppCompatActivity() {
                 }
                 phoneVerified = result.phoneVerified
                 if (result.phoneVerified) {
-                    lastOtpTargetPhone = etPhone.text?.toString()?.trim().orEmpty()
+                    val verifiedPhone = resolveVerifiedLocalPhone() ?: activePhoneAttemptPhone.orEmpty()
+                    lastOtpTargetPhone = verifiedPhone
+                    activePhoneAttemptPhone = verifiedPhone
                 }
                 setPhoneStatus(
                     result.phoneVerified,
@@ -487,6 +546,7 @@ class SignUpActivity : AppCompatActivity() {
     }
 
     private fun resetPhoneVerificationState() {
+        invalidatePhoneAttempt()
         phoneVerified = false
         verificationId = null
         resendToken = null
@@ -555,6 +615,39 @@ class SignUpActivity : AppCompatActivity() {
 
     private fun isValidIndianPhone(phone: String): Boolean {
         return phone.length == 10 && phone.all { it.isDigit() }
+    }
+
+    private fun beginPhoneAttempt(phone: String): Int {
+        activePhoneAttemptId += 1
+        activePhoneAttemptPhone = phone.trim()
+        return activePhoneAttemptId
+    }
+
+    private fun invalidatePhoneAttempt() {
+        activePhoneAttemptId += 1
+        activePhoneAttemptPhone = null
+    }
+
+    private fun isCurrentPhoneAttempt(attemptId: Int, phone: String): Boolean {
+        return attemptId == activePhoneAttemptId && activePhoneAttemptPhone == phone.trim()
+    }
+
+    private fun resolveVerifiedLocalPhone(): String? {
+        val e164 = auth.currentUser?.phoneNumber ?: return null
+        val digits = e164.filter { it.isDigit() }
+        if (digits.isBlank()) return null
+        return if (digits.length >= 10) digits.takeLast(10) else digits
+    }
+
+    private fun getMissingVerificationMessage(emailVerified: Boolean, phoneVerified: Boolean): String {
+        return when {
+            !emailVerified && !phoneVerified ->
+                "Verify your email first, then verify your phone to create account."
+            !emailVerified ->
+                "Verify your email first. Tap Send Verification Email, open inbox link, then Check Verified."
+            else ->
+                "Verify your phone to continue. Tap Send Phone OTP, enter OTP, then Verify Phone OTP."
+        }
     }
 
     private fun showVerificationRequiredDialog(result: AuthResult.VerificationRequired) {
