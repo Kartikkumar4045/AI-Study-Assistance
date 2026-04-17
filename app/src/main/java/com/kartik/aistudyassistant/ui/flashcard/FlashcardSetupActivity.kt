@@ -75,7 +75,7 @@ class FlashcardSetupActivity : AppCompatActivity() {
         enableEdgeToEdge()
         setContentView(R.layout.activity_flashcard_setup)
 
-        val apiKey = BuildConfig.apiKeySafe
+        val apiKey = BuildConfig.GEMINI_API_KEY
         val geminiHelper = GeminiHelper(apiKey, "gemini-2.5-flash")
         flashcardGenerator = FlashcardGenerator(geminiHelper)
         storage = FirebaseStorage.getInstance()

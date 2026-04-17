@@ -8,6 +8,7 @@ import androidx.credentials.exceptions.GetCredentialException
 import com.kartik.aistudyassistant.data.model.AuthResult as AppAuthResult
 import com.google.android.libraries.identity.googleid.*
 import com.google.firebase.FirebaseException
+import com.google.firebase.FirebaseTooManyRequestsException
 import com.google.firebase.auth.*
 import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.CoroutineScope
@@ -95,23 +96,25 @@ class AuthManager(private val context: Context) {
                     if (currentUser != null && currentUser.email.equals(normalizedEmail, ignoreCase = true)) {
                         sendEmailVerificationForCurrentUser(callback)
                     } else {
-                        auth.signOut()
-                        val tempPassword = buildTempPassword()
-                        auth.createUserWithEmailAndPassword(normalizedEmail, tempPassword)
-                            .addOnSuccessListener {
-                                auth.currentUser?.sendEmailVerification()
-                                    ?.addOnSuccessListener { callback(AppAuthResult.Success(true)) }
-                                    ?.addOnFailureListener { e ->
-                                        callback(
-                                            AppAuthResult.Error(
-                                                e.message ?: "Failed to send verification email"
+                        // Clean up any stale pending auth account (different email, never finalized)
+                        deletePendingAuthUserIfUnfinalized {
+                            val tempPassword = buildTempPassword()
+                            auth.createUserWithEmailAndPassword(normalizedEmail, tempPassword)
+                                .addOnSuccessListener {
+                                    auth.currentUser?.sendEmailVerification()
+                                        ?.addOnSuccessListener { callback(AppAuthResult.Success(true)) }
+                                        ?.addOnFailureListener { e ->
+                                            callback(
+                                                AppAuthResult.Error(
+                                                    e.message ?: "Failed to send verification email"
+                                                )
                                             )
-                                        )
-                                    }
-                            }
-                            .addOnFailureListener { e ->
-                                callback(AppAuthResult.Error(e.message ?: "Unable to start email verification"))
-                            }
+                                        }
+                                }
+                                .addOnFailureListener { e ->
+                                    callback(AppAuthResult.Error(e.message ?: "Unable to start email verification"))
+                                }
+                        }
                     }
                 }
             } catch (e: Exception) {
@@ -120,6 +123,32 @@ class AuthManager(private val context: Context) {
                 }
             }
         }
+    }
+
+    private fun deletePendingAuthUserIfUnfinalized(onDone: () -> Unit) {
+        val currentUser = auth.currentUser
+        if (currentUser == null) {
+            onDone()
+            return
+        }
+        // Only proceed if user has no DB record (i.e., signup was never finalized)
+        database.reference.child("Users").child(currentUser.uid).get()
+            .addOnSuccessListener { snapshot ->
+                if (snapshot.exists()) {
+                    auth.signOut()
+                    onDone()
+                } else {
+                    currentUser.delete()
+                        .addOnCompleteListener {
+                            auth.signOut()
+                            onDone()
+                        }
+                }
+            }
+            .addOnFailureListener {
+                auth.signOut()
+                onDone()
+            }
     }
 
     fun refreshEmailVerificationStatus(callback: (Boolean, String?) -> Unit) {
@@ -827,11 +856,31 @@ class AuthManager(private val context: Context) {
     ): PhoneAuthProvider.OnVerificationStateChangedCallbacks {
         return object : PhoneAuthProvider.OnVerificationStateChangedCallbacks() {
             override fun onVerificationCompleted(credential: PhoneAuthCredential) {
-                linkPhoneCredential(credential, onVerified)
+                // Guard: only auto-link if a signed-in user exists (we need linkWithCredential)
+                if (auth.currentUser != null) {
+                    linkPhoneCredential(credential, onVerified)
+                }
+                // else: silently ignore; user will type OTP manually
             }
 
             override fun onVerificationFailed(e: FirebaseException) {
-                onError(e.message ?: "Phone verification failed")
+                val friendly = when (e) {
+                    is FirebaseTooManyRequestsException ->
+                        "Too many OTP requests. Try again after some time."
+                    is FirebaseAuthInvalidCredentialsException ->
+                        "Invalid phone number format."
+                    else -> {
+                        val msg = e.message.orEmpty()
+                        when {
+                            msg.contains("quota", ignoreCase = true) ->
+                                "SMS quota exceeded. Try again later."
+                            msg.contains("blocked", ignoreCase = true) ->
+                                "This device was blocked due to unusual activity. Try again later."
+                            else -> msg.ifBlank { "Phone verification failed" }
+                        }
+                    }
+                }
+                onError(friendly)
             }
 
             override fun onCodeSent(
@@ -860,13 +909,19 @@ class AuthManager(private val context: Context) {
                 persistVerifiedPhone(resolvedUser.uid, phoneE164, callback)
             }
             .addOnFailureListener { exception ->
-                when (exception) {
-                    is FirebaseAuthUserCollisionException,
-                    is FirebaseAuthInvalidCredentialsException -> {
-                        callback(AppAuthResult.Error("Invalid OTP or phone number already linked to another account"))
+                val errCode = (exception as? FirebaseAuthException)?.errorCode.orEmpty()
+                when {
+                    errCode == "ERROR_PROVIDER_ALREADY_LINKED" -> {
+                        // Phone already linked to this user → sync DB as success
+                        persistVerifiedPhone(currentUser.uid, currentUser.phoneNumber, callback)
+                    }
+                    exception is FirebaseAuthUserCollisionException -> {
+                        callback(AppAuthResult.Error("This phone number is already linked to another account. Please use a different number."))
+                    }
+                    exception is FirebaseAuthInvalidCredentialsException -> {
+                        callback(AppAuthResult.Error("Invalid or expired OTP. Please request a new one."))
                     }
                     else -> {
-                        // If phone is already linked to this user, treat as success and sync DB.
                         val alreadyLinked = currentUser.providerData.any { it.providerId == PhoneAuthProvider.PROVIDER_ID }
                         if (alreadyLinked) {
                             persistVerifiedPhone(currentUser.uid, currentUser.phoneNumber, callback)
@@ -1046,6 +1101,47 @@ class AuthManager(private val context: Context) {
         return email.lowercase()
             .replace(".", "_")
             .replace("@", "_")
+    }
+
+    /**
+     * Silently delete the currently signed-in Firebase Auth user IF they have no DB record
+     * (i.e., signup was started but never finalized). Safe to call from onDestroy/onBackPressed.
+     * Does nothing if user already has a DB record (fully signed up).
+     */
+    fun abortPendingSignUpSilently(callback: ((Boolean) -> Unit)? = null) {
+        val currentUser = auth.currentUser
+        if (currentUser == null) {
+            callback?.invoke(true)
+            return
+        }
+        val uid = currentUser.uid
+        val normalizedEmail = currentUser.email?.trim()?.lowercase().orEmpty()
+        database.reference.child("Users").child(uid).get()
+            .addOnSuccessListener { snapshot ->
+                if (snapshot.exists()) {
+                    // Already a real account, do nothing
+                    callback?.invoke(false)
+                    return@addOnSuccessListener
+                }
+                currentUser.delete()
+                    .addOnCompleteListener { task ->
+                        if (normalizedEmail.isNotBlank()) {
+                            val encodedEmail = encodeEmail(normalizedEmail)
+                            database.reference.child("Emails").child(encodedEmail).get()
+                                .addOnSuccessListener { emailSnapshot ->
+                                    val mappedUid = emailSnapshot.getValue(String::class.java)
+                                    if (mappedUid == uid) {
+                                        emailSnapshot.ref.removeValue()
+                                    }
+                                }
+                        }
+                        auth.signOut()
+                        callback?.invoke(task.isSuccessful)
+                    }
+            }
+            .addOnFailureListener {
+                callback?.invoke(false)
+            }
     }
 
     fun cleanupPendingSignUpAccount(callback: (Boolean, String?) -> Unit) {

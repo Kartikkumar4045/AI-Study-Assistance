@@ -87,6 +87,10 @@ class UploadActivity : AppCompatActivity() {
     private var hasMorePages = true
     private var lastVisibleDocument: DocumentSnapshot? = null
     private var isActivityAlive = true
+
+    // Cached used-bytes value computed from Firestore (single source of truth).
+    private var cachedUsedBytes: Long = 0L
+
     private val pdfThumbnailCache = object : LruCache<String, Bitmap>(8 * 1024 * 1024) {
         override fun sizeOf(key: String, value: Bitmap): Int = value.byteCount
     }
@@ -140,26 +144,60 @@ class UploadActivity : AppCompatActivity() {
         btnUploadFirst.setOnClickListener {
             pickFile("application/pdf")
         }
-        
+
         updateStorageUI()
     }
-    
+
+    /**
+     * Computes actual storage usage by summing sizeBytes across all Firestore note docs.
+     * This is the single source of truth — survives logout/login/reinstall/different devices.
+     */
+    private fun fetchStorageUsedFromFirestore(
+        userId: String,
+        onSuccess: (Long) -> Unit,
+        onFailure: (Exception) -> Unit
+    ) {
+        firestore.collection("Notes").document(userId).collection("UserNotes")
+            .get()
+            .addOnSuccessListener { snapshot ->
+                val totalBytes = snapshot.documents.sumOf { doc ->
+                    (doc.getLong("sizeBytes") ?: 0L).coerceAtLeast(0L)
+                }
+                onSuccess(totalBytes)
+            }
+            .addOnFailureListener { onFailure(it) }
+    }
+
     private fun updateStorageUI() {
         val userId = auth.currentUser?.uid ?: return
-        StorageManager.getStorageUsed(userId, { usedBytes ->
-            val usedMB = String.format(Locale.getDefault(), "%.2f", usedBytes / (1024f * 1024f))
-            val maxMB = String.format(Locale.getDefault(), "%.2f", StorageManager.MAX_STORAGE_BYTES / (1024f * 1024f))
-            tvStorageUsage.text = "$usedMB MB / $maxMB MB"
-            
-            val progress = ((usedBytes.toDouble() / StorageManager.MAX_STORAGE_BYTES) * 100).toInt()
-            progressStorage.setProgressCompat(progress, true)
-            
-            if (progress >= 80) {
-                tvStorageWarning.visibility = View.VISIBLE
-            } else {
-                tvStorageWarning.visibility = View.GONE
-            }
-        }, {})
+        fetchStorageUsedFromFirestore(userId, { usedBytes ->
+            cachedUsedBytes = usedBytes
+            renderStorageUi(usedBytes)
+            // Keep StorageManager (SharedPreferences) roughly in sync so older code paths don't misreport.
+            // This is a best-effort sync; Firestore remains the source of truth.
+            try {
+                StorageManager.getStorageUsed(userId, { localUsed ->
+                    val delta = usedBytes - localUsed
+                    if (delta > 0) StorageManager.addStorageUsed(userId, delta)
+                    else if (delta < 0) StorageManager.removeStorageUsed(userId, -delta)
+                }, {})
+            } catch (_: Exception) { /* ignore */ }
+        }, {
+            // On failure, fall back to cached/local value so UI still renders something.
+            renderStorageUi(cachedUsedBytes)
+        })
+    }
+
+    private fun renderStorageUi(usedBytes: Long) {
+        val usedMB = String.format(Locale.getDefault(), "%.2f", usedBytes / (1024f * 1024f))
+        val maxMB = String.format(Locale.getDefault(), "%.2f", StorageManager.MAX_STORAGE_BYTES / (1024f * 1024f))
+        tvStorageUsage.text = "$usedMB MB / $maxMB MB"
+
+        val progress = ((usedBytes.toDouble() / StorageManager.MAX_STORAGE_BYTES) * 100).toInt()
+            .coerceIn(0, 100)
+        progressStorage.setProgressCompat(progress, true)
+
+        tvStorageWarning.visibility = if (progress >= 80) View.VISIBLE else View.GONE
     }
 
     private fun setupLazyLoading() {
@@ -175,8 +213,7 @@ class UploadActivity : AppCompatActivity() {
 
     private fun setupRecyclerView() {
         notesAdapter = NotesAdapter(filteredNotesList) { note ->
-            showNoteOptions(note
-            )
+            showNoteOptions(note)
         }
         rvNotes.adapter = notesAdapter
         rvNotes.layoutManager = GridLayoutManager(this, 2)
@@ -209,13 +246,42 @@ class UploadActivity : AppCompatActivity() {
     private fun uploadFileToFirebase(uri: Uri) {
         val fileName = getFileName(uri)
         val userId = auth.currentUser?.uid ?: return
-        
-        val fileSize = StorageManager.getFileSize(this, uri)
 
-        StorageManager.getStorageUsed(userId, { currentUsed ->
-            if (currentUsed + fileSize > StorageManager.MAX_STORAGE_BYTES) {
-                Toast.makeText(this, "Storage limit exceeded. You can upload up to 5 MB total.", Toast.LENGTH_LONG).show()
-                return@getStorageUsed
+        val fileSize = StorageManager.getFileSize(this, uri)
+        val maxBytes = StorageManager.MAX_STORAGE_BYTES
+        val maxMB = maxBytes / (1024 * 1024)
+
+        // 1) Reject unknown/invalid sizes up front.
+        if (fileSize <= 0L) {
+            Toast.makeText(
+                this,
+                "Unable to determine file size. Please try another file.",
+                Toast.LENGTH_LONG
+            ).show()
+            return
+        }
+
+        // 2) Per-file cap — no single file may exceed the limit.
+        if (fileSize > maxBytes) {
+            Toast.makeText(
+                this,
+                "File is too large. Max allowed is $maxMB MB per file.",
+                Toast.LENGTH_LONG
+            ).show()
+            return
+        }
+
+        // 3) Total quota check (computed from Firestore → accurate across logins).
+        fetchStorageUsedFromFirestore(userId, { currentUsed ->
+            cachedUsedBytes = currentUsed
+            if (currentUsed + fileSize > maxBytes) {
+                val remainingMB = ((maxBytes - currentUsed).coerceAtLeast(0)) / (1024 * 1024)
+                Toast.makeText(
+                    this,
+                    "Storage limit exceeded. You have $remainingMB MB left (max $maxMB MB total).",
+                    Toast.LENGTH_LONG
+                ).show()
+                return@fetchStorageUsedFromFirestore
             }
 
             showProgress(getString(R.string.upload_progress_uploading, fileName))
@@ -225,15 +291,32 @@ class UploadActivity : AppCompatActivity() {
 
             fileRef.putFile(uri)
                 .addOnSuccessListener {
-                    fileRef.downloadUrl.addOnSuccessListener { downloadUrl ->
-                        saveNoteMetadata(fileName, downloadUrl.toString(), fileSize)
-                    }
+                    fileRef.downloadUrl
+                        .addOnSuccessListener { downloadUrl ->
+                            saveNoteMetadata(fileName, downloadUrl.toString(), fileSize, fileRef)
+                        }
+                        .addOnFailureListener { e ->
+                            // Cleanup uploaded object if we can't even get its URL.
+                            fileRef.delete()
+                            hideProgress()
+                            Toast.makeText(
+                                this,
+                                getString(
+                                    R.string.upload_error_upload_failed,
+                                    e.message ?: getString(R.string.upload_unknown_error)
+                                ),
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
                 }
                 .addOnFailureListener { e ->
                     hideProgress()
                     Toast.makeText(
                         this,
-                        getString(R.string.upload_error_upload_failed, e.message ?: getString(R.string.upload_unknown_error)),
+                        getString(
+                            R.string.upload_error_upload_failed,
+                            e.message ?: getString(R.string.upload_unknown_error)
+                        ),
                         Toast.LENGTH_LONG
                     ).show()
                 }
@@ -249,7 +332,13 @@ class UploadActivity : AppCompatActivity() {
         })
     }
 
-    private fun saveNoteMetadata(fileName: String, downloadUrl: String, fileSize: Long = 0) {
+    // Kept original signature; added optional storageRef param with default for back-compat.
+    private fun saveNoteMetadata(
+        fileName: String,
+        downloadUrl: String,
+        fileSize: Long = 0,
+        storageRefForCleanup: com.google.firebase.storage.StorageReference? = null
+    ) {
         val userId = auth.currentUser?.uid ?: return
         val noteId = UUID.randomUUID().toString()
 
@@ -266,6 +355,7 @@ class UploadActivity : AppCompatActivity() {
         firestore.collection("Notes").document(userId).collection("UserNotes").document(noteId)
             .set(note)
             .addOnSuccessListener {
+                // Keep local counter roughly in sync (non-authoritative).
                 StorageManager.addStorageUsed(userId, fileSize)
                 ContinueLearningPrefs.saveUploadActivity(this, fileName)
                 notesList.removeAll { it.id == note.id }
@@ -276,10 +366,15 @@ class UploadActivity : AppCompatActivity() {
                 Toast.makeText(this, getString(R.string.upload_success), Toast.LENGTH_SHORT).show()
             }
             .addOnFailureListener { e ->
+                // Firestore write failed — cleanup orphan storage object so quota stays consistent.
+                storageRefForCleanup?.delete()
                 hideProgress()
                 Toast.makeText(
                     this,
-                    getString(R.string.upload_error_firestore_failed, e.message ?: getString(R.string.upload_unknown_error)),
+                    getString(
+                        R.string.upload_error_firestore_failed,
+                        e.message ?: getString(R.string.upload_unknown_error)
+                    ),
                     Toast.LENGTH_LONG
                 ).show()
             }
@@ -881,8 +976,3 @@ class UploadActivity : AppCompatActivity() {
         IMAGE
     }
 }
-
-
-
-
-

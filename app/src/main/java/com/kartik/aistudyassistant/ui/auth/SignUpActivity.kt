@@ -598,6 +598,9 @@ class SignUpActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         clearPhoneOtpBlockCounter()
+        if (isFinishing && !phoneVerified) {
+            authManager.abortPendingSignUpSilently()
+        }
         super.onDestroy()
     }
 

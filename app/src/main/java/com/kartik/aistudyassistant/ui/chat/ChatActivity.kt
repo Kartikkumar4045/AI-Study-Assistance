@@ -112,7 +112,7 @@ class ChatActivity : AppCompatActivity() {
         PDFBoxResourceLoader.init(applicationContext)
 
         // Initialize Gemini Helper
-        val apiKey = BuildConfig.apiKeySafe
+        val apiKey = BuildConfig.GEMINI_API_KEY
         geminiHelper = GeminiHelper(apiKey, "gemini-2.5-flash")
 
         initViews()

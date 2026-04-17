@@ -71,7 +71,7 @@ class QuizSetupActivity : AppCompatActivity() {
         setContentView(R.layout.activity_quiz_setup)
 
         // Initialize Gemini Helper
-        val apiKey = BuildConfig.apiKeySafe
+        val apiKey = BuildConfig.GEMINI_API_KEY
         val geminiHelper = GeminiHelper(apiKey, "gemini-2.5-flash")
         quizGenerator = QuizGenerator(geminiHelper)
 
